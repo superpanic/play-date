@@ -2,6 +2,7 @@
 .PHONY: build
 .PHONY: run
 .PHONY: copy
+.PHONY: firstbuild
 
 CMD=cat ~/.Playdate/config | sed -n 's/SDKRoot[[:space:]]\(.*\)/\1/p'
 SDKREL=$(shell $(CMD))
@@ -12,6 +13,8 @@ SIM=Playdate Simulator
 
 
 build: clean compile run
+
+firstbuild: compile run
 
 run: open
 
