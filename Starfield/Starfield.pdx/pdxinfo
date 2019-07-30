@@ -1,0 +1,11 @@
+name=Template
+author=You, Inc.
+description=A basic game template.
+bundleID=com.yourcompany.TemplateGame
+version=1.0
+buildNumber=100
+imagePath=SystemAssets
+pdxversion=6
+buildtime=617743491
+inputPath=/Users/fredrik/Development/PlayDate/Projects/Starfield/Source
+sdkPath=/Users/fredrik/Development/PlayDate/PlaydateSDK-build-Release
