@@ -7,7 +7,8 @@ local screen_width = playdate.display.getWidth()
 local screen_height = playdate.display.getHeight()
 
 function playdate.update()
-	
+	playdate.graphics.clear()
+	draw_grid()
 end
 
 function draw_grid()
@@ -16,18 +17,18 @@ function draw_grid()
 		playdate.graphics.drawLine( x, 0, x, screen_height)
 	end
 	for y = grid_size, screen_height, 16 do
-		playdate.graphics.drawLine(0,y,screen_width,y)
+		playdate.graphics.drawLine(0, y, screen_width, y)
 	end
 	playdate.graphics.setDitherPattern(0.0)
 end
 
 function setup()
-	draw_grid()	
+
 end
 
 function playdate.AButtonDown()
 	-- invert color
-	playdate.display.setInverted(not playdate.display.getInverted())
+	--playdate.display.setInverted(not playdate.display.getInverted())
 end
 
 setup()
