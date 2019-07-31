@@ -13,10 +13,10 @@ local nstars = nstars_list[nstars_index]
 local speed = 0.0
 local stars = {}
 
-local font = playdate.graphics.loadFont("Font/Bitmore/font-Bitmore")
-playdate.graphics.setFont(font)
+playdate.display.setRefreshRate(0)
 
-function star() 
+function star()
+	-- return a star 'struct'
 	return {
 		xpos = (math.random(screen_width)  - screen_width / 2.0) / 100.0,
 		ypos = (math.random(screen_height) - screen_height / 2.0) / 100.0,
@@ -38,7 +38,7 @@ function playdate.update()
 		end
 	end
 	fps(10,10)
-	playdate.graphics.drawText("*"..nstars_list[nstars_index].."*", 10,30 )
+	playdate.graphics.drawText(nstars_list[nstars_index].." stars locked to "..math.floor(playdate.display.getRefreshRate()).." fps", 10,screen_height-30 )
 end
 
 function playdate.cranked(change, acceleratedChange)
@@ -46,14 +46,12 @@ function playdate.cranked(change, acceleratedChange)
 end
 
 function playdate.AButtonDown()
-	if playdate.graphics.getBackgroundColor() == playdate.graphics.kColorBlack then
-		playdate.graphics.setBackgroundColor(playdate.graphics.kColorWhite)
-	else
-		playdate.graphics.setBackgroundColor(playdate.graphics.kColorBlack)
-	end
+	-- invert color
+	playdate.display.setInverted(not playdate.display.getInverted())
 end
 
 function playdate.BButtonDown()
+	-- increase number of stars
 	if nstars_index < nstars_list_len then
 		nstars_index++
 	else
@@ -61,6 +59,14 @@ function playdate.BButtonDown()
 	end
 	nstars = nstars_list[nstars_index]
 	setup()
+end
+
+function playdate.upButtonUp()
+	playdate.display.setRefreshRate(30)
+end
+
+function playdate.downButtonUp()
+	playdate.display.setRefreshRate(0)
 end
 
 function setup()

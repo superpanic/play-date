@@ -5,7 +5,3 @@ bundleID=com.yourcompany.TemplateGame
 version=1.0
 buildNumber=100
 imagePath=SystemAssets
-pdxversion=6
-buildtime=617889481
-inputPath=/Users/fredrik/Repos/play-date/Starfield/Source
-sdkPath=/Applications/PlaydateSDK-build-Release
