@@ -1,7 +1,9 @@
 import "CoreLibs/sprites"
 import "CoreLibs/graphics"
+import "CoreLibs/object"
 import "CoreLibs/timer"
 import "Player/player"
+import "Map/map"
 
 playdate.display.setScale(2)
 playdate.display.setRefreshRate(0)
@@ -22,14 +24,17 @@ local kGameState = {
 local currentState = kGameState.INITIAL
 local player = Player()
 
+function setup()
+	-- setup stuff
+	player:moveTo(2*16+9,2*16+9)
+	player:update()
+end
+
 function playdate.update()
-	--playdate.graphics.clear()
-	--player:nextImage()
 	player:update()
 	-- draw grid
 	if gridOn then drawGrid() end
 	-- drive timers
-	
 	playdate.timer.updateTimers()
 end
 
@@ -42,12 +47,6 @@ function drawGrid()
 		playdate.graphics.drawLine(0, y, screenWidth, y)
 	end
 	playdate.graphics.setDitherPattern(0.0)
-end
-
-function setup()
-	-- setup stuff
-	player:moveTo(2*16+9,2*16+9)
-	player:update()
 end
 
 function playdate.rightButtonDown()

@@ -1,4 +1,3 @@
-
 class('Player').extends(playdate.graphics.sprite)
 
 local playerImages = playdate.graphics.imagetable.new('Player/player')
@@ -38,6 +37,7 @@ function Player:nextImage()
 end
 
 function Player:setAnimationIdle()
+	print("idle")
 	self.currentState = self.kAnimationState.IDLE
 	self.animationSpeed = self.kAnimationSpeed.IDLE
 	self.frameIndex=1
@@ -45,6 +45,7 @@ function Player:setAnimationIdle()
 end
 
 function Player:setAnimationRight()
+	print("right")
 	self.currentState = self.kAnimationState.RIGHT
 	self.animationSpeed = self.kAnimationSpeed.RIGHT
 	self.frameIndex=1
