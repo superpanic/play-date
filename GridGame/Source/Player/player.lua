@@ -1,57 +1,54 @@
 class('Player').extends(playdate.graphics.sprite)
 
-local playerImages = playdate.graphics.imagetable.new('Player/player')
+local player_images = playdate.graphics.imagetable.new('Player/player')
 
 function Player:init()
 	Player.super.init(self)
 	self:add()
 	self.t = nil
-	self:setupFrames()
+	self:setup_frames()
 end
 
-function Player:setupFrames()
-	self.kAnimationState = {
+function Player:setup_frames()
+	self.k_animation_state = {
 		IDLE =  { 1, 2},
 		RIGHT = { 3, 4}
 	}
-	self.kAnimationSpeed = {
+	self.k_animation_speed = {
 		IDLE  = 1000 /  4,
 		RIGHT = 1000 /  4
 	}
-	self.currentState = self.kAnimationState.IDLE
-	self.animationSpeed = self.kAnimationSpeed.IDLE
-	self.frameIndex = 1
-	self:setImage(playerImages[self.currentState[self.frameIndex]])
-	self:nextImage()
+	self.current_state = self.k_animation_state.IDLE
+	self.animation_speed = self.k_animation_speed.IDLE
+	self.frame_index = 1
+	self:setImage(player_images[self.current_state[self.frame_index]])
+	self:next_image()
 end
 
-function Player:nextImage()
-	if self.frameIndex >= #self.currentState then
-		self.frameIndex = 1
+function Player:next_image()
+	if self.frame_index >= #self.current_state then
+		self.frame_index = 1
 	else
-		self.frameIndex++
+		self.frame_index++
 	end
-	self:setImage(playerImages[self.currentState[self.frameIndex]])
+	self:setImage(player_images[self.current_state[self.frame_index]])
 	if self.t then self.t:remove() end
-	self.t = playdate.timer.new(self.animationSpeed, self.nextImage, self)
+	self.t = playdate.timer.new(self.animation_speed, self.next_image, self)
 end
 
-function Player:setAnimationIdle()
+function Player:set_animation_idle()
 	print("idle")
-	self.currentState = self.kAnimationState.IDLE
-	self.animationSpeed = self.kAnimationSpeed.IDLE
-	self.frameIndex=1
-	self:nextImage()
+	self.current_state = self.k_animation_state.IDLE
+	self.animation_speed = self.k_animation_speed.IDLE
+	self.frame_index=1
+	self:next_image()
 end
 
-function Player:setAnimationRight()
+function Player:set_animation_right()
 	print("right")
-	self.currentState = self.kAnimationState.RIGHT
-	self.animationSpeed = self.kAnimationSpeed.RIGHT
-	self.frameIndex=1
-	self:nextImage()
-end
-
-function Player:setAnimation(state)
+	self.current_state = self.k_animation_state.RIGHT
+	self.animation_speed = self.k_animation_speed.RIGHT
+	self.frame_index=1
+	self:next_image()
 end
 

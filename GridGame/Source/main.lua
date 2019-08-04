@@ -4,16 +4,14 @@ import "CoreLibs/object"
 import "CoreLibs/timer"
 import "Player/player"
 import "Map/map"
+import "Common/common"
 
-playdate.display.setScale(2)
+playdate.display.setScale(1)
 playdate.display.setRefreshRate(0)
 
-local gridSize = 16
-local gridOn = true
-local screenWidth = playdate.display.getWidth()
-local screenHeight = playdate.display.getHeight()
+local grid_on = false
 
-local kGameState = {
+local k_game_state = {
 	INITIAL = 1, 
 	READY   = 2, 
 	PLAYING = 3, 
@@ -21,40 +19,46 @@ local kGameState = {
 	OVER    = 5
 }
 
-local currentState = kGameState.INITIAL
+local current_state = k_game_state.INITIAL
 local player = Player()
+local p2 = Player()
+local map = Map()
 
 function setup()
 	-- setup stuff
 	player:moveTo(2*16+9,2*16+9)
+	p2:moveTo(6*16+9,5*16+9)
 	player:update()
+	p2:update()
+	map:draw_map()
 end
 
 function playdate.update()
-	player:update()
-	-- draw grid
-	if gridOn then drawGrid() end
-	-- drive timers
+	map:draw_map()
+	--player:update()
+	--p2:update()
+	if grid_on then draw_grid() end
 	playdate.timer.updateTimers()
+	--map.img:drawAt(0,0)
 end
 
-function drawGrid()
+function draw_grid()
 	playdate.graphics.setDitherPattern(0.5)
-	for x = gridSize, screenWidth, 16 do
-		playdate.graphics.drawLine( x, 0, x, screenHeight)
+	for x = grid_size, screen_width, 16 do
+		playdate.graphics.drawLine( x, 0, x, screen_height)
 	end
-	for y = gridSize, screenHeight, 16 do
-		playdate.graphics.drawLine(0, y, screenWidth, y)
+	for y = grid_size, screen_height, 16 do
+		playdate.graphics.drawLine(0, y, screen_width, y)
 	end
 	playdate.graphics.setDitherPattern(0.0)
 end
 
 function playdate.rightButtonDown()
-	player:setAnimationRight()
+	player:set_animation_right()
 end
 
 function playdate.rightButtonUp()
-	player:setAnimationIdle()
+	player:set_animation_idle()
 end
 
 setup()
