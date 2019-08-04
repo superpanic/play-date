@@ -1,6 +1,6 @@
 import "Common/common"
 
-class('Map').extends()
+class('Map').extends(playdate.graphics.sprite)
 
 --local gridSize = 16
 local grid_width = 400/grid_size
@@ -26,9 +26,15 @@ function Map:init()
 		FLOOR_1           = 11,
 		FLOOR_2           = 12
 	}
-	self.lowres_img = nil
+	self.img = playdate.graphics.image.new(screen_width, screen_height)
+	self:setImage(self.img)
 	-- generate map
 	self:generate_map()
+	self:draw_map()
+	-- center on screen
+	self:moveTo(screen_width/2,screen_height/2)
+	self:setZIndex(-1000)
+	self:add()
 end
 
 function Map:generate_map()
@@ -41,22 +47,8 @@ function Map:generate_map()
 	self.pnoise = playdate.graphics.perlinArray( grid_width * grid_height, 0, 0.4, 0, 0.24, 10.0 * seed, 0, 0)
 end
 
-function Map:draw_lowres_map()
-	self.lowres_img = playdate.graphics.image.new(grid_width,grid_height,1)
-	playdate.graphics.lockFocus(self.lowres_img)
-	for x = 1, grid_width do
-		for y = 1, grid_height do
-			local val = self.pnoise[grid_width*(y-1)+x]
-			if math.floor(val+0.5) == 0 then
-				-- draw pixel is 0 indexed!
-				playdate.graphics.drawPixel(x-1,y-1)
-			end
-		end
-	end
-	playdate.graphics.unlockFocus()
-end
-
 function Map:draw_map()
+	playdate.graphics.lockFocus(self.img)
 	for x = 1, grid_width do
 		for y = 1, grid_height do
 			local val = self.pnoise[grid_width*(y-1)+x]
@@ -72,7 +64,7 @@ function Map:draw_map()
 			else
 				if (x+y) % 2 == 0 then
 					if self:is_wall_end(x, y) then
-						tile = self.legend.STONE_WALL_EDGE_1 
+						tile = self.legend.STONE_WALL_EDGE_2 
 					else
 						tile = self.legend.STONE_WALL_1
 					end
@@ -80,7 +72,7 @@ function Map:draw_map()
 					if self:is_wall_end(x, y) then
 						tile = self.legend.STONE_WALL_EDGE_2
 					else
-						tile = self.legend.STONE_WALL_2
+						tile = self.legend.STONE_WALL_1
 					end
 				end
 				im = self.img_table:getImage( tile )
@@ -88,6 +80,7 @@ function Map:draw_map()
 			im:drawAt((x-1)*grid_size,(y-1)*grid_size)
 		end
 	end
+	playdate.graphics.unlockFocus()
 end
 
 function Map:is_wall_end(x, y)

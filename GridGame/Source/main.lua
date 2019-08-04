@@ -21,25 +21,21 @@ local k_game_state = {
 
 local current_state = k_game_state.INITIAL
 local player = Player()
-local p2 = Player()
 local map = Map()
 
 function setup()
 	-- setup stuff
 	player:moveTo(2*16+9,2*16+9)
-	p2:moveTo(6*16+9,5*16+9)
-	player:update()
-	p2:update()
-	map:draw_map()
 end
 
 function playdate.update()
-	map:draw_map()
+	--map:draw_map()
 	--player:update()
 	--p2:update()
 	if grid_on then draw_grid() end
 	playdate.timer.updateTimers()
 	--map.img:drawAt(0,0)
+	playdate.graphics.sprite.update()
 end
 
 function draw_grid()

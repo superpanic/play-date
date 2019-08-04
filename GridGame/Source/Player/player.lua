@@ -4,9 +4,10 @@ local player_images = playdate.graphics.imagetable.new('Player/player')
 
 function Player:init()
 	Player.super.init(self)
-	self:add()
 	self.t = nil
 	self:setup_frames()
+	self:setZIndex(1000)
+	self:add()
 end
 
 function Player:setup_frames()
@@ -31,7 +32,10 @@ function Player:next_image()
 	else
 		self.frame_index++
 	end
+	-- update image
 	self:setImage(player_images[self.current_state[self.frame_index]])
+	self:update()
+	-- handle timers
 	if self.t then self.t:remove() end
 	self.t = playdate.timer.new(self.animation_speed, self.next_image, self)
 end
