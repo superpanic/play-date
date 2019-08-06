@@ -6,7 +6,6 @@ import "Player/player"
 import "Map/map"
 import "Common/common"
 
-playdate.display.setScale(1)
 playdate.display.setRefreshRate(0)
 
 local grid_on = false
@@ -29,12 +28,8 @@ function setup()
 end
 
 function playdate.update()
-	--map:draw_map()
-	--player:update()
-	--p2:update()
 	if grid_on then draw_grid() end
 	playdate.timer.updateTimers()
-	--map.img:drawAt(0,0)
 	playdate.graphics.sprite.update()
 end
 
@@ -56,5 +51,7 @@ end
 function playdate.rightButtonUp()
 	player:set_animation_idle()
 end
+
+
 
 setup()
