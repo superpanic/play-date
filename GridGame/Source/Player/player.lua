@@ -1,3 +1,5 @@
+import "Common/common"
+
 class('Player').extends(playdate.graphics.sprite)
 
 local player_images = playdate.graphics.imagetable.new('Player/player')
@@ -7,7 +9,12 @@ function Player:init()
 	self.t = nil
 	self:setup_frames()
 	self:setZIndex(1000)
+	
+	self.currentPos = libpnt.new(0,0)
+	self.destinationPos = libpnt.new(0,0)
+	
 	self:add()
+	
 end
 
 function Player:setup_frames()
