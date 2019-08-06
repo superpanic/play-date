@@ -9,26 +9,48 @@ function Player:init()
 	self.parent = self.super.super
 	self.t = nil
 	self:setup_frames()
-	self.currentPos = libpnt.new(0,0)
-	self.destinationPos = libpnt.new(0,0)
+	self.currentPos = { x = 0, y = 0 }
+	self.destinationPos = { self.currentPos.x, self.currentPos.y }
 	self:add()
 	self:setZIndex(1000)
 end
 
-function Player:moveTo(x, y)
-	if self.parent then
-		self.parent.moveTo(self, 100+x, 100+y)
-	end
+function Player:moveToPos(x, y)
+	self.currentPos.x = x
+	self.currentPos.y = y
+	self:moveTo(x*grid_size+grid_size/2, y*grid_size+grid_size/2)
+end
+
+function Player:moveRight()
+	self:moveToPos(self.currentPos.x + 1, self.currentPos.y)
+end
+
+function Player:moveLeft()
+	self:moveToPos(self.currentPos.x - 1, self.currentPos.y)
+end
+
+function Player:moveUp()
+	self:moveToPos(self.currentPos.x, self.currentPos.y - 1)
+end
+
+function Player:moveDown()
+	self:moveToPos(self.currentPos.x, self.currentPos.y + 1)
 end
 
 function Player:setup_frames()
 	self.k_animation_state = {
-		IDLE =  { 1, 2},
-		RIGHT = { 3, 4}
+		IDLE =  { 1, 2 },
+		RIGHT = { 3, 4 },
+		LEFT =  { 3, 4 },
+		DOWN =  { 1, 2 },
+		UP   =  { 1, 2 }
 	}
 	self.k_animation_speed = {
-		IDLE  = 1000 /  4,
-		RIGHT = 1000 /  4
+		IDLE  = 1000 / 4,
+		RIGHT = 1000 / 4,
+		LEFT  = 1000 / 4,
+		DOWN  = 1000 / 4,
+		UP    = 1000 / 4
 	}
 	self.current_state = self.k_animation_state.IDLE
 	self.animation_speed = self.k_animation_speed.IDLE
@@ -51,7 +73,6 @@ function Player:next_image()
 end
 
 function Player:set_animation_idle()
-	print("idle")
 	self.current_state = self.k_animation_state.IDLE
 	self.animation_speed = self.k_animation_speed.IDLE
 	self.frame_index=1
@@ -59,10 +80,29 @@ function Player:set_animation_idle()
 end
 
 function Player:set_animation_right()
-	print("right")
 	self.current_state = self.k_animation_state.RIGHT
 	self.animation_speed = self.k_animation_speed.RIGHT
 	self.frame_index=1
 	self:next_image()
 end
 
+function Player:set_animation_left()
+	self.current_state = self.k_animation_state.LEFT
+	self.animation_speed = self.k_animation_speed.LEFT
+	self.frame_index=1
+	self:next_image()
+end
+
+function Player:set_animation_down()
+	self.current_state = self.k_animation_state.DOWN
+	self.animation_speed = self.k_animation_speed.DOWN
+	self.frame_index=1
+	self:next_image()
+end
+
+function Player:set_animation_up()
+	self.current_state = self.k_animation_state.UP
+	self.animation_speed = self.k_animation_speed.UP
+	self.frame_index=1
+	self:next_image()
+end

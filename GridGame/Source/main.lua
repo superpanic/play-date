@@ -19,25 +19,15 @@ local k_game_state = {
 
 local current_state = k_game_state.INITIAL
 local player = Player()
-local player2 = Player()
 local map = Map()
 local item = Item()
 local item2 = Item()
 
 playdate.display.setRefreshRate(0)
 
+
 function setup()	
---	print(player:isa(Player))
---	print("Player: "..player.className)
---	print("Player.super: "..player.super.className)
---	print("Player.super.super: "..player.super.super.className)
---	print("Player.super.super.super: "..player.super.super.super.className)
-	player:moveTo(2*16+9, 2*16+9)
-	player2:moveTo(4*16+9, 4*16+9)
-	--player:add()
-	--item:add()
-	--item2:add()
---	p2:moveTo(4*16+9, 4*16+9)
+	player:moveToPos(0, 0)
 end
 
 function playdate.update()
@@ -48,10 +38,41 @@ function playdate.update()
 end
 
 function playdate.rightButtonDown()
+	player:moveRight()
 	player:set_animation_right()
 end
 
 function playdate.rightButtonUp()
+	player:set_animation_idle()
+end
+
+
+function playdate.leftButtonDown()
+	player:moveLeft()
+	player:set_animation_right()
+end
+
+function playdate.leftButtonUp()
+	player:set_animation_idle()
+end
+
+
+function playdate.downButtonDown()
+	player:moveDown()
+	player:set_animation_down()
+end
+
+function playdate.downButtonUp()
+	player:set_animation_idle()
+end
+
+
+function playdate.upButtonDown()
+	player:moveUp()
+	player:set_animation_up()
+end
+
+function playdate.upButtonUp()
 	player:set_animation_idle()
 end
 

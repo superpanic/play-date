@@ -8,6 +8,7 @@ local grid_height = 240/grid_size
 
 function Map:init()
 	Map.super.init(self)
+	self.parent = self.super.super
 	-- main properties
 	self.img_table = playdate.graphics.imagetable.new("Map/map")
 	--self.img = playdate.graphics.image.new(screen_width, screen_height, 1)
