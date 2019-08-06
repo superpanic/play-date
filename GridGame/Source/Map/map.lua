@@ -33,8 +33,9 @@ function Map:init()
 	self:draw_map()
 	-- center on screen
 	self:moveTo(screen_width/2,screen_height/2)
-	self:setZIndex(-1000)
+	
 	self:add()
+	self:setZIndex(-1000)
 end
 
 function Map:generate_map()

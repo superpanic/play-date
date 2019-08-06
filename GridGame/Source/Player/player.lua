@@ -6,15 +6,19 @@ local player_images = playdate.graphics.imagetable.new('Player/player')
 
 function Player:init()
 	Player.super.init(self)
+	self.parent = self.super.super
 	self.t = nil
 	self:setup_frames()
-	self:setZIndex(1000)
-	
 	self.currentPos = libpnt.new(0,0)
 	self.destinationPos = libpnt.new(0,0)
-	
 	self:add()
-	
+	self:setZIndex(1000)
+end
+
+function Player:moveTo(x, y)
+	if self.parent then
+		self.parent.moveTo(self, 100+x, 100+y)
+	end
 end
 
 function Player:setup_frames()
@@ -41,7 +45,6 @@ function Player:next_image()
 	end
 	-- update image
 	self:setImage(player_images[self.current_state[self.frame_index]])
-	self:update()
 	-- handle timers
 	if self.t then self.t:remove() end
 	self.t = playdate.timer.new(self.animation_speed, self.next_image, self)
