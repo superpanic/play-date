@@ -20,8 +20,6 @@ local k_game_state = {
 local current_state = k_game_state.INITIAL
 local player = Player()
 local map = Map()
-local item = Item()
-local item2 = Item()
 
 playdate.display.setRefreshRate(0)
 
@@ -33,8 +31,8 @@ end
 function playdate.update()
 	if grid_on then draw_grid() end
 	playdate.timer.updateTimers()
-	item.update()
-	--libspr.update()
+	
+	libspr.update()
 end
 
 function playdate.rightButtonDown()
