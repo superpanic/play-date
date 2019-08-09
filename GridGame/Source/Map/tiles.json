@@ -1,0 +1,7 @@
+{
+	"tiles":[
+		{"name":"stone_wall", "passable":false},
+		{"name":"brick_wall", "passable":false},
+		{"name":"floor", "passable":true}
+	]
+}

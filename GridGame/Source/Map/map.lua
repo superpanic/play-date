@@ -13,6 +13,10 @@ function Map:init()
 	self.img_table = playdate.graphics.imagetable.new("Map/map")
 	--self.img = playdate.graphics.image.new(screen_width, screen_height, 1)
 	self.pnoise = {}
+	
+	local tiles = playdate.datastore.read('Map/tiles')
+	print("reading json: ", json.encodePretty(tiles))
+	
 	self.legend = {
 		STONE_WALL_1      =  1,
 		STONE_WALL_2      =  2,

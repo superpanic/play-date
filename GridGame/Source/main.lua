@@ -31,7 +31,7 @@ end
 function playdate.update()
 	if grid_on then draw_grid() end
 	playdate.timer.updateTimers()
-	
+	-- update all sprites
 	libspr.update()
 end
 
