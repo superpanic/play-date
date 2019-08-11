@@ -24,8 +24,10 @@ local map = Map()
 playdate.display.setRefreshRate(0)
 
 
-function setup()	
-	player:moveToPos(0, 0)
+function setup()
+	local pos = map:find_first_empty_tile()
+	print(pos.x.." "..pos.y)
+	player:moveToPos(pos.x, pos.y)
 end
 
 function playdate.update()
@@ -36,7 +38,10 @@ function playdate.update()
 end
 
 function playdate.rightButtonDown()
-	player:moveRight()
+	-- has to add +1 due to mixed 0 indexing and 1 indexing...
+	if map:is_tile_passable(player.current_pos.x+1+1, player.current_pos.y+1) then
+		player:moveRight()
+	end
 	player:set_animation_right()
 end
 
@@ -46,7 +51,9 @@ end
 
 
 function playdate.leftButtonDown()
-	player:moveLeft()
+	if map:is_tile_passable(player.current_pos.x+1 -1, player.current_pos.y+1) then	
+		player:moveLeft()
+	end
 	player:set_animation_right()
 end
 
@@ -56,7 +63,9 @@ end
 
 
 function playdate.downButtonDown()
-	player:moveDown()
+	if map:is_tile_passable(player.current_pos.x+1, player.current_pos.y+1 +1) then	
+		player:moveDown()
+	end
 	player:set_animation_down()
 end
 
@@ -66,7 +75,9 @@ end
 
 
 function playdate.upButtonDown()
-	player:moveUp()
+	if map:is_tile_passable(player.current_pos.x+1 , player.current_pos.y+1 -1) then	
+		player:moveUp()
+	end
 	player:set_animation_up()
 end
 

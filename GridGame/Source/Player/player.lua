@@ -9,32 +9,31 @@ function Player:init()
 	self.parent = self.super.super
 	self.t = nil
 	self:setup_frames()
-	self.currentPos = { x = 0, y = 0 }
-	self.destinationPos = { self.currentPos.x, self.currentPos.y }
+	self.current_pos = { x = 0, y = 0 } -- current_pos is 0 indexed!
 	self:add()
 	self:setZIndex(1000)
 end
 
 function Player:moveToPos(x, y)
-	self.currentPos.x = x
-	self.currentPos.y = y
+	self.current_pos.x = x
+	self.current_pos.y = y
 	self:moveTo(x*grid_size+grid_size/2, y*grid_size+grid_size/2)
 end
 
 function Player:moveRight()
-	self:moveToPos(self.currentPos.x + 1, self.currentPos.y)
+	self:moveToPos(self.current_pos.x + 1, self.current_pos.y)
 end
 
 function Player:moveLeft()
-	self:moveToPos(self.currentPos.x - 1, self.currentPos.y)
+	self:moveToPos(self.current_pos.x - 1, self.current_pos.y)
 end
 
 function Player:moveUp()
-	self:moveToPos(self.currentPos.x, self.currentPos.y - 1)
+	self:moveToPos(self.current_pos.x, self.current_pos.y - 1)
 end
 
 function Player:moveDown()
-	self:moveToPos(self.currentPos.x, self.currentPos.y + 1)
+	self:moveToPos(self.current_pos.x, self.current_pos.y + 1)
 end
 
 function Player:setup_frames()

@@ -1,7 +1,8 @@
 {
-	"tiles":[
-		{"name":"stone_wall", "passable":false},
-		{"name":"brick_wall", "passable":false},
-		{"name":"floor", "passable":true}
+	"tiles": [
+		{"name": "STONE_WALL",      "index": 1, "passable": false},
+		{"name": "BRICK_WALL",      "index": 2, "passable": false},
+		{"name": "EMPTY",           "index": 4, "passable": true},
+		{"name": "STONE_WALL_EDGE", "index": 6, "passable": false}
 	]
 }
