@@ -9,7 +9,7 @@ function Player:init()
 	self.parent = self.super.super
 	self.t = nil
 	self:setup_frames()
-	self.current_pos = { x = 0, y = 0 } -- current_pos is 0 indexed!
+	self.current_pos = { x = 1, y = 1 }
 	self:add()
 	self:setZIndex(1000)
 end
@@ -17,7 +17,8 @@ end
 function Player:moveToPos(x, y)
 	self.current_pos.x = x
 	self.current_pos.y = y
-	self:moveTo(x*grid_size+grid_size/2, y*grid_size+grid_size/2)
+	-- moveTo is 0 indexted
+	self:moveTo((x-1)*grid_size+grid_size/2, (y-1)*grid_size+grid_size/2)
 end
 
 function Player:moveRight()

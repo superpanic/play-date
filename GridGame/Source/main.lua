@@ -20,16 +20,18 @@ local k_game_state = {
 local current_state = k_game_state.INITIAL
 local player = Player()
 local map = Map()
+local level = 1
+local score = 0
 
 playdate.display.setRefreshRate(0)
 
-
+-- game setup
 function setup()
 	local pos = map:find_first_empty_tile()
-	print(pos.x.." "..pos.y)
 	player:moveToPos(pos.x, pos.y)
 end
 
+-- main game loop
 function playdate.update()
 	if grid_on then draw_grid() end
 	playdate.timer.updateTimers()
@@ -37,9 +39,11 @@ function playdate.update()
 	libspr.update()
 end
 
+
+-- handle buttons
 function playdate.rightButtonDown()
 	-- has to add +1 due to mixed 0 indexing and 1 indexing...
-	if map:is_tile_passable(player.current_pos.x+1+1, player.current_pos.y+1) then
+	if map:is_tile_passable(player.current_pos.x+1, player.current_pos.y) then
 		player:moveRight()
 	end
 	player:set_animation_right()
@@ -49,9 +53,8 @@ function playdate.rightButtonUp()
 	player:set_animation_idle()
 end
 
-
 function playdate.leftButtonDown()
-	if map:is_tile_passable(player.current_pos.x+1 -1, player.current_pos.y+1) then	
+	if map:is_tile_passable(player.current_pos.x -1, player.current_pos.y) then	
 		player:moveLeft()
 	end
 	player:set_animation_right()
@@ -61,9 +64,8 @@ function playdate.leftButtonUp()
 	player:set_animation_idle()
 end
 
-
 function playdate.downButtonDown()
-	if map:is_tile_passable(player.current_pos.x+1, player.current_pos.y+1 +1) then	
+	if map:is_tile_passable(player.current_pos.x, player.current_pos.y +1) then	
 		player:moveDown()
 	end
 	player:set_animation_down()
@@ -73,9 +75,8 @@ function playdate.downButtonUp()
 	player:set_animation_idle()
 end
 
-
 function playdate.upButtonDown()
-	if map:is_tile_passable(player.current_pos.x+1 , player.current_pos.y+1 -1) then	
+	if map:is_tile_passable(player.current_pos.x , player.current_pos.y -1) then	
 		player:moveUp()
 	end
 	player:set_animation_up()
@@ -85,4 +86,5 @@ function playdate.upButtonUp()
 	player:set_animation_idle()
 end
 
+--
 setup()

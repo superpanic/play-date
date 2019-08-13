@@ -53,6 +53,7 @@ function Map:draw_map()
 				end				
 			end
 			im = self.img_table:getImage( tile )
+			-- adjust for image being 0-indexed
 			im:drawAt((x-1)*grid_size,(y-1)*grid_size)
 		end
 	end
@@ -60,12 +61,12 @@ function Map:draw_map()
 end
 
 function Map:find_first_empty_tile()
-	t = {x=0,y=0}
+	t = {x=1,y=1}
 	for row = 1, grid_width do
 		for col = 1, grid_height do
 			if self:is_tile_passable(col, row) then
-				t.x=col-1
-				t.y=row-1
+				t.x = col
+				t.y = row
 				return t
 			end
 		end
