@@ -9,16 +9,20 @@ local grid_height = 240/grid_size
 function Map:init()
 	Map.super.init(self)
 	self.parent = self.super.super
-
+	
 	self.img_table = playdate.graphics.imagetable.new("Map/map")
-
-	self.map = playdate.datastore.read('Map/tiles')
 	self.img = playdate.graphics.image.new(screen_width, screen_height)
 	self:setImage(self.img)
 	
 	-- generate map
-	self.random_map = {}
-	self:generate_map()
+	self.map = playdate.datastore.read('Map/tiles')
+	self.level_data = playdate.datastore.read('Map/levels')
+	
+	self.level_map = {}
+
+--	self:generate_random_map()
+	self.level_map = self:get_level_map(1)
+
 	self:draw_map()
 	-- center on screen
 	self:moveTo(screen_width/2,screen_height/2)
@@ -27,20 +31,20 @@ function Map:init()
 	self:setZIndex(-1000)
 end
 
-function Map:generate_map()
+function Map:generate_random_map()
 	-- generate a map from perlin noise
 	local s, ms = playdate.getSecondsSinceEpoch()
 	math.randomseed(ms)
 	local seed = math.random()
 	-- randomize z value to 'seed' the perlin noise
-	self.random_map = playdate.graphics.perlinArray( grid_width * grid_height, 0, 0.4, 0, 0.24, 10.0 * seed, 0, 0)
+	self.level_map = playdate.graphics.perlinArray( grid_width * grid_height, 0, 0.4, 0, 0.24, 10.0 * seed, 0, 0)
 end
 
 function Map:draw_map()
 	playdate.graphics.lockFocus(self.img)
 	for x = 1, grid_width do
 		for y = 1, grid_height do
-			local val = self.random_map[grid_width*(y-1)+x]
+			local val = self.level_map[grid_width*(y-1)+x]
 			local tile = self:tile_index("EMPTY")
 			local im = nil
 			if math.floor(val+0.5) == 0 then	
@@ -60,6 +64,20 @@ function Map:draw_map()
 	playdate.graphics.unlockFocus()
 end
 
+function Map:get_level_name(l)
+	if l > 0 and self.level_data and #self.level_data.levels >= l then
+		return self.level_data.levels[l].name
+	end
+	return "not defined"
+end
+
+function Map:get_level_map(l)
+	if l > 0 and self.level_data and #self.level_data.levels >= l then
+		return self.level_data.levels[l].data
+	end
+	return nil
+end
+
 function Map:find_first_empty_tile()
 	t = {x=1,y=1}
 	for row = 1, grid_width do
@@ -76,7 +94,7 @@ end
 
 function Map:is_tile_passable(x, y)
 	if x > 0 and x <= grid_width and y > 0 and y <= grid_height then
-		local val = self.random_map[grid_width*(y-1)+x]
+		local val = self.level_map[grid_width*(y-1)+x]
 		if math.floor(val+0.5) == 0 then 
 			return true 
 		end
@@ -87,7 +105,7 @@ end
 function Map:is_wall_edge(x, y)
 	local p = grid_width*(y-1)+x
 	if x > 0 and x <= grid_width and y > 0 and y < grid_height then
-		local val = self.random_map[p+grid_width]
+		local val = self.level_map[p+grid_width]
 		if math.floor(val+0.5) == 0 then 
 			return true 
 		end

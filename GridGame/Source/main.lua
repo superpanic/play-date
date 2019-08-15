@@ -27,6 +27,8 @@ playdate.display.setRefreshRate(0)
 
 -- game setup
 function setup()
+	print(map:get_level_name(1))
+	
 	local pos = map:find_first_empty_tile()
 	player:moveToPos(pos.x, pos.y)
 end
