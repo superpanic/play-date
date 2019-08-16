@@ -2,9 +2,9 @@ import "Common/common"
 
 class('Map').extends(playdate.graphics.sprite)
 
---local gridSize = 16
-local grid_width = 400/grid_size
-local grid_height = 240/grid_size
+local gridSize = 16
+--local grid_width = 400/grid_size
+--local grid_height = 240/grid_size
 
 function Map:init()
 	Map.super.init(self)
@@ -18,12 +18,10 @@ function Map:init()
 	self.map = playdate.datastore.read('Map/tiles')
 	self.level_data = playdate.datastore.read('Map/levels')
 	
-	self.level_map = {}
-
 --	self:generate_random_map()
-	self.level_map = self:get_level_map(1)
-
+	self:load_level_map(2)	
 	self:draw_map()
+	
 	-- center on screen
 	self:moveTo(screen_width/2,screen_height/2)
 	
@@ -32,19 +30,23 @@ function Map:init()
 end
 
 function Map:generate_random_map()
+	--	self.grid_width = 400/grid_size
+	--	self.grid_height = 240/grid_size
+
 	-- generate a map from perlin noise
 	local s, ms = playdate.getSecondsSinceEpoch()
 	math.randomseed(ms)
 	local seed = math.random()
 	-- randomize z value to 'seed' the perlin noise
-	self.level_map = playdate.graphics.perlinArray( grid_width * grid_height, 0, 0.4, 0, 0.24, 10.0 * seed, 0, 0)
+	self.level_map = playdate.graphics.perlinArray( self.grid_width * self.grid_height, 0, 0.4, 0, 0.24, 10.0 * seed, 0, 0)
+	
 end
 
 function Map:draw_map()
 	playdate.graphics.lockFocus(self.img)
-	for x = 1, grid_width do
-		for y = 1, grid_height do
-			local val = self.level_map[grid_width*(y-1)+x]
+	for x = 1, self.grid_width do
+		for y = 1, self.grid_height do
+			local val = self.level_map[self.grid_width*(y-1)+x]
 			local tile = self:tile_index("EMPTY")
 			local im = nil
 			if math.floor(val+0.5) == 0 then	
@@ -54,7 +56,7 @@ function Map:draw_map()
 					tile = self:tile_index("STONE_WALL_EDGE")
 				else
 					tile = self:tile_index("STONE_WALL")
-				end				
+				end		
 			end
 			im = self.img_table:getImage( tile )
 			-- adjust for image being 0-indexed
@@ -71,17 +73,19 @@ function Map:get_level_name(l)
 	return "not defined"
 end
 
-function Map:get_level_map(l)
+function Map:load_level_map(l)
 	if l > 0 and self.level_data and #self.level_data.levels >= l then
-		return self.level_data.levels[l].data
+		self.level_map = self.level_data.levels[l].data
+		self.grid_width = self.level_data.levels[l].width 
+		self.grid_height = #self.level_map / self.grid_width
 	end
 	return nil
 end
 
 function Map:find_first_empty_tile()
 	t = {x=1,y=1}
-	for row = 1, grid_width do
-		for col = 1, grid_height do
+	for row = 1, self.grid_width do
+		for col = 1, self.grid_height do
 			if self:is_tile_passable(col, row) then
 				t.x = col
 				t.y = row
@@ -93,8 +97,8 @@ function Map:find_first_empty_tile()
 end
 
 function Map:is_tile_passable(x, y)
-	if x > 0 and x <= grid_width and y > 0 and y <= grid_height then
-		local val = self.level_map[grid_width*(y-1)+x]
+	if x > 0 and x <= self.grid_width and y > 0 and y <= self.grid_height then
+		local val = self.level_map[self.grid_width*(y-1)+x]
 		if math.floor(val+0.5) == 0 then 
 			return true 
 		end
@@ -103,9 +107,9 @@ function Map:is_tile_passable(x, y)
 end
 
 function Map:is_wall_edge(x, y)
-	local p = grid_width*(y-1)+x
-	if x > 0 and x <= grid_width and y > 0 and y < grid_height then
-		local val = self.level_map[p+grid_width]
+	local p = self.grid_width*(y-1)+x
+	if x > 0 and x <= self.grid_width and y > 0 and y < self.grid_height then
+		local val = self.level_map[p+self.grid_width]
 		if math.floor(val+0.5) == 0 then 
 			return true 
 		end
