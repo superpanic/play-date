@@ -1,6 +1,6 @@
 import "CoreLibs/graphics"
 
-playdate.display.setScale(1)
+playdate.display.setScale(2)
 
 grid_size = 16
 screen_width = playdate.display.getWidth()

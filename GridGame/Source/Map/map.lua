@@ -143,17 +143,19 @@ function Map:is_wall_edge(x, y)
 	return false
 end
 
-function Map:get_tile_index(id)
+function Map:get_tile_index(n)
 	-- takes id or name as input
 	local t = self.level_art.tiles
 	for i=1, #t do
-		if tonumber(id) ~= nil then
-			if t[i].id == id then
-				return t[i].tile
+		if tonumber(n) ~= nil then
+			if t[i].id == n then
+				tile_index = math.random(1, #t[i].tile)
+				return t[i].tile[tile_index]
 			end		
 		else
-			if t[i].name == id then
-				return t[i].tile
+			if t[i].name == n then
+				tile_index = math.random(1, #t[i].tile)
+				return t[i].tile[tile_index]
 			end		
 		end
 	end
