@@ -7,8 +7,6 @@ import "Item/item"
 import "Map/map"
 import "Common/common"
 
-local grid_on = false
-
 local k_game_state = {
 	INITIAL = 1, 
 	READY   = 2, 
@@ -18,24 +16,23 @@ local k_game_state = {
 }
 
 local current_state = k_game_state.INITIAL
-local player = Player()
-local map = Map()
+
 local level = 1
 local score = 0
 
 playdate.display.setRefreshRate(0)
 
+local player = Player()
+local map = Map()
+
 -- game setup
 function setup()
-	print(map:get_level_name(1))
-	
 	local pos = map:find_first_empty_tile()
 	player:moveToPos(pos.x, pos.y)
 end
 
 -- main game loop
 function playdate.update()
-	if grid_on then draw_grid() end
 	playdate.timer.updateTimers()
 	-- update all sprites
 	libspr.update()

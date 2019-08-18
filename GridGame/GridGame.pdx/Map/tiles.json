@@ -1,8 +1,11 @@
 {
 	"tiles": [
-		{"name": "STONE_WALL",      "index": 1, "passable": false},
-		{"name": "BRICK_WALL",      "index": 2, "passable": false},
-		{"name": "EMPTY",           "index": 4, "passable": true},
-		{"name": "STONE_WALL_EDGE", "index": 6, "passable": false}
+		{"name": "empty",           "id":0, "tile":  4, "passable": true},
+		{"name": "stone wall",      "id":1, "tile":  1, "passable": false},
+		{"name": "stone wall edge", "id":2, "tile":  6, "passable": false},
+		{"name": "brick wall",      "id":3, "tile":  3, "passable": false},
+		{"name": "brick wall edge", "id":4, "tile":  7, "passable": false},
+		{"name": "dirt 1",          "id":5, "tile": 11, "passable": true},
+		{"name": "dirt 2",          "id":6, "tile": 12, "passable": true}
 	]
 }
