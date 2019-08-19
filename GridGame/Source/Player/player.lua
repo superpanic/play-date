@@ -1,6 +1,9 @@
-import "Common/common"
+--import "Common/common"
+import "Being/being"
 
-class('Player').extends(playdate.graphics.sprite)
+--class('Player').extends(playdate.graphics.sprite)
+
+class('Player').extends(Being)
 
 local player_images = playdate.graphics.imagetable.new('Player/player')
 
@@ -9,32 +12,9 @@ function Player:init()
 	self.parent = self.super.super
 	self.t = nil
 	self:setup_frames()
-	self.current_pos = { x = 1, y = 1 }
 	self:add()
 	self:setZIndex(1000)
-end
-
-function Player:moveToPos(x, y)
-	self.current_pos.x = x
-	self.current_pos.y = y
-	-- moveTo is 0 indexted
-	self:moveTo((x-1)*grid_size+grid_size/2, (y-1)*grid_size+grid_size/2)
-end
-
-function Player:moveRight()
-	self:moveToPos(self.current_pos.x + 1, self.current_pos.y)
-end
-
-function Player:moveLeft()
-	self:moveToPos(self.current_pos.x - 1, self.current_pos.y)
-end
-
-function Player:moveUp()
-	self:moveToPos(self.current_pos.x, self.current_pos.y - 1)
-end
-
-function Player:moveDown()
-	self:moveToPos(self.current_pos.x, self.current_pos.y + 1)
+	--self:tableDump()
 end
 
 function Player:setup_frames()
