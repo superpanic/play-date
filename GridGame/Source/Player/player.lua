@@ -39,7 +39,6 @@ function Player:next_image()
 	self.t = playdate.timer.new(self.frame_speed, self.next_image, self)
 end
 
-
 function Player:set_animation_idle()
 	self.current_state = self.animation_state.idle.frames
 	self.frame_speed = self.animation_state.idle.speed

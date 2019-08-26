@@ -10,8 +10,12 @@ local nstars_list_len = 8
 local nstars_index = 1
 local nstars = nstars_list[nstars_index]
 
+local libgfx = playdate.graphics
+
 local speed = 0.0
 local stars = {}
+
+local circle_flag = true
 
 playdate.display.setRefreshRate(0)
 
@@ -25,12 +29,16 @@ function star()
 end
 
 function playdate.update()
-	playdate.graphics.clear()
+	libgfx.clear()
 	for i = 1, nstars do
 		local x = stars[i].xpos + screen_width  / 2.0
 		local y = stars[i].ypos + screen_height / 2.0
 		local size = (math.abs(stars[i].xpos) + math.abs(stars[i].ypos)) * 0.025 + 2.0
-		playdate.graphics.fillCircleInRect(x, y, size, size)
+		if circle_flag == true then
+			libgfx.fillCircleInRect(x, y, size, size)
+		else
+			libgfx.drawPixel(x,y)
+		end
 		stars[i].xpos *= (stars[i].velocity + speed)
 		stars[i].ypos *= (stars[i].velocity + speed)
 		if x < 0 or x > screen_width or y < 0 or y > screen_height then
@@ -38,7 +46,7 @@ function playdate.update()
 		end
 	end
 	fps(10,10)
-	playdate.graphics.drawText(nstars_list[nstars_index].." stars locked to "..math.floor(playdate.display.getRefreshRate()).." fps", 10,screen_height-30 )
+	libgfx.drawText(nstars_list[nstars_index].." stars locked to "..math.floor(playdate.display.getRefreshRate()).." fps", 10,screen_height-30 )
 end
 
 function playdate.cranked(change, acceleratedChange)
@@ -61,12 +69,16 @@ function playdate.BButtonDown()
 	setup()
 end
 
-function playdate.upButtonUp()
+function playdate.upButtonDown()
 	playdate.display.setRefreshRate(30)
 end
 
-function playdate.downButtonUp()
+function playdate.downButtonDown()
 	playdate.display.setRefreshRate(0)
+end
+
+function playdate.leftButtonDown()
+	circle_flag = not circle_flag
 end
 
 function setup()
