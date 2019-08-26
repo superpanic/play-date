@@ -1,15 +1,17 @@
---import "Common/common"
-
 class('Map').extends(playdate.graphics.sprite)
 
 local gridSize = 16
---local grid_width = 400/grid_size
---local grid_height = 240/grid_size
+-- local grid_width = 400/grid_size
+-- local grid_height = 240/grid_size
 
 function Map:init()
+	print("Map:init")
 	Map.super.init(self)
-	self.parent = self.super.super
+	self.parent = Map.super
 	
+	self.map_offset = {x=0, y=0}
+	
+	-- load art
 	self.img_table = playdate.graphics.imagetable.new("Map/map")
 	self.img = playdate.graphics.image.new(screen_width, screen_height)
 	self:setImage(self.img)
@@ -19,17 +21,35 @@ function Map:init()
 	
 	self.level_data = playdate.datastore.read('Map/levels')
 	if(self.level_data == nil) then print("cound not read level data") end
-	
-	--self:generate_random_map()
-	self:load_level_map(1)
-	self:process_wall_endings()
-	self:draw_map()
-	
-	-- center on screen
+
+	self.current_level_tiles = {}
+
+	-- center image on screen
 	self:moveTo(screen_width/2,screen_height/2)
-	
+
 	self:add()
 	self:setZIndex(-1000)
+	self.is_level_loaded = false
+
+end
+
+function Map:load_level(level)
+	-- load level data
+	--self:generate_random_map()
+	self:load_level_map(level)
+	self:process_wall_endings()
+	self:process_tile_variations()
+	self:draw_map()
+end
+
+function Map:get_map_offset()
+	return self.map_offset
+end
+
+function Map:add_map_offset(x, y)
+	self.map_offset.x = self.map_offset.x + x
+	self.map_offset.y = self.map_offset.y + y
+	self:draw_map()
 end
 
 function Map:generate_random_map()
@@ -48,26 +68,45 @@ function Map:generate_random_map()
 end
 
 function Map:draw_map()
+	if self.is_level_loaded == false then return end
 	playdate.graphics.lockFocus(self.img) 
-	--
+		--
 		playdate.graphics.setColor(playdate.graphics.kColorBlack)
 		playdate.graphics.fillRect(0, 0, screen_width, screen_height)
-	
+		-- draw part of map visible on screen
 		for x = 1, self.grid_width do
 			for y = 1, self.grid_height do
-				local id = self.level_map[self.grid_width*(y-1)+x]
-				local tile = self:get_tile_index(id)
+				-- get the tile to draw
+				local tile = self.current_level_tiles[ self.grid_width * (y - 1) + x ]
 				-- get the image tile and draw to level map
 				local im = self.img_table:getImage(tile)
 				-- adjust for image being 0-indexed
-				im:drawAt((x-1)*grid_size,(y-1)*grid_size)
+				local col = x + self.map_offset.x
+				local row = y + self.map_offset.y
+				im:drawAt((col-1)*grid_size,(row-1)*grid_size)
 			end
 		end
 	--
 	playdate.graphics.unlockFocus()
+	self:markDirty()
+end
+
+function Map:process_tile_variations()
+	if self.is_level_loaded == false then return end
+	for x = 1, self.grid_width do
+		for y = 1, self.grid_height do
+			-- find the tile to draw
+			local id = self.level_map[self.grid_width*(y-1)+x]
+			self.current_level_tiles[self.grid_width*(y-1)+x] = self:get_tile_index(id)
+		end
+	end		
 end
 
 function Map:process_wall_endings()
+	if self.is_level_loaded == false then 
+		print("error: no level loaded")
+		return 
+	end
 	for x = 1, self.grid_width do
 		for y = 1, self.grid_height do
 			local id = self.level_map[self.grid_width*(y-1)+x]
@@ -97,15 +136,19 @@ end
 function Map:load_level_map(l)
 	print("loading level: "..self:get_level_name(1))
 	if l > 0 and self.level_data and #self.level_data.levels >= l then
-		
 		self.level_map = self.level_data.levels[l].data
 		self.grid_width = self.level_data.levels[l].width 
 		self.grid_height = #self.level_map / self.grid_width
+		self.is_level_loaded = true
 	end
 end
 
 function Map:find_first_empty_tile()
 	t = {x=1,y=1}
+	if self.is_level_loaded == false then 
+		print("error: no level loaded")
+		return t 
+	end
 	for row = 1, self.grid_width do
 		for col = 1, self.grid_height do
 			if self:is_tile_passable(col, row) then
@@ -119,6 +162,7 @@ function Map:find_first_empty_tile()
 end
 
 function Map:is_tile_passable(x, y)
+	if self.is_level_loaded == false then return end
 	-- boundary check
 	if x > 0 and x <= self.grid_width and y > 0 and y <= self.grid_height then
 		local val = self.level_map[self.grid_width*(y-1)+x]
@@ -144,6 +188,7 @@ function Map:is_wall_edge(x, y)
 end
 
 function Map:get_tile_index(n)
+	if self.is_level_loaded == false then return end
 	-- takes id or name as input
 	local t = self.level_art.tiles
 	for i=1, #t do
@@ -163,6 +208,7 @@ function Map:get_tile_index(n)
 end
 
 function Map:get_tile_name(id)
+	if self.is_level_loaded == false then return end
 	local t = self.level_art.tiles
 	for i=1, #t do
 		if t[i].id == id then
@@ -173,6 +219,7 @@ function Map:get_tile_name(id)
 end
 
 function Map:get_tile_id(name)
+	if self.is_level_loaded == false then return end
 	local t = self.level_art.tiles
 	for i=1, #t do
 		if t[i].name == name then

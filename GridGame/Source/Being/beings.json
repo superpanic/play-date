@@ -1,0 +1,30 @@
+{
+	"beings": {
+		"player":{
+			"name": "player", 
+			"id": 0,
+			"images": {
+				"idle":  { "frames":[1,2], "speed":250 },
+				"right": { "frames":[3,4], "speed":250 },
+				"left":  { "frames":[3,4], "speed":250 },
+				"up":	 { "frames":[1,2], "speed":250 },
+				"down":  { "frames":[1,2], "speed":250 },
+				"death": { "frames":[1,2], "speed":250 }
+			},
+			"description": "This is you."
+		},
+		"snake":{
+			"name": "snake",
+			"id": 1,
+			"images": {
+				"idle":  { "frames":[1,2], "speed":250 },
+				"right": { "frames":[3,4], "speed":250 },
+				"left":  { "frames":[3,4], "speed":250 },
+				"up":	 { "frames":[1,2], "speed":250 },
+				"down":  { "frames":[1,2], "speed":250 },
+				"death": { "frames":[1,2], "speed":250 }
+			},
+			"description": "A snake."
+		}
+	}
+}

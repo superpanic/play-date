@@ -17,23 +17,10 @@ function Player:init()
 	--self:tableDump()
 end
 
-function Player:setup_frames()
-	self.k_animation_state = {
-		IDLE =  { 1, 2 },
-		RIGHT = { 3, 4 },
-		LEFT =  { 3, 4 },
-		DOWN =  { 1, 2 },
-		UP   =  { 1, 2 }
-	}
-	self.k_animation_speed = {
-		IDLE  = 1000 / 4,
-		RIGHT = 1000 / 4,
-		LEFT  = 1000 / 4,
-		DOWN  = 1000 / 4,
-		UP    = 1000 / 4
-	}
-	self.current_state = self.k_animation_state.IDLE
-	self.animation_speed = self.k_animation_speed.IDLE
+function Player:setup_frames()	
+	self.animation_state = beings_data.beings.player.images
+	self.current_state = self.animation_state.idle.frames
+	self.frame_speed = self.animation_state.idle.speed
 	self.frame_index = 1
 	self:setImage(player_images[self.current_state[self.frame_index]])
 	self:next_image()
@@ -49,40 +36,41 @@ function Player:next_image()
 	self:setImage(player_images[self.current_state[self.frame_index]])
 	-- handle timers
 	if self.t then self.t:remove() end
-	self.t = playdate.timer.new(self.animation_speed, self.next_image, self)
+	self.t = playdate.timer.new(self.frame_speed, self.next_image, self)
 end
 
+
 function Player:set_animation_idle()
-	self.current_state = self.k_animation_state.IDLE
-	self.animation_speed = self.k_animation_speed.IDLE
+	self.current_state = self.animation_state.idle.frames
+	self.frame_speed = self.animation_state.idle.speed
 	self.frame_index=1
 	self:next_image()
 end
 
 function Player:set_animation_right()
-	self.current_state = self.k_animation_state.RIGHT
-	self.animation_speed = self.k_animation_speed.RIGHT
+	self.current_state = self.animation_state.right.frames
+	self.frame_speed = self.animation_state.right.speed
 	self.frame_index=1
 	self:next_image()
 end
 
 function Player:set_animation_left()
-	self.current_state = self.k_animation_state.LEFT
-	self.animation_speed = self.k_animation_speed.LEFT
+	self.current_state = self.animation_state.left.frames
+	self.frame_speed = self.animation_state.left.speed
 	self.frame_index=1
 	self:next_image()
 end
 
 function Player:set_animation_down()
-	self.current_state = self.k_animation_state.DOWN
-	self.animation_speed = self.k_animation_speed.DOWN
+	self.current_state = self.animation_state.down.frames
+	self.frame_speed = self.animation_state.down.speed
 	self.frame_index=1
 	self:next_image()
 end
 
 function Player:set_animation_up()
-	self.current_state = self.k_animation_state.UP
-	self.animation_speed = self.k_animation_speed.UP
+	self.current_state = self.animation_state.up.frames
+	self.frame_speed = self.animation_state.up.speed
 	self.frame_index=1
 	self:next_image()
 end

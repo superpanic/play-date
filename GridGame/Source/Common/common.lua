@@ -5,10 +5,14 @@ playdate.display.setScale(2)
 grid_size = 16
 screen_width = playdate.display.getWidth()
 screen_height = playdate.display.getHeight()
+edge_limit = 3
 
 libgfx = playdate.graphics
 libspr = playdate.graphics.sprite
 libpnt = playdate.geometry.point
+
+beings_data = playdate.datastore.read('Being/beings')
+if(beings_data == nil) then print("cound not read being data") end
 
 function table_to_string(o)
 	if type(o) == 'table' then
