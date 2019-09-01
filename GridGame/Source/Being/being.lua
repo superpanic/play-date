@@ -1,7 +1,8 @@
 class('Being').extends(playdate.graphics.sprite)
 
-function Being:init()
+function Being:init(images)
 	Being.super.init(self)
+	self.images = images
 	self.current_pos = { x = 1, y = 1 }
 	self.pos_offset = { x = 0, y = 0 }
 end
@@ -27,6 +28,89 @@ function Being:get_screen_pos()
 	}
 	return p
 end
+
+function Being:setup_frames()	
+	self.animation_state = beings_data.beings.player.images
+	self.current_state = self.animation_state.idle.frames
+	self.frame_speed = self.animation_state.idle.speed
+	self.next = self.animation_state.idle.next
+	self.is_flipped = self.animation_state.idle.flip
+	self.frame_index = 1
+	self:setImage(self.images[self.current_state[self.frame_index]])
+	self:next_image()
+end
+
+function Being:next_image()
+	-- flip image
+	local flip
+	if self.is_flipped then
+		flip = libgfx.kImageFlippedX
+	else
+		flip = libgfx.kImageUnflipped
+	end
+	
+	-- update image
+	self:setImage(self.images[self.current_state[self.frame_index]], flip)
+	
+	-- handle timers
+	if self.t then self.t:remove() end
+	self.t = playdate.timer.new(self.frame_speed, self.next_image, self)
+	
+		-- advance frame
+	if self.frame_index >= #self.current_state then
+		self:loop_animation()
+	else
+		self.frame_index = self.frame_index + 1
+	end
+
+end
+
+function Being:loop_animation()
+	if self.next == "loop" then
+		self.frame_index = 1	
+	else
+		for _,state in pairs(self.animation_state) do
+			if state.name == self.next then
+				self:set_animation_state(state)
+				break;
+			end
+		end
+	end
+end
+
+function Being:set_animation_state(state)
+	self.current_state = state.frames
+	self.frame_speed = state.speed
+	self.next = state.next
+	self.is_flipped = state.flip
+	self.frame_index = 1
+end
+
+function Being:set_animation_idle()
+	self:set_animation_state(self.animation_state.idle)
+	self:next_image()
+end
+
+function Being:set_animation_right()
+	self:set_animation_state(self.animation_state.right)
+	self:next_image()
+end
+
+function Being:set_animation_left()
+	self:set_animation_state(self.animation_state.left)
+	self:next_image()
+end
+
+function Being:set_animation_down()
+	self:set_animation_state(self.animation_state.down)
+	self:next_image()
+end
+
+function Being:set_animation_up()
+	self:set_animation_state(self.animation_state.up)
+	self:next_image()
+end
+
 
 function Being:get_offset()
 	return self.pos_offset

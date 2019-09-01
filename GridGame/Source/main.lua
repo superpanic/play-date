@@ -87,7 +87,7 @@ function playdate.leftButtonDown()
 		update_map_offset(-1,0)
 		player:move_left()
 	end
-	player:set_animation_right()
+	player:set_animation_left()
 end
 
 function playdate.downButtonDown()
@@ -106,7 +106,7 @@ function playdate.upButtonDown()
 	player:set_animation_up()
 end
 
-
+--[[
 function playdate.rightButtonUp()
 	player:set_animation_idle()
 end
@@ -122,6 +122,7 @@ end
 function playdate.upButtonUp()
 	player:set_animation_idle()
 end
+]]--
 
---
+
 setup()
