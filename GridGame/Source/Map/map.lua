@@ -177,6 +177,7 @@ function Map:is_tile_passable(x, y)
 end
 
 function Map:is_wall_edge(x, y)
+	if y == self.grid_height then return true end
 	local p = self.grid_width*(y-1)+x
 	if x > 0 and x <= self.grid_width and y > 0 and y < self.grid_height then
 		--local id = self.level_map[p+self.grid_width]
