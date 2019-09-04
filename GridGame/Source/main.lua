@@ -67,9 +67,15 @@ end
 
 -- main game loop
 function playdate.update()
-	playdate.timer.updateTimers()
-	-- update all sprites
-	libspr.update()
+	if current_state == k_game_state.INITIAL then
+		setup()
+		current_state = k_game_state.PLAYING
+	elseif current_state == k_game_state.READY then
+		-- nothing
+	elseif current_state == k_game_state.PLAYING then
+		playdate.timer.updateTimers() -- update all timers
+		libspr.update() -- update all sprites
+	end
 end
 
 -- handle buttons
@@ -106,23 +112,4 @@ function playdate.upButtonDown()
 	player:set_animation_up()
 end
 
---[[
-function playdate.rightButtonUp()
-	player:set_animation_idle()
-end
 
-function playdate.leftButtonUp()
-	player:set_animation_idle()
-end
-
-function playdate.downButtonUp()
-	player:set_animation_idle()
-end
-
-function playdate.upButtonUp()
-	player:set_animation_idle()
-end
-]]--
-
-
-setup()
