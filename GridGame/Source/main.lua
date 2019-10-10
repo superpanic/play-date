@@ -23,7 +23,6 @@ local score = 0
 playdate.display.setRefreshRate(0)
 
 local player = Player()
-local enemy = Being() 
 local map = Map()
 
 -- game setup

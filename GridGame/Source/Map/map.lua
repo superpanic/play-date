@@ -23,6 +23,7 @@ function Map:init()
 	if(self.level_data == nil) then print("cound not read level data") end
 
 	self.current_level_tiles = {}
+	self.current_level_beings = {}
 
 	-- center image on screen
 	self:moveTo(screen_width/2,screen_height/2)
@@ -37,6 +38,7 @@ function Map:load_level(level)
 	-- load level data
 	--self:generate_random_map()
 	self:load_level_map(level)
+	self:load_level_beings(level)
 	self:process_wall_endings()
 	self:process_tile_variations()
 	self:draw_map()
@@ -134,12 +136,30 @@ function Map:get_level_name(l)
 end
 
 function Map:load_level_map(l)
-	print("loading level: "..self:get_level_name(1))
+	print("loading level: "..self:get_level_name(l))
 	if l > 0 and self.level_data and #self.level_data.levels >= l then
 		self.level_map = self.level_data.levels[l].data
 		self.grid_width = self.level_data.levels[l].width 
 		self.grid_height = #self.level_map / self.grid_width
 		self.is_level_loaded = true
+	end
+end
+
+function Map:load_level_beings(l)
+	print("loading "..self:get_level_name(l).." beings")
+	if l > 0 and self.level_data and #self.level_data.levels >= l then
+		local n_beings = #self.level_data.levels[l].beings
+		if n_beings > 0 then
+			-- load level beings
+			for i = 1, n_beings do
+				print(self.level_data.levels[l].beings[i].class)
+				local being_data = self.level_data.levels[l].beings[i]
+				if being_date.class == "snake" then
+					--local b = Snake()
+					
+				end
+			end
+		end
 	end
 end
 

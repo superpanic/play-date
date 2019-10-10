@@ -6,7 +6,7 @@
 			"images": {
 				"idle":  { "name":"idle",  "frames":[1,2], "speed":250, "next":"loop", "flip":false },
 				"right": { "name":"right", "frames":[3], "speed":250, "next":"idle", "flip":false },
-				"left":  { "name":"left",  "frames":[4], "speed":250, "next":"idle", "flip":true },
+				"left":  { "name":"left",  "frames":[3], "speed":250, "next":"idle", "flip":true },
 				"up":	 { "name":"up",    "frames":[1,2], "speed":250, "next":"idle", "flip":false },
 				"down":  { "name":"down",  "frames":[1,2], "speed":250, "next":"idle", "flip":false },
 				"death": { "name":"death", "frames":[1,2], "speed":250, "next":"idle", "flip":false }
