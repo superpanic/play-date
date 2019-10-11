@@ -14,6 +14,10 @@ function Being:move_to_pos(x, y)
 	self:moveTo((x + self.pos_offset.x - 1)*grid_size+grid_size/2, (y + self.pos_offset.y - 1)*grid_size+grid_size/2)
 end
 
+function Being:update_pos()
+	self:moveTo((self.current_pos.x + self.pos_offset.x - 1)*grid_size+grid_size/2, (self.current_pos.y + self.pos_offset.y - 1)*grid_size+grid_size/2)
+end
+
 function Being:set_offset(x,y)
 	self.pos_offset.x = x
 	self.pos_offset.y = y

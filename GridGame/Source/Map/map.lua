@@ -51,6 +51,12 @@ end
 function Map:add_map_offset(x, y)
 	self.map_offset.x = self.map_offset.x + x
 	self.map_offset.y = self.map_offset.y + y
+	if #self.current_level_beings > 0 then
+		for i, being in ipairs(self.current_level_beings) do
+			being:set_offset(self.map_offset.x, self.map_offset.y)
+			being:update_pos()
+		end
+	end
 	self:draw_map()
 end
 
@@ -154,12 +160,16 @@ function Map:load_level_beings(l)
 			for i = 1, n_beings do
 				print(self.level_data.levels[l].beings[i].class)
 				local being_data = self.level_data.levels[l].beings[i]
-				if being_date.class == "snake" then
+				if being_data.class == "snake" then
 					--local b = Snake()
-					
+					local being = Snake()
+					being:move_to_pos(being_data.pos[1], being_data.pos[2])
+					table.insert(self.current_level_beings, being)
 				end
 			end
 		end
+	else
+		print("level being data missing for level: "..self:get_level_name(l))
 	end
 end
 
