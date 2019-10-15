@@ -151,28 +151,6 @@ function Map:load_level_map(l)
 	end
 end
 
-function Map:load_level_beings(l)
-	print("loading "..self:get_level_name(l).." beings")
-	if l > 0 and self.level_data and #self.level_data.levels >= l then
-		local n_beings = #self.level_data.levels[l].beings
-		if n_beings > 0 then
-			-- load level beings
-			for i = 1, n_beings do
-				print(self.level_data.levels[l].beings[i].class)
-				local being_data = self.level_data.levels[l].beings[i]
-				if being_data.class == "snake" then
-					--local b = Snake()
-					local being = Snake()
-					being:move_to_pos(being_data.pos[1], being_data.pos[2])
-					table.insert(self.current_level_beings, being)
-				end
-			end
-		end
-	else
-		print("level being data missing for level: "..self:get_level_name(l))
-	end
-end
-
 function Map:find_first_empty_tile()
 	t = {x=1,y=1}
 	if self.is_level_loaded == false then 
@@ -255,6 +233,40 @@ function Map:get_tile_id(name)
 	for i=1, #t do
 		if t[i].name == name then
 			return t[i].id
+		end
+	end
+	return nil
+end
+
+function Map:load_level_beings(l)
+	print("loading "..self:get_level_name(l).." beings")
+	if l > 0 and self.level_data and #self.level_data.levels >= l then
+		local n_beings = #self.level_data.levels[l].beings
+		if n_beings > 0 then
+			-- load level beings
+			for i = 1, n_beings do
+				print(self.level_data.levels[l].beings[i].class)
+				local being_data = self.level_data.levels[l].beings[i]
+				if being_data.class == "snake" then
+					--local b = Snake()
+					local being = Snake(self) -- needs reference to map (self)
+					being:move_to_pos(being_data.pos[1], being_data.pos[2])
+					table.insert(self.current_level_beings, being)
+				end
+			end
+		end
+	else
+		print("level being data missing for level: "..self:get_level_name(l))
+	end
+end
+
+function Map:get_being_at(x, y)
+	if #self.current_level_beings > 0 then
+		for i, being in ipairs(self.current_level_beings) do
+			local p = being.current_pos
+			if p.x == x and p.y == y then
+				return being
+			end
 		end
 	end
 	return nil

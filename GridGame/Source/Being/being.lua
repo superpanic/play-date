@@ -1,18 +1,28 @@
 class('Being').extends(playdate.graphics.sprite)
 
-function Being:init(images)
+function Being:init(images, map)
 	Being.super.init(self)
 	self.images = images
+	self.map = map
 	self.current_pos = { x = 1, y = 1 }
 	self.pos_offset = { x = 0, y = 0 }
 end
 
 function Being:move_to_pos(x, y)
+	if self:check_collision(x, y) then
+		return
+	end
 	self.current_pos.x = x
 	self.current_pos.y = y
 	-- moveTo is 0 indexted
 	self:moveTo((x + self.pos_offset.x - 1)*grid_size+grid_size/2, (y + self.pos_offset.y - 1)*grid_size+grid_size/2)
 end
+
+function Being:check_collision(x, y)
+	return false
+	-- override this template
+end
+
 
 function Being:update_pos()
 	self:moveTo((self.current_pos.x + self.pos_offset.x - 1)*grid_size+grid_size/2, (self.current_pos.y + self.pos_offset.y - 1)*grid_size+grid_size/2)
@@ -114,7 +124,6 @@ function Being:set_animation_up()
 	self:set_animation_state(self.animation_state.up)
 	self:next_image()
 end
-
 
 function Being:get_offset()
 	return self.pos_offset

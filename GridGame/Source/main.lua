@@ -23,8 +23,8 @@ local score = 0
 
 playdate.display.setRefreshRate(0)
 
-local player = Player()
 local map = Map()
+local player = Player(map)
 
 -- game setup
 function setup()
