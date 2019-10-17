@@ -16,6 +16,10 @@ function Snake:init(map)
 	self:setZIndex(1000)
 end
 
+function Snake:attack(str)
+	print("attacked by "..str)
+end
+
 function Snake:check_collision(x, y)
 	return false
 end

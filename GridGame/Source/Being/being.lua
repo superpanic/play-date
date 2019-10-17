@@ -19,10 +19,14 @@ function Being:move_to_pos(x, y)
 end
 
 function Being:check_collision(x, y)
-	return false
 	-- override this template
+	return false
 end
 
+function Being:attack(str)
+	-- override this template
+	return false
+end
 
 function Being:update_pos()
 	self:moveTo((self.current_pos.x + self.pos_offset.x - 1)*grid_size+grid_size/2, (self.current_pos.y + self.pos_offset.y - 1)*grid_size+grid_size/2)

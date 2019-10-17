@@ -18,7 +18,8 @@
 			],
 			"beings": [
 				{"class": "snake", "pos": [4,4]},
-				{"class": "snake", "pos": [3,8]}
+				{"class": "snake", "pos": [3,8]},
+				{"class": "snake", "pos": [11,8]}
 			]
 		},
 		

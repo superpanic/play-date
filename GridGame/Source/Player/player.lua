@@ -20,7 +20,9 @@ end
 function Player:check_collision(x, y)
 	local being = self.map:get_being_at(x, y)
 	if being then
-		--being:attack()
+		if being.className == "Snake" then
+			being:attack("player")
+		end
 		return true
 	else
 		return false
