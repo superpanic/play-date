@@ -62,7 +62,9 @@ function update_map_offset(dir_x,dir_y)
 	end
 	
 	map:add_map_offset(scroll_x, scroll_y)
-	player:set_offset(map:get_map_offset().x, map:get_map_offset().y)
+	local map_offset = map:get_map_offset() 
+	player:set_offset(map_offset.x, map_offset.y)
+	player:update_pos()
 end
 
 -- main game loop
@@ -82,32 +84,40 @@ end
 function playdate.rightButtonDown()
 	-- has to add +1 due to mixed 0 indexing and 1 indexing...
 	if map:is_tile_passable(player.current_pos.x+1, player.current_pos.y) then
-		update_map_offset(1,0)
-		player:move_right()
+		if player:move_right() then
+			print("moved right")
+			update_map_offset(1,0)
+		end
 	end
 	player:set_animation_right()
 end
 
 function playdate.leftButtonDown()
 	if map:is_tile_passable(player.current_pos.x -1, player.current_pos.y) then
-		update_map_offset(-1,0)
-		player:move_left()
+		if player:move_left() then
+			print("moved left")
+			update_map_offset(-1,0)
+		end
 	end
 	player:set_animation_left()
 end
 
 function playdate.downButtonDown()
 	if map:is_tile_passable(player.current_pos.x, player.current_pos.y +1) then
-		update_map_offset(0,1)
-		player:move_down()
+		if player:move_down() then
+			print("moved down")
+			update_map_offset(0,1)
+		end
 	end
 	player:set_animation_down()
 end
 
 function playdate.upButtonDown()
 	if map:is_tile_passable(player.current_pos.x , player.current_pos.y -1) then
-		update_map_offset(0,-1)
-		player:move_up()
+		if player:move_up() then
+			print("moved up")
+			update_map_offset(0,-1)
+		end
 	end
 	player:set_animation_up()
 end

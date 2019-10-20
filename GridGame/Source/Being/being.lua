@@ -10,12 +10,13 @@ end
 
 function Being:move_to_pos(x, y)
 	if self:check_collision(x, y) then
-		return
+		return false
 	end
 	self.current_pos.x = x
 	self.current_pos.y = y
 	-- moveTo is 0 indexted
 	self:moveTo((x + self.pos_offset.x - 1)*grid_size+grid_size/2, (y + self.pos_offset.y - 1)*grid_size+grid_size/2)
+	return true
 end
 
 function Being:check_collision(x, y)
@@ -134,17 +135,17 @@ function Being:get_offset()
 end
 
 function Being:move_right()
-	self:move_to_pos(self.current_pos.x + 1, self.current_pos.y)
+	return self:move_to_pos(self.current_pos.x + 1, self.current_pos.y)
 end
 
 function Being:move_left()
-	self:move_to_pos(self.current_pos.x - 1, self.current_pos.y)
+	return self:move_to_pos(self.current_pos.x - 1, self.current_pos.y)
 end
 
 function Being:move_up()
-	self:move_to_pos(self.current_pos.x, self.current_pos.y - 1)
+	return self:move_to_pos(self.current_pos.x, self.current_pos.y - 1)
 end
 
 function Being:move_down()
-	self:move_to_pos(self.current_pos.x, self.current_pos.y + 1)
+	return self:move_to_pos(self.current_pos.x, self.current_pos.y + 1)
 end
