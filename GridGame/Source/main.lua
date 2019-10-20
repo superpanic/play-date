@@ -64,7 +64,7 @@ function update_map_offset(dir_x,dir_y)
 	map:add_map_offset(scroll_x, scroll_y)
 	local map_offset = map:get_map_offset() 
 	player:set_offset(map_offset.x, map_offset.y)
-	player:update_pos()
+	--player:update_pos()
 end
 
 -- main game loop

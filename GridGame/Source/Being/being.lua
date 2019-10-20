@@ -36,6 +36,7 @@ end
 function Being:set_offset(x,y)
 	self.pos_offset.x = x
 	self.pos_offset.y = y
+	self:update_pos()
 end
 
 function Being:get_screen_pos()
