@@ -18,6 +18,7 @@ end
 
 function Snake:attack(str)
 	print("attacked by "..str)
+	self:kill()
 end
 
 function Snake:check_collision(x, y)

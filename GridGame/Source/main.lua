@@ -69,13 +69,17 @@ end
 
 -- main game loop
 function playdate.update()
+
 	if current_state == k_game_state.INITIAL then
 		setup()
-		current_state = k_game_state.PLAYING
+		current_state = k_game_state.READY
+
 	elseif current_state == k_game_state.READY then
-		-- nothing
+		current_state = k_game_state.PLAYING
+
 	elseif current_state == k_game_state.PLAYING then
 		playdate.timer.updateTimers() -- update all timers
+		map:update_beings()
 		libspr.update() -- update all sprites
 	end
 end
@@ -85,7 +89,6 @@ function playdate.rightButtonDown()
 	-- has to add +1 due to mixed 0 indexing and 1 indexing...
 	if map:is_tile_passable(player.current_pos.x+1, player.current_pos.y) then
 		if player:move_right() then
-			print("moved right")
 			update_map_offset(1,0)
 		end
 	end
@@ -95,7 +98,6 @@ end
 function playdate.leftButtonDown()
 	if map:is_tile_passable(player.current_pos.x -1, player.current_pos.y) then
 		if player:move_left() then
-			print("moved left")
 			update_map_offset(-1,0)
 		end
 	end
@@ -105,7 +107,6 @@ end
 function playdate.downButtonDown()
 	if map:is_tile_passable(player.current_pos.x, player.current_pos.y +1) then
 		if player:move_down() then
-			print("moved down")
 			update_map_offset(0,1)
 		end
 	end
@@ -115,7 +116,6 @@ end
 function playdate.upButtonDown()
 	if map:is_tile_passable(player.current_pos.x , player.current_pos.y -1) then
 		if player:move_up() then
-			print("moved up")
 			update_map_offset(0,-1)
 		end
 	end

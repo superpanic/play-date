@@ -34,6 +34,20 @@ function Map:init()
 
 end
 
+function Map:update_beings()
+	local n_beings = #self.current_level_beings
+	if n_beings > 0 then
+		for i=n_beings,1,-1 do
+			-- TODO: this remove loop is slow
+			if self.current_level_beings[i].remove_me then
+				print("removing "..self.current_level_beings[i].className)
+				self.current_level_beings[i]:remove()
+				table.remove(self.current_level_beings,i)
+			end
+		end
+	end
+end
+
 function Map:load_level(level)
 	-- load level data
 	--self:generate_random_map()

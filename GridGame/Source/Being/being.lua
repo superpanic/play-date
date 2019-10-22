@@ -6,6 +6,8 @@ function Being:init(images, map)
 	self.map = map
 	self.current_pos = { x = 1, y = 1 }
 	self.pos_offset = { x = 0, y = 0 }
+	self.is_dead = false
+	self.remove_me = false
 end
 
 function Being:move_to_pos(x, y)
@@ -27,6 +29,13 @@ end
 function Being:attack(str)
 	-- override this template
 	return false
+end
+
+function Being:kill()
+	-- override this template
+	self:set_animation_state(self.animation_state.death)
+	self:next_image()
+	self.is_dead = true
 end
 
 function Being:update_pos()
@@ -86,6 +95,10 @@ function Being:next_image()
 end
 
 function Being:loop_animation()
+	if self.is_dead then
+		self.remove_me = true
+		return
+	end
 	if self.next == "loop" then
 		self.frame_index = 1	
 	else
