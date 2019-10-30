@@ -1,3 +1,5 @@
+import "Weapon/weapon"
+
 class('Being').extends(playdate.graphics.sprite)
 
 function Being:init(images, map)
