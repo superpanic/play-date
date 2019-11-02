@@ -41,7 +41,7 @@ function Map:update_beings()
 			-- TODO: this remove loop is slow
 			if self.current_level_beings[i].remove_me then
 				print("removing "..self.current_level_beings[i].className)
-				self.current_level_beings[i]:remove()
+				self.current_level_beings[i]:removeSprite() -- removing from sprite update
 				table.remove(self.current_level_beings,i)
 			end
 		end

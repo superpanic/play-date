@@ -2,10 +2,11 @@ import "Weapon/weapon"
 
 class('Being').extends(playdate.graphics.sprite)
 
-function Being:init(images, map)
+function Being:init(images, map, name)
 	Being.super.init(self)
 	self.images = images
 	self.map = map
+	self.name = name
 	self.current_pos = { x = 1, y = 1 }
 	self.pos_offset = { x = 0, y = 0 }
 	self.is_dead = false
@@ -26,18 +27,6 @@ end
 function Being:check_collision(x, y)
 	-- override this template
 	return false
-end
-
-function Being:attack(str)
-	-- override this template
-	return false
-end
-
-function Being:kill()
-	-- override this template
-	self:set_animation_state(self.animation_state.death)
-	self:next_image()
-	self.is_dead = true
 end
 
 function Being:update_pos()
@@ -61,7 +50,11 @@ function Being:get_screen_pos()
 end
 
 function Being:setup_frames()	
-	self.animation_state = beings_data.beings.player.images
+	for k,v in pairs(beings_data.beings) do
+		if k==self.name then
+			self.animation_state = v.images
+		end
+	end
 	self.current_state = self.animation_state.idle.frames
 	self.frame_speed = self.animation_state.idle.speed
 	self.next = self.animation_state.idle.next
@@ -72,6 +65,8 @@ function Being:setup_frames()
 end
 
 function Being:next_image()
+	if self.remove_me then return end -- avoid adding a timer call (below)
+
 	-- flip image
 	local flip
 	if self.is_flipped then
@@ -84,7 +79,7 @@ function Being:next_image()
 	self:setImage(self.images[self.current_state[self.frame_index]], flip)
 	
 	-- handle timers
-	if self.t then self.t:remove() end
+	if self.t then self.t:remove() end -- if a timer is already set, remove it
 	self.t = playdate.timer.new(self.frame_speed, self.next_image, self)
 	
 		-- advance frame
@@ -164,4 +159,16 @@ end
 
 function Being:move_down()
 	return self:move_to_pos(self.current_pos.x, self.current_pos.y + 1)
+end
+
+function Being:attack(str)
+	-- override this function
+	return false
+end
+
+function Being:die()
+	-- override this function
+	self.is_dead = true
+	self:set_animation_state(self.animation_state.death)
+	self:next_image()
 end

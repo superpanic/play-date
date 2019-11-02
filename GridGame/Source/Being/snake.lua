@@ -8,7 +8,7 @@ class('Snake').extends(Being)
 local img = playdate.graphics.imagetable.new('Being/snake')
 
 function Snake:init(map)
-	Snake.super.init(self, img, map)
+	Snake.super.init(self, img, map, "snake")
 	self.parent = self.super.super
 	self.t = nil -- timer
 	self:setup_frames()
@@ -17,8 +17,9 @@ function Snake:init(map)
 end
 
 function Snake:attack(str)
+	if self.is_dead == true then return end
 	print("attacked by "..str)
-	self:kill()
+	self:die()
 end
 
 function Snake:check_collision(x, y)
