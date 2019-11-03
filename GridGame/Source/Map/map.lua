@@ -8,7 +8,8 @@ function Map:init()
 	print("Map:init")
 	Map.super.init(self)
 	self.parent = Map.super
-	
+	self.player = {}
+
 	self.map_offset = {x=0, y=0}
 	
 	-- load art
@@ -31,19 +32,24 @@ function Map:init()
 	self:add()
 	self:setZIndex(-1000)
 	self.is_level_loaded = false
+end
 
+function Map:set_player(p)
+	self.player = p
 end
 
 function Map:update_beings()
-	local n_beings = #self.current_level_beings
-	if n_beings > 0 then
-		for i=n_beings,1,-1 do
-			-- TODO: this remove loop is slow
-			if self.current_level_beings[i].remove_me then
-				print("removing "..self.current_level_beings[i].className)
-				self.current_level_beings[i]:removeSprite() -- removing from sprite update
-				table.remove(self.current_level_beings,i)
-			end
+	for i,b in pairs(self.current_level_beings) do
+		-- run beings ai
+		if not b.remove_me then
+			b:run_ai()
+		end
+		
+		-- remove beings
+		if b.remove_me then
+			print("removing "..b.className)
+			b:removeSprite() -- removing from sprite update
+			table.remove(self.current_level_beings,i)
 		end
 	end
 end
@@ -284,4 +290,67 @@ function Map:get_being_at(x, y)
 		end
 	end
 	return nil
+end
+
+function Map:draw_line(f,t)
+	playdate.graphics.lockFocus(self.img) 
+		playdate.graphics.setColor(playdate.graphics.kColorXOR)
+		playdate.graphics.drawLine(f.x, f.y, t.x, t.y)
+	playdate.graphics.unlockFocus()
+	self:markDirty()
+end
+
+function Map:can_see_player_at(be)
+	-- o origin being
+	-- pp player pos
+	
+	print(be.name)
+
+	local op = {} 
+	op.x = be.current_pos.x
+	op.y = be.current_pos.y
+
+	local pp = {}
+	pp.x = self.player.current_pos.x
+	pp.y = self.player.current_pos.y
+
+	local distance = {}
+	distance.x = pp.x - op.x
+	distance.y = pp.y - op.y
+
+	local steps = math.abs(math.max(distance.x, distance.y))
+
+	local delta = {}
+	if steps>0 then
+		delta.x = distance.x/steps
+		delta.y = distance.y/steps
+	else
+		delta.x = 1
+		delta.y = 1
+	end
+
+	if not self.print_flag then
+		self.print_flag = true
+		print("distance.x "..distance.x)
+		print("distance.y "..distance.y)
+		print("steps      "..steps)
+		print("delta.x    "..delta.x)
+		print("delta.y    "..delta.y)
+	end
+
+	local ray = {}
+	ray.x = op.x
+	ray.y = op.y
+	for step = 1, steps do
+		ray.x = ray.x + step * delta.x
+		ray.y = ray.y + step * delta.y
+		if not self:is_tile_passable(math.ceil(ray.x), math.ceil(ray.y)) then
+			-- line of sight is blocked!
+			return null
+		end
+	end
+
+	self:draw_line( be:get_screen_pos(), self.player:get_screen_pos() )
+
+	return pp -- if beholder can see player at pp
 end

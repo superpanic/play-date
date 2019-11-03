@@ -7,6 +7,7 @@ function Being:init(images, map, name)
 	self.images = images
 	self.map = map
 	self.name = name
+	self.health = 1
 	self.current_pos = { x = 1, y = 1 }
 	self.pos_offset = { x = 0, y = 0 }
 	self.is_dead = false
@@ -91,6 +92,10 @@ function Being:next_image()
 
 end
 
+function Being:run_ai()
+	-- override this function
+end
+
 function Being:loop_animation()
 	if self.is_dead then
 		self.remove_me = true
@@ -161,8 +166,11 @@ function Being:move_down()
 	return self:move_to_pos(self.current_pos.x, self.current_pos.y + 1)
 end
 
-function Being:attack(str)
+function Being:attack(attacker)
 	-- override this function
+	if self.is_dead == true then return end
+	print(attacker.name.." attacks "..self.name)
+	self:die()
 	return false
 end
 

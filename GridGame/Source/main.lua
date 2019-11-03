@@ -25,6 +25,7 @@ playdate.display.setRefreshRate(0)
 
 local map = Map()
 local player = Player(map)
+map:set_player(player)
 
 -- game setup
 function setup()
