@@ -300,15 +300,26 @@ function Map:draw_line(f,t)
 	self:markDirty()
 end
 
-function Map:can_see_player_at(be)
+function Map:draw_marker(x,y)
+	local pos = {}
+	pos.x = (x-1) * grid_size + grid_size/2
+	pos.y = (y-1) * grid_size + grid_size/2
+	playdate.graphics.lockFocus(self.img) 
+		playdate.graphics.setColor(playdate.graphics.kColorXOR)
+		playdate.graphics.drawCircleAtPoint(pos.x, pos.y,6)
+	playdate.graphics.unlockFocus()
+	self:markDirty()
+end
+
+function Map:can_see_player_at(being)
 	-- o origin being
 	-- pp player pos
-	
-	print(be.name)
 
+	-- TODO: maybe use pixel resolution instead?
+	
 	local op = {} 
-	op.x = be.current_pos.x
-	op.y = be.current_pos.y
+	op.x = being.current_pos.x
+	op.y = being.current_pos.y
 
 	local pp = {}
 	pp.x = self.player.current_pos.x
@@ -320,22 +331,10 @@ function Map:can_see_player_at(be)
 
 	local steps = math.abs(math.max(distance.x, distance.y))
 
-	local delta = {}
+	local delta = {x=1, y=1}
 	if steps>0 then
 		delta.x = distance.x/steps
 		delta.y = distance.y/steps
-	else
-		delta.x = 1
-		delta.y = 1
-	end
-
-	if not self.print_flag then
-		self.print_flag = true
-		print("distance.x "..distance.x)
-		print("distance.y "..distance.y)
-		print("steps      "..steps)
-		print("delta.x    "..delta.x)
-		print("delta.y    "..delta.y)
 	end
 
 	local ray = {}
@@ -347,10 +346,12 @@ function Map:can_see_player_at(be)
 		if not self:is_tile_passable(math.ceil(ray.x), math.ceil(ray.y)) then
 			-- line of sight is blocked!
 			return null
+		else
+			self:draw_marker(ray.x, ray.y)
 		end
 	end
 
-	self:draw_line( be:get_screen_pos(), self.player:get_screen_pos() )
+	self:draw_line( being:get_screen_pos(), self.player:get_screen_pos() )
 
 	return pp -- if beholder can see player at pp
 end
