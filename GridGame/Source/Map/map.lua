@@ -316,7 +316,15 @@ function Map:can_see_player_at(being)
 	-- pp player pos
 
 	-- TODO: maybe use pixel resolution instead?
+	self.mod_counter = self.mod_counter or 1
+	self.mod_counter = self.mod_counter +1
 	
+	if not (self.mod_counter % 3 == 0) then 
+		return 
+	end
+--	print(self.mod_counter)
+--	print(being.current_pos.x ..":".. being.current_pos.y)
+
 	local op = {} 
 	op.x = being.current_pos.x
 	op.y = being.current_pos.y
@@ -329,10 +337,10 @@ function Map:can_see_player_at(being)
 	distance.x = pp.x - op.x
 	distance.y = pp.y - op.y
 
-	local steps = math.abs(math.max(distance.x, distance.y))
+	local steps = math.max(math.abs(distance.x), math.abs(distance.y))
 
 	local delta = {x=1, y=1}
-	if steps>0 then
+	if steps > 0 then
 		delta.x = distance.x/steps
 		delta.y = distance.y/steps
 	end
@@ -343,11 +351,11 @@ function Map:can_see_player_at(being)
 	for step = 1, steps do
 		ray.x = ray.x + step * delta.x
 		ray.y = ray.y + step * delta.y
-		if not self:is_tile_passable(math.ceil(ray.x), math.ceil(ray.y)) then
+		if not self:is_tile_passable(math.ceil(ray.x-0.5), math.ceil(ray.y-0.5)) then
 			-- line of sight is blocked!
 			return null
 		else
-			self:draw_marker(ray.x, ray.y)
+			self:draw_marker(ray.x+self.map_offset.x, ray.y+self.map_offset.y)
 		end
 	end
 
