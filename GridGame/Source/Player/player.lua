@@ -7,7 +7,7 @@ import "Weapon/dagger"
 class('Player').extends(Being)
 
 --local player_images = playdate.graphics.imagetable.new('Player/player')
-local player_images = playdate.graphics.imagetable.new('Being/flower')
+local player_images = playdate.graphics.imagetable.new('Being/player')
 
 function Player:init(map)
 	Player.super.init(self, player_images, map, "player")
