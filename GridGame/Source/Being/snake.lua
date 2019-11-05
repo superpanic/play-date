@@ -35,7 +35,7 @@ end
 
 function Snake:run_ai()
 	-- can see player?
-	local point = self.map:can_see_player_at(self)
+	local point = self.map:can_see_player(self)
 	if point then
 		--
 	end

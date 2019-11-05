@@ -81,6 +81,7 @@ function playdate.update()
 	elseif current_state == k_game_state.PLAYING then
 		playdate.timer.updateTimers() -- update all timers
 		map:update_beings()
+		map:update_visibility_map()
 		libspr.update() -- update all sprites
 	end
 end

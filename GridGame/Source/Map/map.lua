@@ -26,6 +26,8 @@ function Map:init()
 	self.current_level_tiles = {}
 	self.current_level_beings = {}
 
+	self.visibility_map = {}
+
 	-- center image on screen
 	self:moveTo(screen_width/2,screen_height/2)
 
@@ -116,7 +118,31 @@ function Map:draw_map()
 		end
 	--
 	playdate.graphics.unlockFocus()
-	self:markDirty()
+	self:markDirty() -- Map inherits sprite object!
+end
+
+function Map:update_visibility_map()
+	-- go through all positions
+	-- is pos within screen?
+	-- TODO: is pos within circle of sight?
+	for x = 1, self.grid_width do
+		for y=1, self.grid_height do
+			local max_x = screen_width / grid_size
+			local max_y = screen_height / grid_size
+			local col = x + self.map_offset.x
+			local row = y + self.map_offset.y
+			-- screen boundary check:
+			if col < 0 or row < 0 then goto continue end
+			if col > max_x or row > max_y then goto continue end
+			-- is line of sight?
+			local p1 = {x=x, y=y}
+			if self:line_of_sight(p1, self.player.current_pos) then
+				-- visible!
+				self:draw_marker(col, row)
+			end
+			::continue::	
+		end
+	end
 end
 
 function Map:process_tile_variations()
@@ -311,23 +337,19 @@ function Map:draw_marker(x,y)
 	self:markDirty()
 end
 
-function Map:can_see_player_at(being)
+function Map:can_see_player(being)	
+	return self:line_of_sight(being.current_pos, self.player.current_pos)
+end
+
+function Map:line_of_sight(p1, p2)
 	-- o origin being
 	-- pp player pos
 	
 	-- TODO: maybe use pixel resolution instead?
 
-	local op = {} 
-	op.x = being.current_pos.x
-	op.y = being.current_pos.y
-
-	local pp = {}
-	pp.x = self.player.current_pos.x
-	pp.y = self.player.current_pos.y
-
 	local distance = {}
-	distance.x =  pp.x - op.x
-	distance.y =  pp.y - op.y
+	distance.x = p2.x - p1.x
+	distance.y = p2.y - p1.y
 
 	local steps = math.max(math.abs(distance.x), math.abs(distance.y))
 
@@ -339,8 +361,8 @@ function Map:can_see_player_at(being)
 	
 	local ray = {}
 	for step = 1, steps do
-		ray.x = math.ceil(op.x + (step * delta.x) - 0.5)
-		ray.y = math.ceil(op.y + (step * delta.y) - 0.5)
+		ray.x = math.ceil(p1.x + (step * delta.x) - 0.5)
+		ray.y = math.ceil(p1.y + (step * delta.y) - 0.5)
 
 		if not self:is_tile_passable(ray.x, ray.y) then
 			-- line of sight is blocked!
@@ -348,7 +370,7 @@ function Map:can_see_player_at(being)
 		end
 	end
 
-	self:draw_line( being:get_screen_pos(), self.player:get_screen_pos() )
-
-	return pp -- if beholder can see player at pp
+	return p2 -- if p1 can see p2
 end
+
+
