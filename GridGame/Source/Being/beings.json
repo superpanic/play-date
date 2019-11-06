@@ -12,7 +12,7 @@
 				"attack": { "name":"attack", "frames":[5,6], "speed":250, "next":"idle", "flip":false},
 				"death": { "name":"death", "frames":[1,2], "speed":250, "next":"idle", "flip":false }
 			},
-			"description": "This is you."
+			"description": "This is you, the player. You are a player!"
 		},
 		"snake":{
 			"name": "snake",
@@ -23,9 +23,10 @@
 				"left":  { "name":"left", "frames":[3,4], "speed":250, "next":"idle", "flip":true  },
 				"up":	 { "name":"up", "frames":[1,2], "speed":250, "next":"idle", "flip":false },
 				"down":  { "name":"down", "frames":[1,2], "speed":250, "next":"idle", "flip":false },
+				"attack":  { "name":"attack", "frames":[1,2], "speed":250, "next":"idle", "flip":false },
 				"death": { "name":"death", "frames":[5,6], "speed":250, "next":"idle", "flip":false }
 			},
-			"description": "A snake."
+			"description": "This is Mr Snake."
 		}
 	}
 }

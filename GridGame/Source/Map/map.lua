@@ -5,7 +5,6 @@ local gridSize = 16
 -- local grid_height = 240/grid_size
 
 function Map:init()
-	print("Map:init")
 	Map.super.init(self)
 	self.parent = Map.super
 	self.player = {}
@@ -42,6 +41,13 @@ end
 
 function Map:update_beings()
 	for i,b in pairs(self.current_level_beings) do
+		
+		if self:line_of_sight(b.current_pos, self.player.current_pos) then
+			b:setVisible(true)
+		else
+			b:setVisible(false)
+		end
+		
 		-- run beings ai
 		if not b.remove_me then
 			b:run_ai()
@@ -97,7 +103,7 @@ function Map:generate_random_map()
 	end
 end
 
-function Map:draw_map()
+function Map:draw_map_all()
 	if self.is_level_loaded == false then return end
 	playdate.graphics.lockFocus(self.img) 
 		--
@@ -121,7 +127,49 @@ function Map:draw_map()
 	self:markDirty() -- Map inherits sprite object!
 end
 
+function Map:draw_map()
+	if self.is_level_loaded == false then return end
+
+	local max_x = screen_width / grid_size
+	local max_y = screen_height / grid_size
+
+	playdate.graphics.lockFocus(self.img)
+		playdate.graphics.setColor(playdate.graphics.kColorBlack)
+		playdate.graphics.fillRect(0, 0, screen_width, screen_height)
+		-- draw part of map visible on screen
+		for x = 1, self.grid_width do
+			for y = 1, self.grid_height do
+				-- game grid (not pixel grid):
+				local col = x + self.map_offset.x
+				local row = y + self.map_offset.y
+				
+				-- screen boundary check:
+				if col < 0 or row < 0 then goto continue end
+				if col > max_x or row > max_y then goto continue end
+				
+				-- is line of sight?
+				local p1 = {x=x, y=y}
+				if self:line_of_sight(p1, self.player.current_pos) then
+					-- get the tile to draw
+					local tile = self.current_level_tiles[ self.grid_width * (y - 1) + x ]
+					-- get the image tile and draw to level map
+					local im = self.img_table:getImage(tile)
+					-- adjust for image being 0-indexed
+					local col = x + self.map_offset.x
+					local row = y + self.map_offset.y
+					im:drawAt((col-1)*grid_size,(row-1)*grid_size)
+				end
+				
+				::continue::
+			end
+		end
+	--
+	playdate.graphics.unlockFocus()
+	self:markDirty() -- Map inherits sprite object!
+end
+
 function Map:update_visibility_map()
+	if true then return null end
 	-- go through all positions
 	-- is pos within screen?
 	-- TODO: is pos within circle of sight?
@@ -180,7 +228,6 @@ function Map:process_wall_endings()
 end
 
 function Map:get_level_name(l)
-	print("l: "..l)
 	if l > 0 and self.level_data and #self.level_data.levels >= l then
 		return self.level_data.levels[l].name
 	end
@@ -188,7 +235,7 @@ function Map:get_level_name(l)
 end
 
 function Map:load_level_map(l)
-	print("loading level: "..self:get_level_name(l))
+	print("loading "..self:get_level_name(l).." data")
 	if l > 0 and self.level_data and #self.level_data.levels >= l then
 		self.level_map = self.level_data.levels[l].data
 		self.grid_width = self.level_data.levels[l].width 
@@ -291,7 +338,6 @@ function Map:load_level_beings(l)
 		if n_beings > 0 then
 			-- load level beings
 			for i = 1, n_beings do
-				print(self.level_data.levels[l].beings[i].class)
 				local being_data = self.level_data.levels[l].beings[i]
 				if being_data.class == "snake" then
 					--local b = Snake()
@@ -342,11 +388,6 @@ function Map:can_see_player(being)
 end
 
 function Map:line_of_sight(p1, p2)
-	-- o origin being
-	-- pp player pos
-	
-	-- TODO: maybe use pixel resolution instead?
-
 	local distance = {}
 	distance.x = p2.x - p1.x
 	distance.y = p2.y - p1.y

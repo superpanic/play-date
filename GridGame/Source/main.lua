@@ -33,6 +33,7 @@ function setup()
 	local pos = map:find_first_empty_tile()
 	player:set_offset(map:get_map_offset().x, map:get_map_offset().y)
 	player:move_to_pos(pos.x, pos.y)
+	map:draw_map()
 end
 
 function update_map_offset(dir_x,dir_y)
@@ -70,7 +71,6 @@ end
 
 -- main game loop
 function playdate.update()
-
 	if current_state == k_game_state.INITIAL then
 		setup()
 		current_state = k_game_state.READY
