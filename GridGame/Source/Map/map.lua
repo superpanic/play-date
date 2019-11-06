@@ -158,6 +158,11 @@ function Map:draw_map()
 					local col = x + self.map_offset.x
 					local row = y + self.map_offset.y
 					im:drawAt((col-1)*grid_size,(row-1)*grid_size)
+					
+					-- add shadow
+--					playdate.graphics.setDitherPattern(self:get_normalized_distance(col,row))
+--					playdate.graphics.fillRect((col-1)*grid_size,(row-1)*grid_size,16,16)
+					
 				end
 				
 				::continue::
@@ -166,6 +171,13 @@ function Map:draw_map()
 	--
 	playdate.graphics.unlockFocus()
 	self:markDirty() -- Map inherits sprite object!
+end
+
+function Map:get_normalized_distance(col,row)
+	local max_dist = 8.0
+	local d = math.max(math.abs(self.player.current_pos.x - col),math.abs(self.player.current_pos.y - row))
+	d = math.min(max_dist,d)
+	return max_dist - (d/max_dist)
 end
 
 function Map:update_visibility_map()
@@ -392,6 +404,12 @@ function Map:line_of_sight(p1, p2)
 	distance.x = p2.x - p1.x
 	distance.y = p2.y - p1.y
 
+	-- special case: all tiles one tile or closer are visible
+	if math.abs(distance.x)<=1 and math.abs(distance.y)<=1 then
+		return p2
+	end
+	
+	-- run full check:
 	local steps = math.max(math.abs(distance.x), math.abs(distance.y))
 
 	local delta = {x=1, y=1}
@@ -401,13 +419,14 @@ function Map:line_of_sight(p1, p2)
 	end
 	
 	local ray = {}
-	for step = 1, steps do
+
+	for step = 2, steps do -- skip first step
 		ray.x = math.ceil(p1.x + (step * delta.x) - 0.5)
 		ray.y = math.ceil(p1.y + (step * delta.y) - 0.5)
 
 		if not self:is_tile_passable(ray.x, ray.y) then
 			-- line of sight is blocked!
-			return null
+			return false
 		end
 	end
 
