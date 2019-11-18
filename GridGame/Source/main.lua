@@ -6,7 +6,7 @@ import "Player/player"
 import "Being/snake"
 import "Item/item"
 import "Map/map"
-import "Common/common"
+import "common"
 
 local k_game_state = {
 	INITIAL = 1, 
@@ -81,7 +81,7 @@ function playdate.update()
 	elseif current_state == k_game_state.PLAYING then
 		playdate.timer.updateTimers() -- update all timers
 		map:update_beings()
-		map:update_visibility_map()
+		--map:update_visibility_map()
 		libspr.update() -- update all sprites
 	end
 end

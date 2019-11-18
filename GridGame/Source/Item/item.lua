@@ -1,4 +1,4 @@
-import "Common/common"
+import "common"
 
 class('Item').extends(playdate.graphics.sprite)
 

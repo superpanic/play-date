@@ -4,6 +4,8 @@ local gridSize = 16
 -- local grid_width = 400/grid_size
 -- local grid_height = 240/grid_size
 
+local hexagon
+
 function Map:init()
 	Map.super.init(self)
 	self.parent = Map.super
@@ -160,8 +162,8 @@ function Map:draw_map()
 					im:drawAt((col-1)*grid_size,(row-1)*grid_size)
 					
 					-- add shadow
---					playdate.graphics.setDitherPattern(self:get_normalized_distance(col,row))
---					playdate.graphics.fillRect((col-1)*grid_size,(row-1)*grid_size,16,16)
+					playdate.graphics.setDitherPattern(self:get_normalized_distance(p1,self.player.current_pos))
+					playdate.graphics.fillRect((col-1)*grid_size,(row-1)*grid_size,16,16)
 					
 				end
 				
@@ -173,15 +175,34 @@ function Map:draw_map()
 	self:markDirty() -- Map inherits sprite object!
 end
 
-function Map:get_normalized_distance(col,row)
-	local max_dist = 8.0
-	local d = math.max(math.abs(self.player.current_pos.x - col),math.abs(self.player.current_pos.y - row))
-	d = math.min(max_dist,d)
-	return max_dist - (d/max_dist)
+function Map:get_normalized_distance(tile_pos, player_pos)
+	
+	local distance = {}
+	distance.x = player_pos.x - tile_pos.x
+	distance.y = player_pos.y - tile_pos.y
+
+	local l = math.sqrt((distance.x * distance.x) + (distance.y * distance.y))
+	
+	if l >= 8 then
+		return 0
+	elseif l == 7 then
+		return 0.3
+	elseif l == 6 then
+		return 0.5
+	elseif l == 5 then
+		return 0.6
+	elseif l == 4 then
+		return 0.7
+	elseif l >= 3 then
+		return 0.9
+	else
+		return 1
+	end
+	
 end
 
 function Map:update_visibility_map()
-	if true then return null end
+	--if true then return null end
 	-- go through all positions
 	-- is pos within screen?
 	-- TODO: is pos within circle of sight?
@@ -399,17 +420,43 @@ function Map:can_see_player(being)
 	return self:line_of_sight(being.current_pos, self.player.current_pos)
 end
 
-function Map:line_of_sight(p1, p2)
+function Map:line_of_sight(tile_pos, player_pos)
+	-- p1 = tile
+	-- p2 = player
 	local distance = {}
-	distance.x = p2.x - p1.x
-	distance.y = p2.y - p1.y
+	distance.x = player_pos.x - tile_pos.x
+	distance.y = player_pos.y - tile_pos.y
+
+	local direction = {}
+	if distance.x < 0 then direction.x = -1 else direction.x = 1 end
+	if distance.y < 0 then direction.y = -1 else direction.y = 1 end
 
 	-- special case: all tiles one tile or closer are visible
 	if math.abs(distance.x)<=1 and math.abs(distance.y)<=1 then
-		return p2
+		return true
 	end
 	
-	-- run full check:
+	-- special case: is the tile one step from player in x
+	if math.abs(distance.x) == 1 then
+		for tile_y = (tile_pos.y + direction.y), player_pos.y, direction.y do
+			if not self:is_tile_passable(player_pos.x, tile_y) then
+				return false
+			end
+		end
+		return true
+	end
+	
+	-- special case: is the tile one step from player in y
+	if math.abs(distance.y) == 1 then
+		for tile_x = (tile_pos.x + direction.x), player_pos.x, direction.x do
+			if not self:is_tile_passable(tile_x, player_pos.y) then
+				return false
+			end
+		end
+		return true
+	end
+	
+	-- no special cases, run full check:
 	local steps = math.max(math.abs(distance.x), math.abs(distance.y))
 
 	local delta = {x=1, y=1}
@@ -418,121 +465,18 @@ function Map:line_of_sight(p1, p2)
 		delta.y = distance.y/steps
 	end
 	
-	local ray = {}
+	local tile = {}
 
-	for step = 2, steps do -- skip first step
-		ray.x = math.ceil(p1.x + (step * delta.x) - 0.5)
-		ray.y = math.ceil(p1.y + (step * delta.y) - 0.5)
+	for step = 1, steps do
+		tile.x = math.ceil(tile_pos.x + (step * delta.x) - 0.5)
+		tile.y = math.ceil(tile_pos.y + (step * delta.y) - 0.5)
 
-		if not self:is_tile_passable(ray.x, ray.y) then
+		if not self:is_tile_passable(tile.x, tile.y) then
 			-- line of sight is blocked!
 			return false
 		end
 	end
 
-	return p2 -- if p1 can see p2
+	return true -- if p1 can see p2
 end
 
-
-
--- Bresenham-based Supercover line marching algorithm
--- See: http://lifc.univ-fcomte.fr/home/~ededu/projects/bresenham/
-
--- Note: This algorithm is based on Bresenham's line marching, but
---  instead of considering one step per axis, it covers all the points
---  the ideal line covers. It may be useful for example when you have 
---  to know if an obstacle exists between two points (in which case the 
---  points do not see each other)
-
--- x1: the x-coordinate of the start point
--- y1: the y-coordinate of the end point
--- x2: the x-coordinate of the start point
--- y2: the y-coordinate of the end point
--- returns: an array of {x = x, y = y} pairs
-function Map:line_of_sight(x1, y1, x2, y2)
-	local points = {} -- create a list of points
-	local xstep, ystep, err, errprev, ddx, ddy -- some locals
-	local x, y = x1, y1 -- input start x and y
-	local dx, dy = x2 - x1, y2 - y1 -- calculate distance
-	
-	-- add the input start coordinates to the points list
-	points[#points + 1] = {x = x1, y = y1}
-
-	-- if destination is up (less than zero) invert step and distance
-	if dy < 0 then
-		ystep = ystep - 1
-		dy = -dy
-	else
-		ystep = 1
-	end
-
-	-- if destination is on the left side (less than zero, invert step and distance
-	if dx < 0 then
-		xstep = xstep - 1
-		dx = -dx
-	else
-		xstep = 1
-	end
-
-	-- ddx and ddy = double distance
-	ddx, ddy = dx * 2, dy * 2
-
-	-- 
-	if ddx >= ddy then
-		-- set previous error and current error
-		errprev, err = dx, dx
-		-- from 1 to x-distance
-		for i = 1, dx do
-			-- take one step
-			x = x + xstep
-			-- add Y doubledistance to error
-			err = err + ddy
-			-- if error has grown to more than double X distance
-			if err > ddx then
-				-- take one step in y direction
-				y = y + ystep
-				-- and reduce error with double X distance
-				err = err - ddx
-				
-				-- if current error + previous error is LESS than double x-distance 
-				if err + errprev < ddx then
-					-- add current point to points list
-					points[#points + 1] = {x = x, y = y - ystep}
-					
-				-- if current error + previous error is MORE than double x-distance
-				elseif err + errprev > ddx then
-					points[#points + 1] = {x = x - xstep, y = y}
-				
-				-- 
-				else
-					points[#points + 1] = {x = x, y = y - ystep}
-					points[#points + 1] = {x = x - xstep, y = y}
-				end
-			end
-			points[#points + 1] = {x = x, y = y}
-			errprev = err
-		end
-	else
-		errprev, err = dy, dy
-		for i = 1, dy do
-			y = y + ystep
-			err = err + ddx
-			if err > ddy then
-				x = x + xstep
-				err = err - ddy
-				if err + errprev < ddy then
-					points[#points + 1] = {x = x - xstep, y = y}
-				elseif err + errprev > ddy then
-					points[#points + 1] = {x = x, y = y - ystep}
-				else
-					points[#points + 1] = {x = x, y = y - ystep}
-					points[#points + 1] = {x = x - xstep, y = y}
-				end
-			end
-			points[#points + 1] = {x = x, y = y}
-			errprev = err
-		end
-	end
-	return points
-end
-	
