@@ -44,7 +44,7 @@ end
 function Map:update_beings()
 	for i,b in pairs(self.current_level_beings) do
 		
-		if self:line_of_sight(b.current_pos, self.player.current_pos) then
+		if self:line_of_sight(b.current_pos, self.player.current_pos) and self:player_is_within(b.current_pos.x, b.current_pos.y, 3) then
 			b:setVisible(true)
 		else
 			b:setVisible(false)
@@ -149,6 +149,8 @@ function Map:draw_map()
 				if col < 0 or row < 0 then goto continue end
 				if col > max_x or row > max_y then goto continue end
 				
+				if not self:player_is_within(x, y, 3) then goto continue end
+				
 				-- is line of sight?
 				local p1 = {x=x, y=y}
 				if self:line_of_sight(p1, self.player.current_pos) then
@@ -162,8 +164,8 @@ function Map:draw_map()
 					im:drawAt((col-1)*grid_size,(row-1)*grid_size)
 					
 					-- add shadow
-					playdate.graphics.setDitherPattern(self:get_normalized_distance(p1,self.player.current_pos))
-					playdate.graphics.fillRect((col-1)*grid_size,(row-1)*grid_size,16,16)
+					--playdate.graphics.setDitherPattern(self:get_normalized_distance(p1,self.player.current_pos))
+					--playdate.graphics.fillRect((col-1)*grid_size,(row-1)*grid_size,16,16)
 					
 				end
 				
@@ -173,6 +175,12 @@ function Map:draw_map()
 	--
 	playdate.graphics.unlockFocus()
 	self:markDirty() -- Map inherits sprite object!
+end
+
+function Map:player_is_within(x, y, n)
+	if x < self.player.current_pos.x - n or x > self.player.current_pos.x + n then return false end
+	if y < self.player.current_pos.y - n or y > self.player.current_pos.y + n then return false end
+	return true
 end
 
 function Map:get_normalized_distance(tile_pos, player_pos)
