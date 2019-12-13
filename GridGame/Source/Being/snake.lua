@@ -1,6 +1,6 @@
 --import "Common/common"
 import "Being/being"
-
+import "Weapon/dagger"
 
 class('Snake').extends(Being)
 
@@ -15,9 +15,11 @@ function Snake:init(map)
 	self:setup_frames()
 	self:add()
 	self:setZIndex(1000)
+	
+	self.weapon = Dagger()
 end
 
-function Snake:attack(attacker)
+function Snake:is_attacked_by(attacker)
 	if self.is_dead == true then return end
 	print(attacker.name.." attacks "..self.name.." with: "..attacker.weapon.name)
 	if self.health > attacker.weapon.damage then
@@ -35,8 +37,8 @@ end
 
 function Snake:run_ai()
 	-- can see player?
-	local point = self.map:can_see_player(self)
-	if point then
+	local i_see_player = self.map:can_see_player(self)
+	if i_see_player then
 		--
 	end
 end

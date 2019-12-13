@@ -166,7 +166,7 @@ function Being:move_down()
 	return self:move_to_pos(self.current_pos.x, self.current_pos.y + 1)
 end
 
-function Being:attack(attacker)
+function Being:is_attacked_by(attacker)
 	-- override this function
 	if self.is_dead == true then return end
 	print(attacker.name.." attacks "..self.name)
