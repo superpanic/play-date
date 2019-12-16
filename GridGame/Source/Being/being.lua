@@ -52,9 +52,10 @@ function Being:get_screen_pos()
 	return p
 end
 
-function Being:setup_frames()	
+function Being:setup_frames()
 	for k,v in pairs(global_beings_data.beings) do
 		if k==self.name then
+			print(self.name)
 			self.animation_state = v.images
 		end
 	end

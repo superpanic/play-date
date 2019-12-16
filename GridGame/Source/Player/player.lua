@@ -25,10 +25,11 @@ function Player:check_collision(x, y)
 	if being then
 		if being.name == "snake" then
 			being:attacked_by(self)
-		end
-		
-		if being.name == "gold" then
+		elseif being.name == "gold" then
 			print("take gold!")
+			being:attacked_by(self)
+		elseif being.name == "cig" then
+			print("take cig!")
 			being:attacked_by(self)
 		end
 		
@@ -46,7 +47,7 @@ function Player:pick_up(item)
 		if self.inventory[1] == nil then
 			print("inventory is nil")
 		else
-			print("inventory is " .. self.inventory[1].className)
+			print("added " .. self.inventory[#self.inventory].className .. " to inventory")
 		end
 --		print( "player inventory: \n" .. table_to_string(self.inventory) )
 	end	

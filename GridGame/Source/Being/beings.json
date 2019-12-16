@@ -32,6 +32,13 @@
 				"idle":   { "name":"idle",   "frames":[1], "speed":250, "next":"loop", "flip":false }
 			},
 			"description": "Pure gold coins, worth it's weight in ... gold."
+		},
+		"cig":{
+			"name": "cig",
+			"images": {
+				"idle":   { "name":"idle",   "frames":[1], "speed":250, "next":"loop", "flip":false }
+			},
+			"description": "A pack of cigarettes. If you only had a lighter ..."
 		}
 	}
 }

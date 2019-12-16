@@ -389,6 +389,10 @@ function Map:load_level_beings(l)
 					local being = Gold(self, being_data.value)
 					being:move_to_pos(being_data.pos[1], being_data.pos[2])
 					table.insert(self.current_level_beings, being)
+				elseif being_data.class == "cig" then
+					local being = Cig(self, being_data.value)
+					being:move_to_pos(being_data.pos[1], being_data.pos[2])
+					table.insert(self.current_level_beings, being)
 				end
 
 			end

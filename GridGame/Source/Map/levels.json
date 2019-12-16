@@ -21,7 +21,7 @@
 				{"class": "snake", "pos": [ 3, 8] },
 				{"class": "snake", "pos": [11, 8] },
 				{"class": "gold" , "pos": [ 7, 2] },
-				{"class": "gold" , "pos": [17,10] }
+				{"class": "cig" , "pos": [17,10] }
 			]
 		},
 		
