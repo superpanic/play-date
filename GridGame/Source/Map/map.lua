@@ -381,11 +381,16 @@ function Map:load_level_beings(l)
 			for i = 1, n_beings do
 				local being_data = self.level_data.levels[l].beings[i]
 				if being_data.class == "snake" then
-					--local b = Snake()
-					local being = Snake(self) -- needs reference to map (self)
+					-- needs reference to map (self)
+					local being = Snake(self) 
+					being:move_to_pos(being_data.pos[1], being_data.pos[2])
+					table.insert(self.current_level_beings, being)
+				elseif being_data.class == "gold" then
+					local being = Gold(self, being_data.value)
 					being:move_to_pos(being_data.pos[1], being_data.pos[2])
 					table.insert(self.current_level_beings, being)
 				end
+
 			end
 		end
 	else

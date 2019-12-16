@@ -1,20 +1,24 @@
 import "common"
 
-class('Item').extends(playdate.graphics.sprite)
+class('Item').extends(Being)
 
-local item_images = playdate.graphics.imagetable.new('Item/items')
-
-function Item:init()
-	Item.super.init(self)
+function Item:init(img, map, name)
+	Item.super.init(self, img, map, name)
+	self.parent = self.super.super
+	self.is_item = true
 	self.t = nil
+	self.value = 0
 	self:setup_frames()
-	self.currentPos = libpnt.new(0,0)
-	self.destinationPos = libpnt.new(0,0)
 	self:add()
 	self:setZIndex(1001)
 end
 
-function Item:setup_frames()
-	print(self.className .. ":setup_frames() not implemented")
+function Item:attacked_by(attacker)
+	print("pickup!")
+	if attacker.name == "player" then
+		-- add item to inventory
+		attacker.pick_up(self)
+		-- kill and remove from map
+		self:die()
+	end
 end
-

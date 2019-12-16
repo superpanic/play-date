@@ -19,7 +19,7 @@ function Snake:init(map)
 	self.weapon = Dagger()
 end
 
-function Snake:is_attacked_by(attacker)
+function Snake:attacked_by(attacker)
 	if self.is_dead == true then return end
 	print(attacker.name.." attacks "..self.name.." with: "..attacker.weapon.name)
 	if self.health > attacker.weapon.damage then

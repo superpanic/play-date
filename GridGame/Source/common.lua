@@ -11,8 +11,8 @@ libgfx = playdate.graphics
 libspr = playdate.graphics.sprite
 libpnt = playdate.geometry.point
 
-beings_data = playdate.datastore.read('Being/beings')
-if(beings_data == nil) then print("cound not read being data") end
+global_beings_data = playdate.datastore.read('Being/beings')
+if(global_beings_data == nil) then print("cound not read being data") end
 
 function table_to_string(o)
 	if type(o) == 'table' then

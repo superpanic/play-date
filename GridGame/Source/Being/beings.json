@@ -1,8 +1,7 @@
 {
 	"beings": {
 		"player":{
-			"name": "player", 
-			"id": 0,
+			"name": "player",
 			"images": {
 				"idle":   { "name":"idle",   "frames":[1,2], "speed":250, "next":"loop", "flip":false },
 				"right":  { "name":"right",  "frames":[3],   "speed":250, "next":"idle", "flip":false },
@@ -16,7 +15,6 @@
 		},
 		"snake":{
 			"name": "snake",
-			"id": 1,
 			"images": {
 				"idle":   { "name":"idle",   "frames":[1,2], "speed":250, "next":"loop", "flip":false },
 				"right":  { "name":"right",  "frames":[3,4], "speed":250, "next":"idle", "flip":false },
@@ -27,6 +25,13 @@
 				"death":  { "name":"death",  "frames":[5,6], "speed":250, "next":"idle", "flip":false }
 			},
 			"description": "This is Mr Snake."
+		},
+		"gold":{
+			"name": "gold",
+			"images": {
+				"idle":   { "name":"idle",   "frames":[1], "speed":250, "next":"loop", "flip":false }
+			},
+			"description": "Pure gold coins, worth it's weight in ... gold."
 		}
 	}
 }

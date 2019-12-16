@@ -7,11 +7,13 @@ function Being:init(images, map, name)
 	self.images = images
 	self.map = map
 	self.name = name
+	self.is_item = false
 	self.health = 1
 	self.current_pos = { x = 1, y = 1 }
 	self.pos_offset = { x = 0, y = 0 }
 	self.is_dead = false
 	self.remove_me = false
+	self.inventory = {}
 end
 
 function Being:move_to_pos(x, y)
@@ -51,7 +53,7 @@ function Being:get_screen_pos()
 end
 
 function Being:setup_frames()	
-	for k,v in pairs(beings_data.beings) do
+	for k,v in pairs(global_beings_data.beings) do
 		if k==self.name then
 			self.animation_state = v.images
 		end
@@ -166,12 +168,17 @@ function Being:move_down()
 	return self:move_to_pos(self.current_pos.x, self.current_pos.y + 1)
 end
 
-function Being:is_attacked_by(attacker)
+function Being:attacked_by(attacker)
+	if is_item then
+		print("destroying item " .. self.name)
+		self:die()
+		return
+	end
 	-- override this function
 	if self.is_dead == true then return end
 	print(attacker.name.." attacks "..self.name)
 	self:die()
-	return false
+	return
 end
 
 function Being:die()
