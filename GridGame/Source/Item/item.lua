@@ -17,7 +17,7 @@ function Item:attacked_by(attacker)
 	print("pickup!")
 	if attacker.name == "player" then
 		-- add item to inventory
-		attacker.pick_up(self)
+		attacker:pick_up(self)
 		-- kill and remove from map
 		self:die()
 	end

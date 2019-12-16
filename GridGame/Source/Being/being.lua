@@ -116,6 +116,9 @@ function Being:loop_animation()
 end
 
 function Being:set_animation_state(state)
+	-- check if state exists, if not default to 'idle'
+	if state == nil then state = self.animation_state.idle end
+
 	self.current_state = state.frames
 	self.frame_speed = state.speed
 	self.next = state.next

@@ -23,12 +23,13 @@ end
 function Player:check_collision(x, y)
 	local being = self.map:get_being_at(x, y)
 	if being then
-		if being.className == "Snake" then
+		if being.name == "snake" then
 			being:attacked_by(self)
 		end
 		
 		if being.name == "gold" then
 			print("take gold!")
+			being:attacked_by(self)
 		end
 		
 		return true
@@ -41,7 +42,13 @@ function Player:pick_up(item)
 	if item.is_item then
 		-- add item to inventory
 		table.insert(self.inventory, item)
-		print( "player inventory: \n" .. table_to_string(self.inventory) )
+		print("items in inventory: " .. #self.inventory)
+		if self.inventory[1] == nil then
+			print("inventory is nil")
+		else
+			print("inventory is " .. self.inventory[1].className)
+		end
+--		print( "player inventory: \n" .. table_to_string(self.inventory) )
 	end	
 end
 
