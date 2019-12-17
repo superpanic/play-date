@@ -8,6 +8,7 @@ import "Item/gold"
 import "Item/cig"
 import "Item/item"
 import "Map/map"
+import "Hud/hud"
 import "common"
 
 local k_game_state = {
@@ -27,6 +28,7 @@ playdate.display.setRefreshRate(0)
 
 local map = Map()
 local player = Player(map)
+local hud = Hud(player)
 map:set_player(player)
 
 -- game setup
@@ -36,6 +38,7 @@ function setup()
 	player:set_offset(map:get_map_offset().x, map:get_map_offset().y)
 	player:move_to_pos(pos.x, pos.y)
 	map:draw_map()
+	hud:setup()
 end
 
 function update_map_offset(dir_x,dir_y)
@@ -83,6 +86,7 @@ function playdate.update()
 	elseif current_state == k_game_state.PLAYING then
 		playdate.timer.updateTimers() -- update all timers
 		map:update_beings()
+		hud:update()
 		--map:update_visibility_map()
 		libspr.update() -- update all sprites
 	end

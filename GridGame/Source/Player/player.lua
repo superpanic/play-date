@@ -49,7 +49,6 @@ function Player:pick_up(item)
 		else
 			print("added " .. self.inventory[#self.inventory].className .. " to inventory")
 		end
---		print( "player inventory: \n" .. table_to_string(self.inventory) )
 	end	
 end
 

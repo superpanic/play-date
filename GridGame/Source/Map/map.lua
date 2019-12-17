@@ -4,11 +4,9 @@ local gridSize = 16
 -- local grid_width = 400/grid_size
 -- local grid_height = 240/grid_size
 
-local hexagon
-
 function Map:init()
 	Map.super.init(self)
-	self.parent = Map.super
+	self.parent = Map.super.super
 	self.player = {}
 
 	self.map_offset = {x=0, y=0}
@@ -386,11 +384,11 @@ function Map:load_level_beings(l)
 					being:move_to_pos(being_data.pos[1], being_data.pos[2])
 					table.insert(self.current_level_beings, being)
 				elseif being_data.class == "gold" then
-					local being = Gold(self, being_data.value)
+					local being = Gold(self, being_data)
 					being:move_to_pos(being_data.pos[1], being_data.pos[2])
 					table.insert(self.current_level_beings, being)
 				elseif being_data.class == "cig" then
-					local being = Cig(self, being_data.value)
+					local being = Cig(self, being_data)
 					being:move_to_pos(being_data.pos[1], being_data.pos[2])
 					table.insert(self.current_level_beings, being)
 				end

@@ -26,3 +26,7 @@ function table_to_string(o)
 		return tostring(o)
 	end
 end
+
+function print_item_names(t)
+	for _, i in ipairs(t) do print(i.name) end
+end

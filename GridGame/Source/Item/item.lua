@@ -10,7 +10,7 @@ function Item:init(img, map, name)
 	self.value = 0
 	self:setup_frames()
 	self:add()
-	self:setZIndex(1001)
+	self:setZIndex(1001)	
 end
 
 function Item:attacked_by(attacker)
