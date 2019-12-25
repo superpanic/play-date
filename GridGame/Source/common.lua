@@ -2,10 +2,11 @@ import "CoreLibs/graphics"
 
 playdate.display.setScale(2)
 
-grid_size = 16
+grid_size = 16 -- pixel size of tiles
 screen_width = playdate.display.getWidth()
 screen_height = playdate.display.getHeight()
-edge_limit = 3
+global_edge_limit = 3 -- how close to screen edge activates scroll
+global_fog_of_war = 3 -- how far the player can see enemies and items
 
 libgfx = playdate.graphics
 libspr = playdate.graphics.sprite

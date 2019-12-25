@@ -42,7 +42,7 @@ end
 function Map:update_beings()
 	for i,b in pairs(self.current_level_beings) do
 		
-		if self:line_of_sight(b.current_pos, self.player.current_pos) and self:player_is_within(b.current_pos.x, b.current_pos.y, 3) then
+		if self:line_of_sight(b.current_pos, self.player.current_pos) and self:player_is_within(b.current_pos.x, b.current_pos.y, global_fog_of_war) then
 			b:setVisible(true)
 		else
 			b:setVisible(false)
@@ -182,6 +182,9 @@ function Map:player_is_within(x, y, n)
 end
 
 function Map:get_normalized_distance(tile_pos, player_pos)
+	-- this is stupid and slow
+	-- and not used at the moment
+	-- TODO: rewrite if used!
 	
 	local distance = {}
 	distance.x = player_pos.x - tile_pos.x
@@ -208,7 +211,7 @@ function Map:get_normalized_distance(tile_pos, player_pos)
 end
 
 function Map:update_visibility_map()
-	--if true then return null end
+	-- if true then return null end
 	-- go through all positions
 	-- is pos within screen?
 	-- TODO: is pos within circle of sight?
