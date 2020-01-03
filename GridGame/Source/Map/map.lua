@@ -1,8 +1,8 @@
 class('Map').extends(playdate.graphics.sprite)
 
 local gridSize = 16
--- local grid_width = 400/grid_size
--- local grid_height = 240/grid_size
+local tile_render_max_x = screen_width / grid_size -- +1
+local tile_render_max_y = screen_height / grid_size -- +1
 
 function Map:init()
 	Map.super.init(self)
@@ -42,11 +42,23 @@ end
 function Map:update_beings()
 	for i,b in pairs(self.current_level_beings) do
 		
-		if self:line_of_sight(b.current_pos, self.player.current_pos) and self:player_is_within(b.current_pos.x, b.current_pos.y, global_fog_of_war) then
-			b:setVisible(true)
-		else
-			b:setVisible(false)
+		local vis = true
+		
+		-- offset being pos
+		local col = b.current_pos.x + self.map_offset.x
+		local row = b.current_pos.y + self.map_offset.y
+		
+		-- do boundary check
+		if col < 0 or row < 0 then vis = false end
+		if col > tile_render_max_x or row > tile_render_max_y then vis = false end
+
+		if vis == true then
+			if not( self:line_of_sight(b.current_pos, self.player.current_pos) and self:player_is_within(b.current_pos.x, b.current_pos.y, global_fog_of_war) ) then
+				vis = false
+			end
 		end
+		
+		b:setVisible(vis)
 		
 		-- run beings ai
 		if not b.remove_me then
@@ -130,9 +142,6 @@ end
 function Map:draw_map()
 	if self.is_level_loaded == false then return end
 
-	local max_x = screen_width / grid_size
-	local max_y = screen_height / grid_size
-
 	playdate.graphics.lockFocus(self.img)
 		playdate.graphics.setColor(playdate.graphics.kColorBlack)
 		playdate.graphics.fillRect(0, 0, screen_width, screen_height)
@@ -145,7 +154,7 @@ function Map:draw_map()
 				
 				-- screen boundary check:
 				if col < 0 or row < 0 then goto continue end
-				if col > max_x or row > max_y then goto continue end
+				if col > tile_render_max_x or row > tile_render_max_y then goto continue end
 				
 				if not self:player_is_within(x, y, 3) then goto continue end
 				
