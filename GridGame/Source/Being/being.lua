@@ -23,7 +23,7 @@ function Being:move_to_pos(x, y)
 	self.current_pos.x = x
 	self.current_pos.y = y
 	-- moveTo is 0 indexted
-	self:moveTo((x + self.pos_offset.x - 1)*grid_size+grid_size/2, (y + self.pos_offset.y - 1)*grid_size+grid_size/2)
+	self:moveTo((x + self.pos_offset.x - 1)*global_grid_size+global_grid_size/2, (y + self.pos_offset.y - 1)*global_grid_size+global_grid_size/2)
 	return true
 end
 
@@ -33,7 +33,7 @@ function Being:check_collision(x, y)
 end
 
 function Being:update_pos()
-	self:moveTo((self.current_pos.x + self.pos_offset.x - 1)*grid_size+grid_size/2, (self.current_pos.y + self.pos_offset.y - 1)*grid_size+grid_size/2)
+	self:moveTo((self.current_pos.x + self.pos_offset.x - 1)*global_grid_size+global_grid_size/2, (self.current_pos.y + self.pos_offset.y - 1)*global_grid_size+global_grid_size/2)
 end
 
 function Being:set_offset(x,y)
@@ -46,8 +46,8 @@ function Being:get_screen_pos()
 	local xpos = self.current_pos.x + self.pos_offset.x
 	local ypos = self.current_pos.y + self.pos_offset.y
 	local p = { 
-		x = (xpos - 1) * grid_size + grid_size/2, 
-		y = (ypos - 1) * grid_size + grid_size/2
+		x = (xpos - 1) * global_grid_size + global_grid_size/2, 
+		y = (ypos - 1) * global_grid_size + global_grid_size/2
 	}
 	return p
 end

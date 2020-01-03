@@ -44,12 +44,12 @@ end
 function update_map_offset(dir_x,dir_y)
 	-- scroll if closer than global_edge_limit to screen edge	
 	local pos = player:get_screen_pos()
-	pos.x = math.floor(pos.x/grid_size)
-	pos.y = math.floor(pos.y/grid_size)
+	pos.x = math.floor(pos.x/global_grid_size)
+	pos.y = math.floor(pos.y/global_grid_size)
 	local scroll_x, scroll_y = 0, 0
 
 	if dir_x == 1 then -- right edge
-		if pos.x > screen_width/grid_size - global_edge_limit then
+		if pos.x > screen_width/global_grid_size - global_edge_limit then
 			scroll_x = -1
 		end
 	elseif dir_x == -1 then -- left edge
@@ -59,7 +59,7 @@ function update_map_offset(dir_x,dir_y)
 	end
 	
 	if dir_y == 1 then -- lower edge
-		if pos.y > screen_height/grid_size - global_edge_limit then
+		if pos.y > screen_height/global_grid_size - global_edge_limit then
 			scroll_y = -1
 		end
 	elseif dir_y == -1 then -- upper edge

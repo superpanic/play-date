@@ -1,15 +1,14 @@
 class('Map').extends(playdate.graphics.sprite)
 
-local gridSize = 16
-local tile_render_max_x = screen_width / grid_size -- +1
-local tile_render_max_y = screen_height / grid_size -- +1
+local tile_render_max_x = screen_width / global_grid_size -- +1
+local tile_render_max_y = screen_height / global_grid_size -- +1
 
 function Map:init()
 	Map.super.init(self)
 	self.parent = Map.super.super
 	self.player = {}
 
-	self.map_offset = {x=0, y=0}
+	self.private_map_offset = {x=0, y=0}
 	
 	-- load art
 	self.img_table = playdate.graphics.imagetable.new("Map/map")
@@ -45,8 +44,8 @@ function Map:update_beings()
 		local vis = true
 		
 		-- offset being pos
-		local col = b.current_pos.x + self.map_offset.x
-		local row = b.current_pos.y + self.map_offset.y
+		local col = b.current_pos.x + self.private_map_offset.x
+		local row = b.current_pos.y + self.private_map_offset.y
 		
 		-- do boundary check
 		if col < 0 or row < 0 then vis = false end
@@ -85,15 +84,16 @@ function Map:load_level(level)
 end
 
 function Map:get_map_offset()
-	return self.map_offset
+	return self.private_map_offset
+--	return { x = self.private_map_offset.x + x_offset, y = self.private_map_offset.y + y_offset }
 end
 
 function Map:add_map_offset(x, y)
-	self.map_offset.x = self.map_offset.x + x
-	self.map_offset.y = self.map_offset.y + y
+	self.private_map_offset.x = self.private_map_offset.x + x
+	self.private_map_offset.y = self.private_map_offset.y + y
 	if #self.current_level_beings > 0 then
 		for i, being in ipairs(self.current_level_beings) do
-			being:set_offset(self.map_offset.x, self.map_offset.y)
+			being:set_offset(self.private_map_offset.x, self.private_map_offset.y)
 			being:update_pos()
 		end
 	end
@@ -117,10 +117,10 @@ end
 
 function Map:draw_map_all()
 	if self.is_level_loaded == false then return end
-	playdate.graphics.lockFocus(self.img) 
+	libgfx.lockFocus(self.img) 
 		--
-		playdate.graphics.setColor(playdate.graphics.kColorBlack)
-		playdate.graphics.fillRect(0, 0, screen_width, screen_height)
+		libgfx.setColor(libgfx.kColorBlack)
+		libgfx.fillRect(0, 0, screen_width, screen_height)
 		-- draw part of map visible on screen
 		for x = 1, self.grid_width do
 			for y = 1, self.grid_height do
@@ -129,13 +129,13 @@ function Map:draw_map_all()
 				-- get the image tile and draw to level map
 				local im = self.img_table:getImage(tile)
 				-- adjust for image being 0-indexed
-				local col = x + self.map_offset.x
-				local row = y + self.map_offset.y
+				local col = x + self.private_map_offset.x
+				local row = y + self.private_map_offset.y
 				im:drawAt((col-1)*grid_size,(row-1)*grid_size)
 			end
 		end
 	--
-	playdate.graphics.unlockFocus()
+	libgfx.unlockFocus()
 	self:markDirty() -- Map inherits sprite object!
 end
 
@@ -149,8 +149,8 @@ function Map:draw_map()
 		for x = 1, self.grid_width do
 			for y = 1, self.grid_height do
 				-- game grid (not pixel grid):
-				local col = x + self.map_offset.x
-				local row = y + self.map_offset.y
+				local col = x + self.private_map_offset.x
+				local row = y + self.private_map_offset.y
 				
 				-- screen boundary check:
 				if col < 0 or row < 0 then goto continue end
@@ -166,9 +166,9 @@ function Map:draw_map()
 					-- get the image tile and draw to level map
 					local im = self.img_table:getImage(tile)
 					-- adjust for image being 0-indexed
-					local col = x + self.map_offset.x
-					local row = y + self.map_offset.y
-					im:drawAt((col-1)*grid_size,(row-1)*grid_size)
+					local col = x + self.private_map_offset.x
+					local row = y + self.private_map_offset.y
+					im:drawAt((col-1) * global_grid_size,(row-1) * global_grid_size)
 					
 					-- add shadow
 					--playdate.graphics.setDitherPattern(self:get_normalized_distance(p1,self.player.current_pos))
@@ -228,8 +228,8 @@ function Map:update_visibility_map()
 		for y=1, self.grid_height do
 			local max_x = screen_width / grid_size
 			local max_y = screen_height / grid_size
-			local col = x + self.map_offset.x
-			local row = y + self.map_offset.y
+			local col = x + self.private_map_offset.x
+			local row = y + self.private_map_offset.y
 			-- screen boundary check:
 			if col < 0 or row < 0 then goto continue end
 			if col > max_x or row > max_y then goto continue end
