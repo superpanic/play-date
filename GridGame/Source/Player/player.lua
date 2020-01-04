@@ -16,8 +16,8 @@ function Player:init(map)
 	self:setup_frames()
 	self:add()
 	self:setZIndex(1000)
-	
 	self.weapon = Dagger()
+	self.inventory_updated = false
 end
 
 function Player:check_collision(x, y)
@@ -48,6 +48,7 @@ function Player:pick_up(item)
 			print("inventory is nil")
 		else
 			print("added " .. self.inventory[#self.inventory].className .. " to inventory")
+			self.inventory_updated = true
 		end
 	end	
 end

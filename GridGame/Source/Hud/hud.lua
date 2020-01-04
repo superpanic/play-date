@@ -26,6 +26,15 @@ end
 
 function Hud:update()
 	-- update if inventory has changed?
-	
+	if self.player.inventory_updated then
+		print("updating hud")
+		libgfx.lockFocus(self.img)
+		for index, item in ipairs(self.player.inventory) do
+			im = item:get_image()
+			im:drawAt(padding + global_grid_size * (index-1), padding)
+		end
+		libgfx.unlockFocus()
+		self:markDirty()
+		self.player.inventory_updated = false
+	end
 end
-

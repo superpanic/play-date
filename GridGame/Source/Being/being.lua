@@ -68,6 +68,10 @@ function Being:setup_frames()
 	self:next_image()
 end
 
+function Being:get_image()
+	return self.images[self.current_state[self.frame_index]]
+end
+
 function Being:next_image()
 	if self.remove_me then return end -- avoid adding a timer call (below)
 
