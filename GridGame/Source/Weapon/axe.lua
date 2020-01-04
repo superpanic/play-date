@@ -7,6 +7,10 @@ class('Axe').extends(Weapon)
 local img = playdate.graphics.imagetable.new('Weapon/axe')
 
 function Axe:init()
+	if not img then
+		print("axe weapon image missing")
+	end
+
 	Axe.super.init(self, {
 		image  = img, 
 		name   = "Axe", 

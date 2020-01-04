@@ -3,8 +3,7 @@ class('Weapon').extends(Object)
 function Weapon:init(params)
 	Weapon.super.init(self)
 
-	if params.images then self.images = params.images
-	else self.images = 0 end
+	if params.image then self.image = params.image end
 	
 	if params.name then self.name = params.name
 	else self.name = "Undefined weapon" end
@@ -23,3 +22,6 @@ function Weapon:init(params)
 
 end
 
+function Weapon:get_image()
+	return self.image[1]
+end

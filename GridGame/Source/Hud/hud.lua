@@ -17,8 +17,10 @@ function Hud:setup()
 	self:add()
 	self:setZIndex(hud_z_index)
 	libgfx.lockFocus(self.img)
-		libgfx.setColor(libgfx.kColorWhite)
+		libgfx.setColor(libgfx.kColorBlack)
 		libgfx.fillRect( 0, 0, screen_width, hud_height)
+		libgfx.setColor(libgfx.kColorWhite)
+		libgfx.drawLine(0,0,screen_width,0)
 	libgfx.unlockFocus()
 	self:moveTo( screen_width/2, screen_height-hud_height/2 )
 	self:markDirty()
@@ -29,10 +31,14 @@ function Hud:update()
 	if self.player.inventory_updated then
 		print("updating hud")
 		libgfx.lockFocus(self.img)
-		for index, item in ipairs(self.player.inventory) do
-			im = item:get_image()
-			im:drawAt(padding + global_grid_size * (index-1), padding)
-		end
+			local im
+			for index, item in ipairs(self.player.inventory) do
+				im = item:get_image()
+				im:drawAt(padding + global_grid_size * (index-1), padding)
+			end
+			-- draw current weapon
+			im = self.player.weapon:get_image()
+			im:drawAt(screen_width - global_grid_size - padding, padding)
 		libgfx.unlockFocus()
 		self:markDirty()
 		self.player.inventory_updated = false

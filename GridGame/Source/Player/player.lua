@@ -17,7 +17,7 @@ function Player:init(map)
 	self:add()
 	self:setZIndex(1000)
 	self.weapon = Dagger()
-	self.inventory_updated = false
+	self.inventory_updated = true
 end
 
 function Player:check_collision(x, y)
