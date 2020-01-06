@@ -52,7 +52,19 @@ end
 
 function draw_level(l)
 	if not l then l = 1 end
-	print(level_data.levels[1].tiles[1])
+	--print(level_data.levels[1].tiles[1])
+	local tiles = level_data.levels[1].tiles
+	for y = 1,4 do
+		for x = 1,12 do
+			local tile = tiles[ (y-1)*12+x ]
+			-- get the image tile and draw to level map
+			local img = level_img_table:getImage(tile)
+			-- adjust for image being 0-indexed
+			local xp = x * 8
+			local yp = y * 8
+			img:drawAt(xp,yp)
+		end
+	end
 end
 
 function setup()
@@ -60,12 +72,13 @@ function setup()
 -- background
 	local bg_img = lib_gfx.image.new(g_screen_width, g_screen_height)
 	
-	draw_level()
+	
 	-- draw background
 	lib_gfx.lockFocus(bg_img)
 		lib_gfx.setColor(lib_gfx.kColorBlack)
 		lib_gfx.fillRect(0, 0, g_screen_width, g_screen_height)
-		draw_grid(lib_gfx.kColorWhite, 32)
+		--draw_grid(lib_gfx.kColorWhite, 32)
+		draw_level()
 	lib_gfx.unlockFocus()
 	bg_sprite:setImage(bg_img)
 
