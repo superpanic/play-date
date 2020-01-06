@@ -36,7 +36,7 @@ function Hud:update()
 				im = item:get_image()
 				im:drawAt(padding + global_grid_size * (index-1), padding)
 			end
-			-- draw current weapon
+			-- draw weapon
 			im = self.player.weapon:get_image()
 			im:drawAt(screen_width - global_grid_size - padding, padding)
 		libgfx.unlockFocus()
