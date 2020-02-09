@@ -4,8 +4,8 @@
 			"name": "level 1",
 			"gridw": 14,
 			"gridh": 12,
-			"w":4,
-			"h":5,
+			"height_table_w":12,
+			"height_table_h":15,
 			"offset": 48,
 			"tiles_old": [
 				1,1,2,3,4,5,2,3,4,5,1,1,

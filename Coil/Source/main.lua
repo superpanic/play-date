@@ -13,8 +13,9 @@ g_grid_size = 16 -- pixel size of tiles
 g_screen_width = playdate.display.getWidth()
 g_screen_height = playdate.display.getHeight()
 
-g_debug = true
-g_debug_string = ""
+local g_debug = true
+local g_debug_string = ""
+local g_debug_counter = 1
 
 local g_friction = 0.92
 local g_acceleration = 0.2
@@ -71,25 +72,6 @@ function draw_level(l)
 			img:drawAt(xp,yp)
 		end
 	end
-end
-
-function draw_debug_grid(l)
-	if not l then l = 1 end
-	local w = 4
-	local h = 5
-	local grid_size = g_grid_size
-	local xoffset = 120
-	local yoffset = 4
-	lib_gfx.setColor(lib_gfx.kColorWhite)
-	for y = 0, h do
-		lib_gfx.drawLine(xoffset, y * grid_size + yoffset, grid_size * w + xoffset, y * grid_size + yoffset)
-		for x = 0, w do
-			lib_gfx.drawLine(x * grid_size + xoffset, yoffset, x * grid_size + xoffset, h * grid_size + yoffset+1)
-		end
-	end
-	p = iso_to_grid_pos(ball_pos,48)
-	lib_gfx.setColor(lib_gfx.kColorXOR)
-	lib_gfx.drawPixel(p.x+xoffset,p.y+yoffset)
 end
 
 function setup()
@@ -211,28 +193,36 @@ function playdate.AButtonDown()
 end
 
 function playdate.rightButtonDown()
-	--print_pos()
+	local xoff = 48
+	local debug_pos_list = { {x=xoff,y=0}, {x=xoff,y=16}, {x=xoff,y=32}, {x=xoff,y=48},
+				 {x=xoff,y=0}, {x=xoff+16,y=8}, {x=xoff+32,y=16}, {x=xoff+48,y=24},
+				{x=xoff,y=0}, {x=xoff-16,y=8}, {x=xoff-32,y=16}, {x=xoff-48,y=24} }
+	if g_debug_counter < #debug_pos_list then
+		g_debug_counter = g_debug_counter + 1
+	else
+		g_debug_counter=1
+	end
+	ball_pos.x = debug_pos_list[g_debug_counter].x
+	ball_pos.y = debug_pos_list[g_debug_counter].y
 end
 
 function iso_to_grid_pos(pos, offset)
-	--local offset_x = 48.0
-	local tx = pos.x + (pos.y-1)*2 - offset + g_grid_size
-	local ty = pos.y*2 - (pos.x - offset)/2 + g_grid_size
-	return {x=tx, y=ty}
+	local grid_x = pos.x + (pos.y-1) * 2 - offset + g_grid_size
+	local grid_y = pos.y * 2 - (pos.x - offset) + g_grid_size
+	return { x = grid_x, y = grid_y }
 end
 
-function get_height_val_at(pos)
+function get_height_val_at(top_down_pos)
 	-- get list of height map values
 	local h_map = level_data.levels[g_current_level].hmap
-	-- get grid position from iso (screen position)
-	local grid_pos = iso_to_grid_pos(pos, level_data.levels[g_current_level].offset)
-	-- get level  width
-	local w = level_data.levels[g_current_level].gridw
-	-- get level height
-	local h = level_data.levels[g_current_level].gridh
+	-- get height table width
+	local w = level_data.levels[g_current_level].height_table_w
+	-- get height table height
+	local h = level_data.levels[g_current_level].height_table_h
 
-	local lookup_x = math.floor(grid_pos.x / w)
-	local lookup_y = math.floor(grid_pos.y / h)
+	local lookup_x = math.floor(top_down_pos.x / w)
+	local lookup_y = math.floor(top_down_pos.y / h)
+
 	--print(lookup_x, lookup_y)
 	local i = w * (lookup_y-1) + lookup_x
 	local h_val = 999
@@ -245,12 +235,29 @@ end
 function print_pos()
 	p = iso_to_grid_pos(ball_pos, 48)
 	local h_val = get_height_val_at({x=p.x, y=p.y})
-	g_debug_string=("x:"..string.format("%03d",math.floor(p.x/14)).." y:"..string.format("%03d",math.floor(p.y/12)) .. " height:".. string.format("%03d",h_val) )
+	g_debug_string=(
+		 "x:"..string.format("%03d",math.floor(ball_pos.x))..
+		" y:"..string.format("%03d",math.floor(ball_pos.y)) .. 
+		" height:".. string.format("%03d",h_val)
+	)
 end
 
--- x offset 48
--- y offset 0
--- grid 16
-
--- x - offset + (y-1)*2
--- y/2 - (x-x_offset)/2
+function draw_debug_grid(l)
+	if not l then l = 1 end
+	local w = 4
+	local h = 5
+	local grid_size = g_grid_size
+	local xoffset = 120
+	local yoffset = 4
+	lib_gfx.setColor(lib_gfx.kColorWhite)
+	for y = 0, h do
+		lib_gfx.drawLine(xoffset, y * grid_size + yoffset, grid_size * w + xoffset, y * grid_size + yoffset)
+		for x = 0, w do
+			lib_gfx.drawLine(x * grid_size + xoffset, yoffset, x * grid_size + xoffset, h * grid_size + yoffset+1)
+		end
+	end
+	p = iso_to_grid_pos(ball_pos,48)
+	lib_gfx.setColor(lib_gfx.kColorXOR)
+	-- divide by 2, and draw pixel
+	lib_gfx.drawPixel((p.x/2)+xoffset,(p.y/2)+yoffset)
+end
