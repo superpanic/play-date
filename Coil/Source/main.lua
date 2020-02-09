@@ -13,15 +13,12 @@ g_grid_size = 16 -- pixel size of tiles
 g_screen_width = playdate.display.getWidth()
 g_screen_height = playdate.display.getHeight()
 
-local g_debug = true
-local g_debug_string = ""
-local g_debug_counter = 1
+-- debug vars
+g_debug = true
+g_debug_string = ""
+g_debug_counter = 1
 
-local g_friction = 0.92
-local g_acceleration = 0.2
-local g_accelerate_flag = false
-
-
+-- state vars
 local k_game_state = {
 	INITIAL = 1, 
 	READY   = 2, 
@@ -32,13 +29,18 @@ local k_game_state = {
 
 local current_state = k_game_state.INITIAL
 
--- ball
+-- ball vars
+local ball_friction = 0.92
+local ball_acceleration = 0.2
+local ball_accelerate_flag = false
+local ball_height_offset = 0
+
 local ball_sprite = lib_spr.new()
 local ball_pos = {x=0,y=0}
 local ball_velocity = 1
 local ball_img_table = lib_gfx.imagetable.new('Artwork/ball')
 
--- level
+-- level vars
 local g_current_level = 1
 local bg_sprite = lib_spr.new()
 local level_img_table = lib_gfx.imagetable.new('Artwork/tiles')
@@ -143,7 +145,7 @@ function playdate.update()
 	if g_debug == true then
 		print_pos()
 		lib_gfx.setImageDrawMode(playdate.graphics.kDrawModeFillWhite)
-		lib_gfx.drawText(g_debug_string, 10, g_screen_height-25)
+		lib_gfx.drawText(g_debug_string, 10, g_screen_height-22)
 		draw_debug_grid()
 	end
 end
@@ -153,16 +155,24 @@ function paused()
 end
 
 function update_ball_motion()
-	if g_accelerate_flag then
-		ball_velocity = ball_velocity + g_acceleration
+	if ball_accelerate_flag then
+		ball_velocity = ball_velocity + ball_acceleration
 	else
-		ball_velocity = ball_velocity * g_friction
+		ball_velocity = ball_velocity * ball_friction
 	end
 	pos = degreesToCoords(playdate.getCrankPosition())		
 	ball_pos.x = ball_pos.x + ball_velocity * pos.x
 	ball_pos.y = ball_pos.y + ball_velocity * pos.y
 	ball_sprite:moveTo(ball_pos.x, ball_pos.y)
 	ball_sprite:setImage(ball_img_table:getImage(get_ball_frame()))
+end
+
+function check_height_map()
+	-- if ball height and height map value differs a lot, the ball is falling
+		-- or
+	-- check nearest height map coordinates
+	-- if any height map value is lower than the current, add velocity in that direction
+	
 end
 
 function degreesToCoords(angle)
@@ -174,20 +184,18 @@ end
 
 function playdate.BButtonDown()
 	if current_state == k_game_state.PAUSED then return end
-	g_accelerate_flag = true
+	ball_accelerate_flag = true
 end
 
 function playdate.BButtonUp()
 	if current_state == k_game_state.PAUSED then return end
-	g_accelerate_flag = false
+	ball_accelerate_flag = false
 end
 
 function playdate.AButtonDown()
 	if current_state == k_game_state.PAUSED then
 		current_state = k_game_state.PLAYING
 	else
-		print("sprite count: " .. playdate.graphics.sprite.spriteCount() )
-
 		current_state = k_game_state.PAUSED
 	end	
 end
@@ -207,7 +215,7 @@ function playdate.rightButtonDown()
 end
 
 function iso_to_grid_pos(pos, offset)
-	local grid_x = pos.x + (pos.y-1) * 2 - offset + g_grid_size
+	local grid_x = pos.x + pos.y * 2 - offset + g_grid_size
 	local grid_y = pos.y * 2 - (pos.x - offset) + g_grid_size
 	return { x = grid_x, y = grid_y }
 end
@@ -220,10 +228,9 @@ function get_height_val_at(top_down_pos)
 	-- get height table height
 	local h = level_data.levels[g_current_level].height_table_h
 
-	local lookup_x = math.floor(top_down_pos.x / w)
-	local lookup_y = math.floor(top_down_pos.y / h)
+	local lookup_x = math.floor((top_down_pos.x / 10) + 0.5) -- why magic value 10!?
+	local lookup_y = math.floor((top_down_pos.y / 10) + 0.5)
 
-	--print(lookup_x, lookup_y)
 	local i = w * (lookup_y-1) + lookup_x
 	local h_val = 999
 	if i <= #h_map and i > 0 then
@@ -236,8 +243,8 @@ function print_pos()
 	p = iso_to_grid_pos(ball_pos, 48)
 	local h_val = get_height_val_at({x=p.x, y=p.y})
 	g_debug_string=(
-		 "x:"..string.format("%03d",math.floor(ball_pos.x))..
-		" y:"..string.format("%03d",math.floor(ball_pos.y)) .. 
+		 "x:"..string.format("%03d",math.floor(p.x + 0.5))..
+		" y:"..string.format("%03d",math.floor(p.y + 0.5)) .. 
 		" height:".. string.format("%03d",h_val)
 	)
 end
@@ -247,7 +254,7 @@ function draw_debug_grid(l)
 	local w = 4
 	local h = 5
 	local grid_size = g_grid_size
-	local xoffset = 120
+	local xoffset = 130
 	local yoffset = 4
 	lib_gfx.setColor(lib_gfx.kColorWhite)
 	for y = 0, h do
@@ -261,3 +268,4 @@ function draw_debug_grid(l)
 	-- divide by 2, and draw pixel
 	lib_gfx.drawPixel((p.x/2)+xoffset,(p.y/2)+yoffset)
 end
+
