@@ -34,10 +34,6 @@ local ball_friction = 0.92
 local ball_acceleration = 0.2
 local ball_accelerate_flag = false
 
-local ball_altitude = 0
-local ball_fall_velocity = 0.0
-local level_altitude_offset = 100
-
 local ball_sprite = lib_spr.new()
 local ball_pos = {x=0,y=0}
 local ball_velocity = 1
@@ -170,19 +166,19 @@ function update_ball_motion()
 	ball_sprite:setImage(ball_img_table:getImage(get_ball_frame()))
 end
 
-function check_altitude()
-	local altitude = get_altitude_at_ball_pos()
-	if ball_altitude + level_altitude_offset > altitude then
-		-- increase fall velocity
-		ball_fall_velocity = ball_fall_velocity + ball_acceleration
-	else
-	end
-	
-	-- fall towards level height...
-	-- local ball_altitude = 0
-	-- local ball_fall_velocity = 0.0
-	-- local level_altitude_offset = -100
+
+local ball_altitude = 0
+local ball_fall_velocity = 0.0
+local level_altitude_offset = 100
+
+function update_altitude()
+	-- 1. is there a huge difference (larger than half ball diameter)?
+		-- 2. if ball is higher than ground then fall.
+		-- 3. if ground is higher then collide.
+	-- 4. otherwise calculate the smooth value between the altitude values.
+	-- 5. set ball altitude offset to smooth value.
 end
+
 
 function degreesToCoords(angle)
 	local crankRads = math.rad(angle)
