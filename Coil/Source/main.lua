@@ -33,7 +33,10 @@ local current_state = k_game_state.INITIAL
 local ball_friction = 0.92
 local ball_acceleration = 0.2
 local ball_accelerate_flag = false
-local ball_height_offset = 0
+
+local ball_altitude = 0
+local ball_fall_velocity = 0.0
+local level_altitude_offset = 100
 
 local ball_sprite = lib_spr.new()
 local ball_pos = {x=0,y=0}
@@ -160,19 +163,25 @@ function update_ball_motion()
 	else
 		ball_velocity = ball_velocity * ball_friction
 	end
-	pos = degreesToCoords(playdate.getCrankPosition())		
+	pos = degreesToCoords(playdate.getCrankPosition())
 	ball_pos.x = ball_pos.x + ball_velocity * pos.x
 	ball_pos.y = ball_pos.y + ball_velocity * pos.y
 	ball_sprite:moveTo(ball_pos.x, ball_pos.y)
 	ball_sprite:setImage(ball_img_table:getImage(get_ball_frame()))
 end
 
-function check_height_map()
-	-- if ball height and height map value differs a lot, the ball is falling
-		-- or
-	-- check nearest height map coordinates
-	-- if any height map value is lower than the current, add velocity in that direction
+function check_altitude()
+	local altitude = get_altitude_at_ball_pos()
+	if ball_altitude + level_altitude_offset > altitude then
+		-- increase fall velocity
+		ball_fall_velocity = ball_fall_velocity + ball_acceleration
+	else
+	end
 	
+	-- fall towards level height...
+	-- local ball_altitude = 0
+	-- local ball_fall_velocity = 0.0
+	-- local level_altitude_offset = -100
 end
 
 function degreesToCoords(angle)
@@ -214,6 +223,13 @@ function playdate.rightButtonDown()
 	ball_pos.y = debug_pos_list[g_debug_counter].y
 end
 
+function get_altitude_at_ball_pos()
+	local off = level_data.levels[g_current_level].offset
+	local pos = iso_to_grid_pos(ball_pos, off)
+	local hei = get_height_val_at({x=p.x, y=p.y})
+	return hei
+end
+
 function iso_to_grid_pos(pos, offset)
 	local grid_x = pos.x + pos.y * 2 - offset + g_grid_size
 	local grid_y = pos.y * 2 - (pos.x - offset) + g_grid_size
@@ -240,7 +256,7 @@ function get_height_val_at(top_down_pos)
 end
 
 function print_pos()
-	p = iso_to_grid_pos(ball_pos, 48)
+	local p = iso_to_grid_pos(ball_pos, 48)
 	local h_val = get_height_val_at({x=p.x, y=p.y})
 	g_debug_string=(
 		 "x:"..string.format("%03d",math.floor(p.x + 0.5))..
