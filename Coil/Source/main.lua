@@ -227,6 +227,7 @@ function get_altitude_at_ball_pos()
 end
 
 function iso_to_grid_pos(pos, offset)
+	-- TODO: grid size is 32 (not 16)! this is a mixup, clear this!
 	local grid_x = pos.x + pos.y * 2 - offset + g_grid_size
 	local grid_y = pos.y * 2 - (pos.x - offset) + g_grid_size
 	return { x = grid_x, y = grid_y }
@@ -240,14 +241,21 @@ function get_height_val_at(top_down_pos)
 	-- get height table height
 	local h = level_data.levels[g_current_level].height_table_h
 
-	local lookup_x = math.floor((top_down_pos.x / 10) + 0.5) -- why magic value 10!?
-	local lookup_y = math.floor((top_down_pos.y / 10) + 0.5)
+--	local lookup_x = math.floor((top_down_pos.x / 10) + 0.5) -- why magic value 10!?
+--	local lookup_y = math.floor((top_down_pos.y / 10) + 0.5)
 
-	local i = w * (lookup_y-1) + lookup_x
+	local lookup_x = math.floor((top_down_pos.x / 10.66) + 0.5)
+	local lookup_y = math.floor((top_down_pos.y / 10.66) + 0.5)
+
 	local h_val = 999
-	if i <= #h_map and i > 0 then
-		h_val = h_map[i]
+	-- boundary check
+	if (lookup_x > 0 and lookup_x <= w and lookup_y > 0 and lookup_y <= h) then
+		local index = w * (lookup_y-1) + lookup_x
+		if index <= #h_map and index > 0 then
+				h_val = h_map[index]
+		end
 	end
+
 	return h_val
 end
 
