@@ -244,6 +244,13 @@ function get_height_val_at(top_down_pos)
 --	local lookup_x = math.floor((top_down_pos.x / 10) + 0.5) -- why magic value 10!?
 --	local lookup_y = math.floor((top_down_pos.y / 10) + 0.5)
 
+-- this is why the magic value is 10 (10.66 actually)
+-- grid size is 32 (not 16)
+--	32 * 4 = 128
+--	32 * 5 = 160
+--	128/w = 10.66
+--	160/h = 10.66
+
 	local lookup_x = math.floor((top_down_pos.x / 10.66) + 0.5)
 	local lookup_y = math.floor((top_down_pos.y / 10.66) + 0.5)
 
