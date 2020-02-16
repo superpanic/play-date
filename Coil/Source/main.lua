@@ -13,10 +13,20 @@ g_grid_size = 16 -- pixel size of tiles
 g_screen_width = playdate.display.getWidth()
 g_screen_height = playdate.display.getHeight()
 
+g_hmap_div = 10.6666
+-- this is why this magic value is 10.66
+-- grid size is 32 (not 16!)
+--	32 * 4 = 128 
+--	32 * 5 = 160
+--	128/w = 10.66
+--	160/h = 10.66
+
+
 -- debug vars
 g_debug = true
 g_debug_string = ""
 g_debug_counter = 1
+g_debug_val = 0
 
 -- state vars
 local k_game_state = {
@@ -34,6 +44,10 @@ local ball_friction = 0.92
 local ball_acceleration = 0.2
 local ball_accelerate_flag = false
 
+local ball_altitude = 0
+local ball_fall_velocity = 0.0
+local level_altitude_offset = 100
+
 local ball_sprite = lib_spr.new()
 local ball_pos = {x=0,y=0}
 local ball_velocity = 1
@@ -45,6 +59,21 @@ local bg_sprite = lib_spr.new()
 local level_img_table = lib_gfx.imagetable.new('Artwork/tiles')
 local level_data = playdate.datastore.read('Levels/levels')
 if(level_data == nil) then print("cound not read tile data") end
+
+function new_game_object(name, sprite, pos)
+	local obj ={}
+	obj.name = name
+	obj.sprite = sprite
+	obj.pos = pos
+	obj.friction = 0.92
+	obj.acceleration = 0.2
+	obj.accelerate_flag = false
+	obj.altitude = 0
+	obj.fall_velocity = 0
+	obj.__print_name = function() print(obj.name) end
+	obj.__print_id = function() print(obj.id) end
+	return obj
+end
 
 function draw_grid(line_color, grid_size)
 	lib_gfx.setColor(line_color)
@@ -159,26 +188,50 @@ function update_ball_motion()
 	else
 		ball_velocity = ball_velocity * ball_friction
 	end
-	pos = degreesToCoords(playdate.getCrankPosition())
-	ball_pos.x = ball_pos.x + ball_velocity * pos.x
-	ball_pos.y = ball_pos.y + ball_velocity * pos.y
-	ball_sprite:moveTo(ball_pos.x, ball_pos.y)
+	
+	
+
+	local next_pos = degreesToCoords(playdate.getCrankPosition())
+	next_pos.x = next_pos.x * ball_velocity + ball_pos.x
+	next_pos.y = next_pos.y * ball_velocity + ball_pos.y
+
+	next_pos = collision_check(next_pos)
+	altitude_update()
+
+	ball_pos.x = next_pos.x
+	ball_pos.y = next_pos.y
+
+	ball_sprite:moveTo(ball_pos.x, ball_pos.y+(ball_altitude))
 	ball_sprite:setImage(ball_img_table:getImage(get_ball_frame()))
 end
 
-
-local ball_altitude = 0
-local ball_fall_velocity = 0.0
-local level_altitude_offset = 100
-
-function update_altitude()
-	-- 1. is there a huge difference (larger than half ball diameter)?
-		-- 2. if ball is higher than ground then fall.
-		-- 3. if ground is higher then collide.
-	-- 4. otherwise calculate the smooth value between the altitude values.
-	-- 5. set ball altitude offset to smooth value.
+function collision_check(next_pos)
+	-- collision with walls
+	-- collision with other objects
+	-- adjust next pos before returning
+	return next_pos
 end
 
+function altitude_update()
+	ball_altitude = (100-get_altitude_at_pos(ball_pos))/2
+
+	-- are we on flat gound?
+	-- if more than 2 adjacent squares have the same height value, the ground is flat.
+	local current_pos = iso_to_grid_pos(ball_pos)
+	local table_pos = get_height_table_lookup_pos(current_pos)
+	local compare_value = get_height_val_at(current_pos)
+	local flat_counter = 0
+	for x = -1,1 do
+		for y = -1,1 do
+			-- look in hmap and compare with current hmap value
+		end
+	end
+
+	local current_pos = iso_to_grid_pos(ball_pos)
+	local search_pos = current_pos
+	local step_counter = 1
+
+end
 
 function degreesToCoords(angle)
 	local crankRads = math.rad(angle)
@@ -186,6 +239,54 @@ function degreesToCoords(angle)
 	local yp = -1 * math.cos(crankRads)
 	return {x=xp, y=yp}
 end
+
+function get_altitude_at_pos(p)
+	local pos = iso_to_grid_pos(p)
+	local h = get_height_val_at({x=pos.x, y=pos.y})
+	return h
+end
+
+function iso_to_grid_pos(p)
+	-- TODO: grid size is 32 (not 16)! this is a mixup, clear this!
+	local offset = level_data.levels[g_current_level].offset
+	local grid_x = p.x + p.y * 2 - offset + g_grid_size
+	local grid_y = p.y * 2 - (p.x - offset) + g_grid_size
+	return { x = grid_x, y = grid_y }
+end
+
+function get_height_val_at(top_down_pos)
+	lookup_x, lookup_y = get_height_table_lookup_pos(top_down_pos)
+	return get_height_table_value_at(lookup_x, lookup_y)
+end
+
+function get_height_table_lookup_pos(top_down_pos)
+	local lookup_x = math.floor(((top_down_pos.x) / g_hmap_div)+1.0)
+	local lookup_y = math.floor(((top_down_pos.y) / g_hmap_div)+1.0)
+	return lookup_x, lookup_y
+end
+
+function get_height_table_value_at(lookup_x, lookup_y)
+	-- get list of height map values
+	local h_map = level_data.levels[g_current_level].hmap
+	-- get height table width
+	local w = level_data.levels[g_current_level].height_table_w
+	-- get height table height
+	local h = level_data.levels[g_current_level].height_table_h
+
+	local h_val = 999
+	-- boundary check
+	if (lookup_x > 0 and lookup_x <= w and lookup_y > 0 and lookup_y <= h) then
+		local index = w * (lookup_y-1) + lookup_x
+		if index <= #h_map and index > 0 then
+				h_val = h_map[index]
+		end
+	end
+
+	return h_val
+end
+
+
+-- BUTTONS
 
 function playdate.BButtonDown()
 	if current_state == k_game_state.PAUSED then return end
@@ -200,9 +301,12 @@ end
 function playdate.AButtonDown()
 	if current_state == k_game_state.PAUSED then
 		current_state = k_game_state.PLAYING
+		print("game running")
 	else
 		current_state = k_game_state.PAUSED
-	end	
+		print("game paused")
+		print("debug value: " .. g_debug_val)
+	end
 end
 
 function playdate.rightButtonDown()
@@ -219,57 +323,30 @@ function playdate.rightButtonDown()
 	ball_pos.y = debug_pos_list[g_debug_counter].y
 end
 
-function get_altitude_at_ball_pos()
-	local off = level_data.levels[g_current_level].offset
-	local pos = iso_to_grid_pos(ball_pos, off)
-	local hei = get_height_val_at({x=p.x, y=p.y})
-	return hei
+function playdate.upButtonDown()
+	ball_pos.x = 48
+	ball_pos.y = -7
 end
 
-function iso_to_grid_pos(pos, offset)
-	-- TODO: grid size is 32 (not 16)! this is a mixup, clear this!
-	local grid_x = pos.x + pos.y * 2 - offset + g_grid_size
-	local grid_y = pos.y * 2 - (pos.x - offset) + g_grid_size
-	return { x = grid_x, y = grid_y }
+function playdate.downButtonDown()
+	ball_pos.x = ball_pos.x + 0.5
+	ball_pos.y = ball_pos.y + 0.25
 end
 
-function get_height_val_at(top_down_pos)
-	-- get list of height map values
-	local h_map = level_data.levels[g_current_level].hmap
-	-- get height table width
-	local w = level_data.levels[g_current_level].height_table_w
-	-- get height table height
-	local h = level_data.levels[g_current_level].height_table_h
-
---	local lookup_x = math.floor((top_down_pos.x / 10) + 0.5) -- why magic value 10!?
---	local lookup_y = math.floor((top_down_pos.y / 10) + 0.5)
-
--- this is why the magic value is 10 (10.66 actually)
--- grid size is 32 (not 16)
---	32 * 4 = 128
---	32 * 5 = 160
---	128/w = 10.66
---	160/h = 10.66
-
-	local lookup_x = math.floor((top_down_pos.x / 10.66) + 0.5)
-	local lookup_y = math.floor((top_down_pos.y / 10.66) + 0.5)
-
-	local h_val = 999
-	-- boundary check
-	if (lookup_x > 0 and lookup_x <= w and lookup_y > 0 and lookup_y <= h) then
-		local index = w * (lookup_y-1) + lookup_x
-		if index <= #h_map and index > 0 then
-				h_val = h_map[index]
-		end
-	end
-
-	return h_val
+function playdate.leftButtonDown()
+	ball_pos.x = ball_pos.x - 0.5
+	ball_pos.y = ball_pos.y + 0.25
 end
+
+
+
+
+-- DEBUG
 
 function print_pos()
 	local p = iso_to_grid_pos(ball_pos, 48)
 	local h_val = get_height_val_at({x=p.x, y=p.y})
-	g_debug_string=(
+	g_debug_string = (
 		 "x:"..string.format("%03d",math.floor(p.x + 0.5))..
 		" y:"..string.format("%03d",math.floor(p.y + 0.5)) .. 
 		" height:".. string.format("%03d",h_val)
@@ -290,9 +367,8 @@ function draw_debug_grid(l)
 			lib_gfx.drawLine(x * grid_size + xoffset, yoffset, x * grid_size + xoffset, h * grid_size + yoffset+1)
 		end
 	end
-	p = iso_to_grid_pos(ball_pos,48)
+	local p = iso_to_grid_pos(ball_pos,48)
 	lib_gfx.setColor(lib_gfx.kColorXOR)
 	-- divide by 2, and draw pixel
 	lib_gfx.drawPixel((p.x/2)+xoffset,(p.y/2)+yoffset)
 end
-
