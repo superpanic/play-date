@@ -218,18 +218,30 @@ function altitude_update()
 	-- are we on flat gound?
 	-- if more than 2 adjacent squares have the same height value, the ground is flat.
 	local current_pos = iso_to_grid_pos(ball_pos)
-	local table_pos = get_height_table_lookup_pos(current_pos)
+	local table_pos_x, table_pos_y = get_height_table_lookup_pos(current_pos)
 	local compare_value = get_height_val_at(current_pos)
 	local flat_counter = 0
+	--local flat = true
+
 	for x = -1,1 do
 		for y = -1,1 do
 			-- look in hmap and compare with current hmap value
+			if get_height_table_value_at(table_pos_x+x, table_pos_y+y) == compare_value then 
+				flat_counter = flat_counter + 1
+			end
 		end
 	end
+	if flat_counter <= 3 then 
+		-- we are on a slope!
+		-- TODO: do we need separate velocity for x and y?
+		-- or can we adjust direction and increase velocity?
+	end
 
-	local current_pos = iso_to_grid_pos(ball_pos)
-	local search_pos = current_pos
-	local step_counter = 1
+
+
+--	local current_pos = iso_to_grid_pos(ball_pos)
+--	local search_pos = current_pos
+--	local step_counter = 1
 
 end
 
