@@ -40,20 +40,11 @@ local k_game_state = {
 local current_state = k_game_state.INITIAL
 
 -- ball vars
-local ball_friction = 0.92
-local ball_acceleration = 0.2
-local ball_accelerate_flag = false
-
-local ball_altitude = 0
-local ball_fall_velocity = 0.0
-local level_altitude_offset = 100
-
-local ball_sprite = lib_spr.new()
-local ball_pos = {x=0,y=0}
-local ball_velocity = 1
+ball = {}
 local ball_img_table = lib_gfx.imagetable.new('Artwork/ball')
 
 -- level vars
+local level_altitude_offset = 100
 local g_current_level = 1
 local bg_sprite = lib_spr.new()
 local level_img_table = lib_gfx.imagetable.new('Artwork/tiles')
@@ -66,12 +57,19 @@ function new_game_object(name, sprite, pos)
 	obj.sprite = sprite
 	obj.pos = pos
 	obj.friction = 0.92
+	
+	obj.x_velocity = 0.0
+	obj.y_velocity = 0.0
+
 	obj.acceleration = 0.2
 	obj.accelerate_flag = false
 	obj.altitude = 0
 	obj.fall_velocity = 0
-	obj.__print_name = function() print(obj.name) end
-	obj.__print_id = function() print(obj.id) end
+	
+	obj.print_name = function() 
+		print(obj.name) 
+	end
+	
 	return obj
 end
 
@@ -125,20 +123,17 @@ function setup()
 	bg_sprite:add()
 	
 -- ball
-
 	local ball_img = ball_img_table:getImage(13)
+	local ball_sprite = lib_spr.new()
 	ball_sprite:setImage(ball_img)
-
---	ball_pos.x = g_screen_width/2
---	ball_pos.y = g_screen_height/2
-
+	local ball_pos = {}
 	ball_pos.x = 50.0
 	ball_pos.y = 25.0
 
-	ball_sprite:moveTo(ball_pos.x, ball_pos.y)
-	
-	ball_sprite:setZIndex(1000)
-	ball_sprite:add()
+	ball = new_game_object("ball", ball_sprite, ball_pos)
+	ball.sprite:moveTo(ball.pos.x, ball.pos.y)
+	ball.sprite:setZIndex(1000)	
+	ball.sprite:add()
 
 -- crank
 	-- reset the crank diff
@@ -147,8 +142,8 @@ function setup()
 end
 
 function get_ball_frame()
-	local x = (math.floor(ball_pos.x) % 5)+1
-	local y = (math.floor(ball_pos.y) % 5)
+	local x = (math.floor(ball.pos.x) % 5)+1
+	local y = (math.floor(ball.pos.y) % 5)
 	return y*5+x
 end
 
@@ -183,26 +178,34 @@ function paused()
 end
 
 function update_ball_motion()
-	if ball_accelerate_flag then
-		ball_velocity = ball_velocity + ball_acceleration
+	-- get current direction
+	local vector = degreesToCoords(playdate.getCrankPosition())
+
+	-- adjust velocity
+	if ball.accelerate_flag then
+		ball.x_velocity = ball.x_velocity + (vector.x * ball.acceleration)
+		ball.y_velocity = ball.y_velocity + (vector.y * ball.acceleration)
 	else
-		ball_velocity = ball_velocity * ball_friction
+		ball.x_velocity = ball.x_velocity * ball.friction
+		ball.y_velocity = ball.y_velocity * ball.friction
 	end
-	
-	
 
-	local next_pos = degreesToCoords(playdate.getCrankPosition())
-	next_pos.x = next_pos.x * ball_velocity + ball_pos.x
-	next_pos.y = next_pos.y * ball_velocity + ball_pos.y
+	-- set next pos
+	local next_pos = {}
+	next_pos.x = ball.pos.x + ball.x_velocity
+	next_pos.y = ball.pos.y + ball.y_velocity
 
+	-- adjust next pos
 	next_pos = collision_check(next_pos)
 	altitude_update()
 
-	ball_pos.x = next_pos.x
-	ball_pos.y = next_pos.y
+	-- set ball poss
+	ball.pos.x = next_pos.x
+	ball.pos.y = next_pos.y
 
-	ball_sprite:moveTo(ball_pos.x, ball_pos.y+(ball_altitude))
-	ball_sprite:setImage(ball_img_table:getImage(get_ball_frame()))
+	-- move sprite
+	ball.sprite:moveTo(ball.pos.x, ball.pos.y+(ball.altitude))
+	ball.sprite:setImage(ball_img_table:getImage(get_ball_frame()))
 end
 
 function collision_check(next_pos)
@@ -213,11 +216,11 @@ function collision_check(next_pos)
 end
 
 function altitude_update()
-	ball_altitude = (100-get_altitude_at_pos(ball_pos))/2
+	ball.altitude = (100-get_altitude_at_pos(ball.pos))/2
 
 	-- are we on flat gound?
 	-- if more than 2 adjacent squares have the same height value, the ground is flat.
-	local current_pos = iso_to_grid_pos(ball_pos)
+	local current_pos = iso_to_grid_pos(ball.pos)
 	local table_pos_x, table_pos_y = get_height_table_lookup_pos(current_pos)
 	local compare_value = get_height_val_at(current_pos)
 	local flat_counter = 0
@@ -234,12 +237,13 @@ function altitude_update()
 	if flat_counter <= 3 then 
 		-- we are on a slope!
 		-- TODO: do we need separate velocity for x and y?
-		-- or can we adjust direction and increase velocity?
+		-- find direction of the slope:
+		
 	end
 
 
 
---	local current_pos = iso_to_grid_pos(ball_pos)
+--	local current_pos = iso_to_grid_pos(ball.pos)
 --	local search_pos = current_pos
 --	local step_counter = 1
 
@@ -302,12 +306,12 @@ end
 
 function playdate.BButtonDown()
 	if current_state == k_game_state.PAUSED then return end
-	ball_accelerate_flag = true
+	ball.accelerate_flag = true
 end
 
 function playdate.BButtonUp()
 	if current_state == k_game_state.PAUSED then return end
-	ball_accelerate_flag = false
+	ball.accelerate_flag = false
 end
 
 function playdate.AButtonDown()
@@ -331,23 +335,23 @@ function playdate.rightButtonDown()
 	else
 		g_debug_counter=1
 	end
-	ball_pos.x = debug_pos_list[g_debug_counter].x
-	ball_pos.y = debug_pos_list[g_debug_counter].y
+	ball.pos.x = debug_pos_list[g_debug_counter].x
+	ball.pos.y = debug_pos_list[g_debug_counter].y
 end
 
 function playdate.upButtonDown()
-	ball_pos.x = 48
-	ball_pos.y = -7
+	ball.pos.x = 48
+	ball.pos.y = -7
 end
 
 function playdate.downButtonDown()
-	ball_pos.x = ball_pos.x + 0.5
-	ball_pos.y = ball_pos.y + 0.25
+	ball.pos.x = ball.pos.x + 0.5
+	ball.pos.y = ball.pos.y + 0.25
 end
 
 function playdate.leftButtonDown()
-	ball_pos.x = ball_pos.x - 0.5
-	ball_pos.y = ball_pos.y + 0.25
+	ball.pos.x = ball.pos.x - 0.5
+	ball.pos.y = ball.pos.y + 0.25
 end
 
 
@@ -356,12 +360,12 @@ end
 -- DEBUG
 
 function print_pos()
-	local p = iso_to_grid_pos(ball_pos, 48)
+	local p = iso_to_grid_pos(ball.pos, 48)
 	local h_val = get_height_val_at({x=p.x, y=p.y})
 	g_debug_string = (
 		 "x:"..string.format("%03d",math.floor(p.x + 0.5))..
 		" y:"..string.format("%03d",math.floor(p.y + 0.5)) .. 
-		" height:".. string.format("%03d",h_val)
+		" height:".. string.format("%03d", h_val)
 	)
 end
 
@@ -379,7 +383,7 @@ function draw_debug_grid(l)
 			lib_gfx.drawLine(x * grid_size + xoffset, yoffset, x * grid_size + xoffset, h * grid_size + yoffset+1)
 		end
 	end
-	local p = iso_to_grid_pos(ball_pos,48)
+	local p = iso_to_grid_pos(ball.pos,48)
 	lib_gfx.setColor(lib_gfx.kColorXOR)
 	-- divide by 2, and draw pixel
 	lib_gfx.drawPixel((p.x/2)+xoffset,(p.y/2)+yoffset)
