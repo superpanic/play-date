@@ -11,6 +11,7 @@ lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
 local DEBUG_FLAG = true
+local DEBUG_STRING = ""
 
 local SCREEN_WIDTH = playdate.display.getWidth()
 local SCREEN_HEIGHT = playdate.display.getHeight()
@@ -83,7 +84,6 @@ function playdate.update()
 
 
 	end
-
 end
 
 function setup()
@@ -144,6 +144,12 @@ function update_orb()
 	ORB.sprite:moveTo(isox, isoy + (ORB.altitude))
 	local image_frame = get_orb_frame()
 	ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
+	if DEBUG_FLAG then
+		DEBUG_STRING = (
+			"x:"..string.format("%03d",math.floor(ORB.pos.x + 0.5))..
+			" y:"..string.format("%03d",math.floor(ORB.pos.y + 0.5))
+		)
+	end
 end
 
 function get_orb_frame()
@@ -191,6 +197,8 @@ function draw_debug_grid(level)
 			end
 		lib_gfx.setColor(lib_gfx.kColorXOR)
 		lib_gfx.drawPixel( ORB.pos.x + xoff, ORB.pos.y + yoff )
+		lib_gfx.setImageDrawMode(playdate.graphics.kDrawModeFillWhite)
+		lib_gfx.drawText(DEBUG_STRING, 10, SCREEN_HEIGHT-22)
 	lib_gfx.unlockFocus()
 	BACKGROUND_SPRITE:markDirty()
 --	BACKGROUND_SPRITE.addDirtyRect(xoff, yoff, GRID_SIZE*level_width, GRID_SIZE*level_height)
