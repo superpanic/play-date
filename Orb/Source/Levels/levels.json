@@ -1,7 +1,9 @@
 { 
 	"levels": [
 		{ 
-			"name": "level 1"
+			"name": "level 1",
+			"width": 4,
+			"height": 5
 		}	
 	]
 }
