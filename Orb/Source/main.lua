@@ -35,8 +35,15 @@ local ORB_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/ORB')
 
 -- level vars
 local CURRENT_LEVEL = 1
-local LEVEL_DATA = playdate.datastore.read("Levels/levels")
 local BACKGROUND_SPRITE = lib_spr.new()
+local TILE_IMAGES = lib_gfx.imagetable.new('Artwork/level_tiles')
+local LEVEL_DATA = playdate.datastore.read("Levels/levels")
+	print(LEVEL_DATA.description)
+local TILE_DATA = playdate.datastore.read("Levels/tiles")
+	print(TILE_DATA.description)
+
+local LEVEL_OFFSET = {x=0,y=0}
+
 
 function new_game_object(name, sprite, pos)
 	local obj ={}
@@ -133,7 +140,7 @@ function update_orb()
 	next_pos.x = ORB.pos.x + ORB.x_velocity
 	next_pos.y = ORB.pos.y + ORB.y_velocity
 
-	-- TODO: collision check
+	-- TODO: collision check here!
 
 	-- set orb pos
 	ORB.pos.x = next_pos.x
@@ -141,6 +148,9 @@ function update_orb()
 
 	-- move sprite
 	local isox, isoy = grid_to_iso(ORB.pos.x, ORB.pos.y, 0, 0)
+	-- offset orb half image height
+	isoy = isoy - select(1,ORB.sprite:getImage():getSize())/2
+
 	ORB.sprite:moveTo(isox, isoy + (ORB.altitude))
 	local image_frame = get_orb_frame()
 	ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
@@ -160,7 +170,39 @@ function get_orb_frame()
 	return y*imap_size+x
 end
 
+function clear_background()
+	lib_gfx.lockFocus(BACKGROUND_SPRITE:getImage())
+		lib_gfx.setColor(lib_gfx.kColorBlack)
+		lib_gfx.fillRect(0,0,SCREEN_WIDTH, SCREEN_HEIGHT)
+	lib_gfx.unlockFocus()
+end
+
 function draw_level(level)
+	if not level then level = 1 end
+	
+	clear_background()
+
+	local w = LEVEL_DATA.levels[level].w 
+	local h = LEVEL_DATA.levels[level].h
+	
+	local print_flag = false
+
+	for y = 1, h do
+		for x = 1, w do
+			local index = w * (y-1) + x
+			local tile = LEVEL_DATA.levels[level].tiles[index]
+			local height_offset = LEVEL_DATA.levels[level].heights[index]
+			local isox, isoy = grid_to_iso( (x-1) * GRID_SIZE, (y-1) * GRID_SIZE)
+			-- add tile image offset
+			isox = isox + TILE_DATA.tiles[tile].xoffset
+			isoy = isoy + TILE_DATA.tiles[tile].yoffset
+			local image = TILE_IMAGES:getImage(tile)
+			lib_gfx.lockFocus(BACKGROUND_SPRITE:getImage())
+				image:drawAt(isox,isoy)
+			lib_gfx.unlockFocus()
+		end
+	end
+
 	if DEBUG_FLAG then
 		draw_debug_grid(CURRENT_LEVEL)
 	end
@@ -168,16 +210,14 @@ end
 
 function draw_debug_grid(level)
 	if not level then level = 1 end
-	local level_width = LEVEL_DATA.levels[CURRENT_LEVEL].width
-	local level_height = LEVEL_DATA.levels[CURRENT_LEVEL].height
+	local level_width = LEVEL_DATA.levels[CURRENT_LEVEL].w
+	local level_height = LEVEL_DATA.levels[CURRENT_LEVEL].h
 	local xoff = 130
 	local yoff = 4
 
 	local img = BACKGROUND_SPRITE:getImage()
 	lib_gfx.lockFocus(img)
 		-- draw to background sprite
-		lib_gfx.setColor(lib_gfx.kColorBlack)
-		lib_gfx.fillRect(0,0,SCREEN_WIDTH, SCREEN_HEIGHT)
 		lib_gfx.setColor(lib_gfx.kColorWhite)
 			for y = 0, level_height do
 				lib_gfx.drawLine(
@@ -205,6 +245,7 @@ function draw_debug_grid(level)
 end
 
 
+
 -- algorithms / math
 
 function degrees_to_vector(angle)
@@ -214,17 +255,24 @@ function degrees_to_vector(angle)
 	return vx, vy
 end
 
-function iso_to_grid(x, y, offx, offy)
-	local gx = p.x + p.y * 2 - offx + GRID_SIZE
-	local gy = p.y * 2 - (p.x - offx) + GRID_SIZE
+function iso_to_grid(x, y, offsetx, offsety)
+	if not offsetx then offsetx = 0 end
+	if not offsety then offsety = 0 end
+	x = x - LEVEL_OFFSET.x
+	y = y - LEVEL_OFFSET.y
+	local gx = x + y * 2 - offsetx + GRID_SIZE
+	local gy = y * 2 - (x - offsetx) + GRID_SIZE
 	return gx, gy
 end
 
-function grid_to_iso(x,y , offx, offy)
-	local ix = x-y + offx
-	local iy = math.abs(x+y) + offy
+function grid_to_iso(x, y, offsetx, offsety)
+	if not offsetx then offsetx = 0 end
+	if not offsety then offsety = 0 end
+	local ix = x-y + offsetx + LEVEL_OFFSET.x
+	local iy = math.abs(x+y)/2 + offsety + LEVEL_OFFSET.y
 	return ix, iy
 end
+
 
 
 -- buttons
@@ -237,4 +285,20 @@ end
 function playdate.BButtonUp()
 	if current_state == GAME_STATE.paused then return end
 	ORB.accelerate_flag = false
+end
+
+function playdate.rightButtonDown()
+	LEVEL_OFFSET.x = LEVEL_OFFSET.x+10
+end
+
+function playdate.leftButtonDown()
+	LEVEL_OFFSET.x = LEVEL_OFFSET.x-10
+end
+
+function playdate.downButtonDown()
+	LEVEL_OFFSET.y = LEVEL_OFFSET.y+10
+end
+
+function playdate.upButtonDown()
+	LEVEL_OFFSET.y = LEVEL_OFFSET.y-10
 end
