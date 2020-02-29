@@ -192,10 +192,15 @@ function draw_level(level)
 			local index = w * (y-1) + x
 			local tile = LEVEL_DATA.levels[level].tiles[index]
 			local height_offset = LEVEL_DATA.levels[level].heights[index]
+			
+			-- calculate tile screen position
 			local isox, isoy = grid_to_iso( (x-1) * GRID_SIZE, (y-1) * GRID_SIZE)
 			-- add tile image offset
 			isox = isox + TILE_DATA.tiles[tile].xoffset
 			isoy = isoy + TILE_DATA.tiles[tile].yoffset
+			-- add latitude offset
+			isoy = isoy - height_offset
+
 			local image = TILE_IMAGES:getImage(tile)
 			lib_gfx.lockFocus(BACKGROUND_SPRITE:getImage())
 				image:drawAt(isox,isoy)
