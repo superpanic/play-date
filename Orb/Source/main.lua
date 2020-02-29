@@ -125,7 +125,7 @@ end
 
 function update_orb()
 	-- get current direction
-	local vectorx, vectory = degrees_to_vector( playdate.getCrankPosition() )
+	local vectorx, vectory = degrees_to_vector( playdate.getCrankPosition()-45 )
 
 	if ORB.accelerate_flag then
 		ORB.x_velocity = ORB.x_velocity + (vectorx * ORB.acceleration)
