@@ -151,6 +151,11 @@ function update_orb()
 	-- get tile grid position
 	ORB.altitude = get_altitude_at_pos(ORB.pos.x, ORB.pos.y)
 
+	local slope_vx, slope_vy = get_slope_vector(ORB.pos.x, ORB.pos.y, ORB.altitude)
+	--print(slope_vx, slope_vy)
+	ORB.x_velocity = ORB.x_velocity - slope_vx
+	ORB.y_velocity = ORB.y_velocity - slope_vy
+
 	-- move sprite
 	local isox, isoy = grid_to_iso(ORB.pos.x, ORB.pos.y, 0, 0)
 	-- offset orb half image height
@@ -167,13 +172,39 @@ function update_orb()
 	end
 end
 
+function get_slope_vector( x, y, current_altitude )
+	if not current_altitude then current_altitude = get_altitude_at_pos( x, y ) end
+
+	local w = LEVEL_DATA.levels[CURRENT_LEVEL].w * GRID_SIZE
+	local h = LEVEL_DATA.levels[CURRENT_LEVEL].h * GRID_SIZE
+	local slope_vx = 0
+	local slope_vy = 0
+
+	local a
+	for ix = -1, 1 do
+		for iy = -1, 1 do
+			if ix ~= 0 and iy ~= 0 then 
+				if   x+ix > 0   and   y+iy > 0   and   x+ix <= w   and   y+iy <= h   then 
+					a = get_altitude_at_pos(x+ix,y+iy)
+					if a < current_altitude then
+						slope_vx = slope_vx + ix * (a-current_altitude)
+						slope_vy = slope_vy + iy * (a-current_altitude)
+					end
+				end
+			end
+		end
+	end
+
+	return slope_vx/8, slope_vy/8
+end
+
 function get_altitude_at_pos( x, y )
 	if x < 0 or y < 0 then return INFINITY_FLOOR_ALTITUDE end
 
 	local w = LEVEL_DATA.levels[CURRENT_LEVEL].w
 	local h = LEVEL_DATA.levels[CURRENT_LEVEL].h
 
-	if x > w * GRID_SIZE or y > h*GRID_SIZE then return INFINITY_FLOOR_ALTITUDE end
+	if x > w * GRID_SIZE or y > h * GRID_SIZE then return INFINITY_FLOOR_ALTITUDE end
 
 	-- find tile base altitude
 	local tilex = math.floor((x / GRID_SIZE))+1
