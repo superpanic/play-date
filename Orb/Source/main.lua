@@ -42,7 +42,8 @@ local LEVEL_DATA = playdate.datastore.read("Levels/levels")
 local TILE_DATA = playdate.datastore.read("Levels/tiles")
 	print(TILE_DATA.description)
 
-local LEVEL_OFFSET = {x=0,y=0}
+local LEVEL_OFFSET = {x=60,y=20}
+local INFINITY_FLOOR_ALTITUDE = -1000
 
 
 function new_game_object(name, sprite, pos)
@@ -140,18 +141,22 @@ function update_orb()
 	next_pos.x = ORB.pos.x + ORB.x_velocity
 	next_pos.y = ORB.pos.y + ORB.y_velocity
 
-	-- TODO: collision check here!
+	-- TODO: collision check using next_pos here!
 
 	-- set orb pos
 	ORB.pos.x = next_pos.x
 	ORB.pos.y = next_pos.y
+
+	-- calculate altitude
+	-- get tile grid position
+	ORB.altitude = get_altitude_at_pos(ORB.pos.x, ORB.pos.y)
 
 	-- move sprite
 	local isox, isoy = grid_to_iso(ORB.pos.x, ORB.pos.y, 0, 0)
 	-- offset orb half image height
 	isoy = isoy - select(1,ORB.sprite:getImage():getSize())/2
 
-	ORB.sprite:moveTo(isox, isoy + (ORB.altitude))
+	ORB.sprite:moveTo(isox, isoy - ORB.altitude)
 	local image_frame = get_orb_frame()
 	ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
 	if DEBUG_FLAG then
@@ -160,6 +165,36 @@ function update_orb()
 			" y:"..string.format("%03d",math.floor(ORB.pos.y + 0.5))
 		)
 	end
+end
+
+function get_altitude_at_pos( x, y )
+	if x < 0 or y < 0 then return INFINITY_FLOOR_ALTITUDE end
+
+	local w = LEVEL_DATA.levels[CURRENT_LEVEL].w
+	local h = LEVEL_DATA.levels[CURRENT_LEVEL].h
+
+	if x > w * GRID_SIZE or y > h*GRID_SIZE then return INFINITY_FLOOR_ALTITUDE end
+
+	-- find tile base altitude
+	local tilex = math.floor((x / GRID_SIZE))+1
+	local tiley = math.floor((y / GRID_SIZE))+1
+
+	local tile_index = w * (tiley-1) + tilex
+
+	local tile_type = LEVEL_DATA.levels[CURRENT_LEVEL].tiles[tile_index]
+	local tile_altitude = LEVEL_DATA.levels[CURRENT_LEVEL].altitude[tile_index]
+
+	-- find local tile altitude
+	local tile_heightmap_x = math.floor( (x - GRID_SIZE * (tilex-1) ))+1
+	local tile_heightmap_y = math.floor( (y - GRID_SIZE * (tiley-1) ))+1
+
+	local tile_heightmap_index = (GRID_SIZE * (tile_heightmap_y-1) + tile_heightmap_x)
+
+	-- add base altitude to local tile altitude
+	local altitude = TILE_DATA.tiles[tile_type].heightmap[tile_heightmap_index]
+	altitude = altitude + tile_altitude
+	
+	return altitude
 end
 
 function get_orb_frame()
@@ -178,7 +213,7 @@ function clear_background()
 end
 
 function draw_level(level)
-	if not level then level = 1 end
+	if not level then level = CURRENT_LEVEL end
 	
 	clear_background()
 
@@ -191,7 +226,7 @@ function draw_level(level)
 		for x = 1, w do
 			local index = w * (y-1) + x
 			local tile = LEVEL_DATA.levels[level].tiles[index]
-			local height_offset = LEVEL_DATA.levels[level].heights[index]
+			local height_offset = LEVEL_DATA.levels[level].altitude[index]
 			
 			-- calculate tile screen position
 			local isox, isoy = grid_to_iso( (x-1) * GRID_SIZE, (y-1) * GRID_SIZE)
@@ -214,7 +249,7 @@ function draw_level(level)
 end
 
 function draw_debug_grid(level)
-	if not level then level = 1 end
+	if not level then level = CURRENT_LEVEL end
 	local level_width = LEVEL_DATA.levels[CURRENT_LEVEL].w
 	local level_height = LEVEL_DATA.levels[CURRENT_LEVEL].h
 	local xoff = 130
