@@ -10,7 +10,7 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-local DEBUG_FLAG = true
+local DEBUG_FLAG = false
 local DEBUG_STRING = ""
 
 local SCREEN_WIDTH = playdate.display.getWidth()
@@ -29,12 +29,14 @@ local GAME_STATE = {
 
 local CURRENT_STATE = GAME_STATE.initial
 
+local FRICTION = 0.92
+
 -- ORB vars
 local ORB = {}
 local ORB_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/ORB')
 
 -- level vars
-local CURRENT_LEVEL = 1
+local CURRENT_LEVEL = 3
 local BACKGROUND_SPRITE = lib_spr.new()
 local TILE_IMAGES = lib_gfx.imagetable.new('Artwork/level_tiles')
 local LEVEL_DATA = playdate.datastore.read("Levels/levels")
@@ -42,7 +44,7 @@ local LEVEL_DATA = playdate.datastore.read("Levels/levels")
 local TILE_DATA = playdate.datastore.read("Levels/tiles")
 	print(TILE_DATA.description)
 
-local LEVEL_OFFSET = {x=60,y=20}
+local LEVEL_OFFSET = { x=60, y=20, velx=0, vely=0 }
 local INFINITY_FLOOR_ALTITUDE = -1000
 
 
@@ -100,8 +102,8 @@ function setup()
 	local orb_sprite = lib_spr.new()
 	orb_sprite:setImage(orb_img)
 	local orb_pos = {}
-	orb_pos.x = 0.0
-	orb_pos.y = 0.0
+	orb_pos.x = 8.0
+	orb_pos.y = 8.0
 	ORB = new_game_object("ORB", orb_sprite, orb_pos)
 	ORB.print_name()
 	ORB.sprite:moveTo(ORB.pos.x, ORB.pos.y)
@@ -151,8 +153,8 @@ function update_orb()
 	-- get tile grid position
 	ORB.altitude = get_altitude_at_pos(ORB.pos.x, ORB.pos.y)
 
+	-- add slope velocity
 	local slope_vx, slope_vy = get_slope_vector(ORB.pos.x, ORB.pos.y, ORB.altitude)
-	--print(slope_vx, slope_vy)
 	ORB.x_velocity = ORB.x_velocity - slope_vx
 	ORB.y_velocity = ORB.y_velocity - slope_vy
 
@@ -161,7 +163,7 @@ function update_orb()
 	-- offset orb half image height
 	isoy = isoy - select(1,ORB.sprite:getImage():getSize())/2
 
-	ORB.sprite:moveTo(isox, isoy - ORB.altitude)
+	ORB.sprite:moveTo(isox+LEVEL_OFFSET.x, isoy - ORB.altitude+LEVEL_OFFSET.y)
 	local image_frame = get_orb_frame()
 	ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
 	if DEBUG_FLAG then
@@ -194,7 +196,7 @@ function get_slope_vector( x, y, current_altitude )
 			end
 		end
 	end
-
+	-- divide with 8 (the total number of coordinates added together)
 	return slope_vx/8, slope_vy/8
 end
 
@@ -230,10 +232,17 @@ end
 
 function get_orb_frame()
 	local imap_size = 5 -- the image map is 5 x 5 tiles
-	local spx,spy = ORB.sprite:getPosition()
+	--local spx,spy = ORB.sprite:getPosition()
+	local spx, spy = grid_to_iso(ORB.pos.x, ORB.pos.y)
 	local x = (math.floor(spx) % imap_size)+1
 	local y = (math.floor(spy) % imap_size)
 	return y*imap_size+x
+end
+
+function offset_background(x,y)
+	LEVEL_OFFSET.x = LEVEL_OFFSET.x + x
+	LEVEL_OFFSET.y = LEVEL_OFFSET.y + y
+	BACKGROUND_SPRITE:markDirty()
 end
 
 function clear_background()
@@ -246,6 +255,15 @@ end
 function draw_level(level)
 	if not level then level = CURRENT_LEVEL end
 	
+	LEVEL_OFFSET.velx = LEVEL_OFFSET.velx * FRICTION
+	LEVEL_OFFSET.vely = LEVEL_OFFSET.vely * FRICTION
+	local orb_x, orb_y = ORB.sprite:getPosition()
+	if orb_x < GRID_SIZE * 3 then LEVEL_OFFSET.velx = LEVEL_OFFSET.velx + 0.5 end
+	if orb_x > SCREEN_WIDTH - GRID_SIZE * 3 then LEVEL_OFFSET.velx = LEVEL_OFFSET.velx - 0.5 end
+	if orb_y < GRID_SIZE * 2 then LEVEL_OFFSET.vely = LEVEL_OFFSET.vely + 0.5 end
+	if orb_y > SCREEN_HEIGHT - GRID_SIZE * 2 then LEVEL_OFFSET.vely = LEVEL_OFFSET.vely - 0.5 end
+	offset_background(LEVEL_OFFSET.velx, LEVEL_OFFSET.vely)
+
 	clear_background()
 
 	local w = LEVEL_DATA.levels[level].w 
@@ -262,8 +280,8 @@ function draw_level(level)
 			-- calculate tile screen position
 			local isox, isoy = grid_to_iso( (x-1) * GRID_SIZE, (y-1) * GRID_SIZE)
 			-- add tile image offset
-			isox = isox + TILE_DATA.tiles[tile].xoffset
-			isoy = isoy + TILE_DATA.tiles[tile].yoffset
+			isox = isox + TILE_DATA.tiles[tile].xoffset + LEVEL_OFFSET.x
+			isoy = isoy + TILE_DATA.tiles[tile].yoffset + LEVEL_OFFSET.y
 			-- add latitude offset
 			isoy = isoy - height_offset
 
@@ -331,18 +349,19 @@ function iso_to_grid(x, y, offsetx, offsety)
 	if not offsety then offsety = 0 end
 	x = x - LEVEL_OFFSET.x
 	y = y - LEVEL_OFFSET.y
-	local gx = x + y * 2 - offsetx + GRID_SIZE
-	local gy = y * 2 - (x - offsetx) + GRID_SIZE
+	local gx = x + y * 2 - offsetx --+ GRID_SIZE
+	local gy = y * 2 - (x - offsetx) --+ GRID_SIZE
 	return gx, gy
 end
 
 function grid_to_iso(x, y, offsetx, offsety)
 	if not offsetx then offsetx = 0 end
 	if not offsety then offsety = 0 end
-	local ix = x-y + offsetx + LEVEL_OFFSET.x
-	local iy = math.abs(x+y)/2 + offsety + LEVEL_OFFSET.y
+	local ix = x-y + offsetx -- + LEVEL_OFFSET.x
+	local iy = math.abs(x+y)/2 + offsety -- + LEVEL_OFFSET.y
 	return ix, iy
 end
+
 
 
 
@@ -359,17 +378,17 @@ function playdate.BButtonUp()
 end
 
 function playdate.rightButtonDown()
-	LEVEL_OFFSET.x = LEVEL_OFFSET.x+10
+	offset_background(10,0)
 end
 
 function playdate.leftButtonDown()
-	LEVEL_OFFSET.x = LEVEL_OFFSET.x-10
+	offset_background(-10,0)
 end
 
 function playdate.downButtonDown()
-	LEVEL_OFFSET.y = LEVEL_OFFSET.y+10
+	offset_background(0,10)
 end
 
 function playdate.upButtonDown()
-	LEVEL_OFFSET.y = LEVEL_OFFSET.y-10
+	offset_background(0,-10)
 end
