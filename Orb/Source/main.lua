@@ -102,10 +102,11 @@ function setup()
 	local orb_sprite = lib_spr.new()
 	orb_sprite:setImage(orb_img)
 	local orb_pos = {}
-	orb_pos.x = 8.0
-	orb_pos.y = 8.0
+	orb_pos.x = 0.0
+	orb_pos.y = 0.0
 	ORB = new_game_object("ORB", orb_sprite, orb_pos)
 	ORB.print_name()
+	move_orb_to_start_position()
 	ORB.sprite:moveTo(ORB.pos.x, ORB.pos.y)
 	ORB.sprite:setZIndex(1000)
 	ORB.sprite:add()
@@ -124,6 +125,11 @@ function setup()
 -- reset crank
 	playdate.getCrankChange()
 	return
+end
+
+function move_orb_to_start_position()
+	ORB.pos.x = 8.0
+	ORB.pos.y = 8.0
 end
 
 function update_orb()
@@ -163,7 +169,7 @@ function update_orb()
 	-- offset orb half image height
 	isoy = isoy - select(1,ORB.sprite:getImage():getSize())/2
 
-	ORB.sprite:moveTo(isox+LEVEL_OFFSET.x, isoy - ORB.altitude+LEVEL_OFFSET.y)
+	ORB.sprite:moveTo(isox + LEVEL_OFFSET.x, isoy - ORB.altitude + LEVEL_OFFSET.y)
 	local image_frame = get_orb_frame()
 	ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
 	if DEBUG_FLAG then
@@ -378,17 +384,22 @@ function playdate.BButtonUp()
 end
 
 function playdate.rightButtonDown()
-	offset_background(10,0)
+	
 end
 
 function playdate.leftButtonDown()
-	offset_background(-10,0)
+	
 end
 
 function playdate.downButtonDown()
-	offset_background(0,10)
+	
 end
 
 function playdate.upButtonDown()
-	offset_background(0,-10)
+	if (CURRENT_LEVEL < #LEVEL_DATA.levels) then
+		CURRENT_LEVEL = CURRENT_LEVEL +1
+	else
+		CURRENT_LEVEL = 1
+	end
+	move_orb_to_start_position()
 end
