@@ -10,8 +10,10 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-local DEBUG_FLAG = false
+local DEBUG_FLAG = true
 local DEBUG_STRING = ""
+local DEBUG_FRAME_STEP = false
+local DEBUG_FRAME_COUNTER = 0
 
 local SCREEN_WIDTH = playdate.display.getWidth()
 local SCREEN_HEIGHT = playdate.display.getHeight()
@@ -19,6 +21,9 @@ local SCREEN_HEIGHT = playdate.display.getHeight()
 local GRID_SIZE = 16
 
 local INFINITY_FLOOR_ALTITUDE = -100
+
+local FRICTION = 0.92
+local GRAVITY = 0.05
 
 -- state vars
 local GAME_STATE = {
@@ -30,9 +35,6 @@ local GAME_STATE = {
 }
 
 local CURRENT_STATE = GAME_STATE.initial
-
-local FRICTION = 0.92
-local GRAVITY = 0.05
 
 -- ORB vars
 local ORB = {}
@@ -73,30 +75,6 @@ function new_game_object(name, sprite, pos)
 	return obj
 end
 
-function playdate.update()
-	if CURRENT_STATE == GAME_STATE.initial then
-		print("setup")
-		setup()
-		CURRENT_STATE = GAME_STATE.ready
-
-
-	elseif CURRENT_STATE == GAME_STATE.ready then
-		print("start")
-		CURRENT_STATE = GAME_STATE.playing
-		
-
-	elseif CURRENT_STATE == GAME_STATE.playing then
-		update_orb()
-		draw_level()
-		lib_spr.update() -- update all sprites
-		
-	elseif CURRENT_STATE == GAME_STATE.paused then
-		paused()
-
-
-	end
-end
-
 function setup()
 -- orb (player sprite)
 	local orb_img = ORB_IMAGE_TABLE:getImage(13)
@@ -128,9 +106,40 @@ function setup()
 	return
 end
 
-function move_orb_to_start_position()
-	ORB.pos.x = 8.0
-	ORB.pos.y = 8.0
+function playdate.update()
+	if DEBUG_FLAG then
+		if not DEBUG_FRAME_STEP then return end
+	end
+
+	if CURRENT_STATE == GAME_STATE.initial then
+		print("setup")
+		setup()
+		CURRENT_STATE = GAME_STATE.ready
+
+
+	elseif CURRENT_STATE == GAME_STATE.ready then
+		print("start")
+		CURRENT_STATE = GAME_STATE.playing
+		
+
+	elseif CURRENT_STATE == GAME_STATE.playing then
+		update_level_offset()
+		update_orb()
+		draw_level()
+		lib_spr.update() -- update all sprites
+		
+	elseif CURRENT_STATE == GAME_STATE.paused then
+		paused()
+	end
+
+	if DEBUG_FLAG then
+		DEBUG_FRAME_STEP = false
+		DEBUG_FRAME_COUNTER = DEBUG_FRAME_COUNTER + 1
+		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
+		lib_gfx.drawText(DEBUG_STRING, 10, SCREEN_HEIGHT-22)
+		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeCopy)
+	end
+	
 end
 
 function update_orb()
@@ -179,6 +188,55 @@ function update_orb()
 			"x:"..string.format("%03d",math.floor(ORB.pos.x + 0.5))..
 			" y:"..string.format("%03d",math.floor(ORB.pos.y + 0.5))
 		)
+	end
+end
+
+function update_level_offset()
+	LEVEL_OFFSET.velx = LEVEL_OFFSET.velx * FRICTION
+	LEVEL_OFFSET.vely = LEVEL_OFFSET.vely * FRICTION
+
+	local orb_x, orb_y = ORB.sprite:getPosition()
+	if orb_x < GRID_SIZE * 3 then LEVEL_OFFSET.velx = LEVEL_OFFSET.velx + 0.5 end
+	if orb_x > SCREEN_WIDTH - GRID_SIZE * 3 then LEVEL_OFFSET.velx = LEVEL_OFFSET.velx - 0.5 end
+	if orb_y < GRID_SIZE * 2 then LEVEL_OFFSET.vely = LEVEL_OFFSET.vely + 0.5 end
+	if orb_y > SCREEN_HEIGHT - GRID_SIZE * 2 then LEVEL_OFFSET.vely = LEVEL_OFFSET.vely - 0.5 end
+
+	offset_background(LEVEL_OFFSET.velx, LEVEL_OFFSET.vely)
+end
+
+function draw_level(level)
+	if not level then level = CURRENT_LEVEL end
+
+	clear_background()
+
+	local w = LEVEL_DATA.levels[level].w 
+	local h = LEVEL_DATA.levels[level].h
+	
+	local print_flag = false
+
+	for y = 1, h do
+		for x = 1, w do
+			local index = w * (y-1) + x
+			local tile = LEVEL_DATA.levels[level].tiles[index]
+			local height_offset = LEVEL_DATA.levels[level].altitude[index]
+			
+			-- calculate tile screen position
+			local isox, isoy = grid_to_iso( (x-1) * GRID_SIZE, (y-1) * GRID_SIZE)
+			-- add tile image offset
+			isox = isox + TILE_DATA.tiles[tile].xoffset + LEVEL_OFFSET.x
+			isoy = isoy + TILE_DATA.tiles[tile].yoffset + LEVEL_OFFSET.y
+			-- add latitude offset
+			isoy = isoy - height_offset
+
+			local image = TILE_IMAGES:getImage(tile)
+			lib_gfx.lockFocus(BACKGROUND_SPRITE:getImage())
+				image:drawAt(isox,isoy)
+			lib_gfx.unlockFocus()
+		end
+	end
+
+	if DEBUG_FLAG then
+		draw_debug_grid(CURRENT_LEVEL)
 	end
 end
 
@@ -247,6 +305,12 @@ function get_orb_frame()
 	return y*imap_size+x
 end
 
+function move_orb_to_start_position()
+	-- TODO: don't use magic value 8.0
+	ORB.pos.x = 8.0
+	ORB.pos.y = 8.0
+end
+
 function offset_background(x,y)
 	LEVEL_OFFSET.x = LEVEL_OFFSET.x + x
 	LEVEL_OFFSET.y = LEVEL_OFFSET.y + y
@@ -258,51 +322,6 @@ function clear_background()
 		lib_gfx.setColor(lib_gfx.kColorBlack)
 		lib_gfx.fillRect(0,0,SCREEN_WIDTH, SCREEN_HEIGHT)
 	lib_gfx.unlockFocus()
-end
-
-function draw_level(level)
-	if not level then level = CURRENT_LEVEL end
-	
-	LEVEL_OFFSET.velx = LEVEL_OFFSET.velx * FRICTION
-	LEVEL_OFFSET.vely = LEVEL_OFFSET.vely * FRICTION
-	local orb_x, orb_y = ORB.sprite:getPosition()
-	if orb_x < GRID_SIZE * 3 then LEVEL_OFFSET.velx = LEVEL_OFFSET.velx + 0.5 end
-	if orb_x > SCREEN_WIDTH - GRID_SIZE * 3 then LEVEL_OFFSET.velx = LEVEL_OFFSET.velx - 0.5 end
-	if orb_y < GRID_SIZE * 2 then LEVEL_OFFSET.vely = LEVEL_OFFSET.vely + 0.5 end
-	if orb_y > SCREEN_HEIGHT - GRID_SIZE * 2 then LEVEL_OFFSET.vely = LEVEL_OFFSET.vely - 0.5 end
-	offset_background(LEVEL_OFFSET.velx, LEVEL_OFFSET.vely)
-
-	clear_background()
-
-	local w = LEVEL_DATA.levels[level].w 
-	local h = LEVEL_DATA.levels[level].h
-	
-	local print_flag = false
-
-	for y = 1, h do
-		for x = 1, w do
-			local index = w * (y-1) + x
-			local tile = LEVEL_DATA.levels[level].tiles[index]
-			local height_offset = LEVEL_DATA.levels[level].altitude[index]
-			
-			-- calculate tile screen position
-			local isox, isoy = grid_to_iso( (x-1) * GRID_SIZE, (y-1) * GRID_SIZE)
-			-- add tile image offset
-			isox = isox + TILE_DATA.tiles[tile].xoffset + LEVEL_OFFSET.x
-			isoy = isoy + TILE_DATA.tiles[tile].yoffset + LEVEL_OFFSET.y
-			-- add latitude offset
-			isoy = isoy - height_offset
-
-			local image = TILE_IMAGES:getImage(tile)
-			lib_gfx.lockFocus(BACKGROUND_SPRITE:getImage())
-				image:drawAt(isox,isoy)
-			lib_gfx.unlockFocus()
-		end
-	end
-
-	if DEBUG_FLAG then
-		draw_debug_grid(CURRENT_LEVEL)
-	end
 end
 
 function draw_debug_grid(level)
@@ -334,8 +353,6 @@ function draw_debug_grid(level)
 			end
 		lib_gfx.setColor(lib_gfx.kColorXOR)
 		lib_gfx.drawPixel( ORB.pos.x + xoff, ORB.pos.y + yoff )
-		lib_gfx.setImageDrawMode(playdate.graphics.kDrawModeFillWhite)
-		lib_gfx.drawText(DEBUG_STRING, 10, SCREEN_HEIGHT-22)
 	lib_gfx.unlockFocus()
 	BACKGROUND_SPRITE:markDirty()
 --	BACKGROUND_SPRITE.addDirtyRect(xoff, yoff, GRID_SIZE*level_width, GRID_SIZE*level_height)
@@ -394,7 +411,7 @@ function playdate.leftButtonDown()
 end
 
 function playdate.downButtonDown()
-	
+	DEBUG_FRAME_STEP = true
 end
 
 function playdate.upButtonDown()
