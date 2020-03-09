@@ -18,6 +18,8 @@ local SCREEN_HEIGHT = playdate.display.getHeight()
 
 local GRID_SIZE = 16
 
+local INFINITY_FLOOR_ALTITUDE = -100
+
 -- state vars
 local GAME_STATE = {
 	initial = 1, 
@@ -30,6 +32,7 @@ local GAME_STATE = {
 local CURRENT_STATE = GAME_STATE.initial
 
 local FRICTION = 0.92
+local GRAVITY = 0.05
 
 -- ORB vars
 local ORB = {}
@@ -45,8 +48,6 @@ local TILE_DATA = playdate.datastore.read("Levels/tiles")
 	print(TILE_DATA.description)
 
 local LEVEL_OFFSET = { x=60, y=20, velx=0, vely=0 }
-local INFINITY_FLOOR_ALTITUDE = -1000
-
 
 function new_game_object(name, sprite, pos)
 	local obj ={}
@@ -157,6 +158,7 @@ function update_orb()
 
 	-- calculate altitude
 	-- get tile grid position
+	-- TODO: don't set altitude, instead increase fall velocity if orb is above floor...
 	ORB.altitude = get_altitude_at_pos(ORB.pos.x, ORB.pos.y)
 
 	-- add slope velocity
