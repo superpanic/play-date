@@ -20,10 +20,10 @@ local SCREEN_HEIGHT = playdate.display.getHeight()
 
 local GRID_SIZE = 16
 
-local INFINITY_FLOOR_ALTITUDE = -100
+local INFINITY_FLOOR_ALTITUDE = -25
 
 local FRICTION = 0.92
-local GRAVITY = 0.05
+local GRAVITY = 0.4
 
 -- state vars
 local GAME_STATE = {
@@ -167,8 +167,18 @@ function update_orb()
 
 	-- calculate altitude
 	-- get tile grid position
-	-- TODO: don't set altitude, instead increase fall velocity if orb is above floor...
-	ORB.altitude = get_altitude_at_pos(ORB.pos.x, ORB.pos.y)
+
+	-- don't set altitude, instead increase fall velocity if orb is above floor...
+	-- ORB.altitude = get_altitude_at_pos(ORB.pos.x, ORB.pos.y)
+	local alt = get_altitude_at_pos(ORB.pos.x, ORB.pos.y)
+	if alt < ORB.altitude then
+		ORB.fall_velocity = ORB.fall_velocity + GRAVITY
+		ORB.altitude = math.max(alt, ORB.altitude - ORB.fall_velocity)
+	else
+		ORB.altitude = alt
+		ORB.fall_velocity = 0
+	end
+
 
 	-- add slope velocity
 	local slope_vx, slope_vy = get_slope_vector(ORB.pos.x, ORB.pos.y, ORB.altitude)
@@ -243,6 +253,18 @@ function draw_level(level)
 	if DEBUG_FLAG then
 		draw_debug_grid(CURRENT_LEVEL)
 	end
+end
+
+function collision_check(obj)
+	-- check only in the direction object is moving
+	-- collision if altitude is higher than 4 pixels
+	-- check and return x and y directions separately
+	-- TODO: check with all other objects
+	
+	collisionx = 0
+	collisiony = 0
+
+	return collisionx, collisiony
 end
 
 function get_slope_vector( x, y, current_altitude )
