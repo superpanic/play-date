@@ -10,7 +10,7 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-local DEBUG_FLAG = true
+local DEBUG_FLAG = false
 local DEBUG_STRING = ""
 local DEBUG_FRAME_STEP = false
 local DEBUG_FRAME_COUNTER = 0
@@ -123,10 +123,10 @@ function playdate.update()
 		
 
 	elseif CURRENT_STATE == GAME_STATE.playing then
-		update_level_offset()
 		update_orb()
 		draw_level()
 		lib_spr.update() -- update all sprites
+		update_level_offset()
 		
 	elseif CURRENT_STATE == GAME_STATE.paused then
 		paused()
@@ -179,8 +179,13 @@ function update_orb()
 	local isox, isoy = grid_to_iso(ORB.pos.x, ORB.pos.y, 0, 0)
 	-- offset orb half image height
 	isoy = isoy - select(1,ORB.sprite:getImage():getSize())/2
+	
+	-- floor value to sync with background movement
+	isox = math.floor( isox + LEVEL_OFFSET.x + 0.5 )
+	isoy = math.floor( isoy - ORB.altitude + LEVEL_OFFSET.y + 0.5 )
 
-	ORB.sprite:moveTo(isox + LEVEL_OFFSET.x, isoy - ORB.altitude + LEVEL_OFFSET.y)
+	ORB.sprite:moveTo(isox, isoy)
+
 	local image_frame = get_orb_frame()
 	ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
 	if DEBUG_FLAG then
