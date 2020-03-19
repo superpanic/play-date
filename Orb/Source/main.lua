@@ -175,7 +175,8 @@ function update_orb()
 
 	-- don't set altitude, instead increase fall velocity if orb is above floor...
 	-- ORB.altitude = get_altitude_at_pos(ORB.pos.x, ORB.pos.y)
-	local alt = get_altitude_at_pos(ORB.pos.x, ORB.pos.y)
+
+	local alt = get_altitude_at_pos(math.floor(ORB.pos.x+0.5), math.floor(ORB.pos.y+0.5))
 	if alt < ORB.altitude then
 		ORB.fall_velocity = ORB.fall_velocity + GRAVITY
 		ORB.altitude = math.max(alt, ORB.altitude - ORB.fall_velocity)
@@ -204,10 +205,12 @@ function update_orb()
 	local image_frame = get_orb_frame()
 	ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
 	if DEBUG_FLAG then
-		DEBUG_STRING = (
-			"x:"..string.format("%03d",math.floor(ORB.pos.x + 0.5))..
-			" y:"..string.format("%03d",math.floor(ORB.pos.y + 0.5))
-		)
+	--	DEBUG_STRING = (
+	--		"x:"..string.format("%03d",math.floor(ORB.pos.x + 0.5))..
+	--		" y:"..string.format("%03d",math.floor(ORB.pos.y + 0.5))
+	--	)
+		DEBUG_STRING = ( "alt: "..string.format("%03d", math.floor(ORB.altitude + 0.5)) )
+
 	end
 end
 
@@ -262,34 +265,49 @@ end
 
 function wall_collision_check(obj, nextx, nexty)
 	-- collision if altitude is higher than 4 pixels
-	-- if pos is the same, return
+	
 	objx = math.floor(obj.pos.x + 0.5)
 	objy = math.floor(obj.pos.y + 0.5)
 	nextx = math.floor(nextx + 0.5)
 	nexty = math.floor(nexty + 0.5)
 
+	-- if pos is the same, no collision, return
 	if objx == nextx and objy == nexty then return false end
 	
 	local current_altitude = obj.altitude
 	local next_altitude = get_altitude_at_pos(nextx, nexty)
-	-- if altitude is the same, return
-	if current_altitude == next_altitude then return false end
+
+	-- if altitude difference is same or low, no collision, roll on, return
+	if next_altitude <= current_altitude + EDGE_COLLISION_HEIGHT then return false end
 	
-	-- reverse velocity
-	if next_altitude > current_altitude + EDGE_COLLISION_HEIGHT then
-		if math.abs(nextx - objx) > math.abs(nexty - objy) then
-			if nextx ~= objx then obj.x_velocity = -obj.x_velocity end
-			--obj.x_velocity = -obj.x_velocity
-		else
-		 	if nexty ~= objy then obj.y_velocity = -obj.y_velocity end
-			--obj.y_velocity = -obj.y_velocity
-		end
-print("collision!")
-print("fr x: ", objx,  " fr y: ", objy)
-print("to x: ", nextx, " to y: ", nexty)
-		return true
+	-- we have a collision!
+
+	-- create reversed velocity coordinates
+	local rx = math.floor(obj.pos.x + (-obj.x_velocity) + 0.5)
+	local ry = math.floor(obj.pos.y + (-obj.y_velocity) + 0.5)
+	
+	-- get reversed velocity x and y altitudes
+	local rx_alt = get_altitude_at_pos(rx, nexty)
+	local ry_alt = get_altitude_at_pos(nextx, ry)
+	
+	-- try
+	if rx_alt <= current_altitude + EDGE_COLLISION_HEIGHT then
+		-- no collision here, we can move  in this direction
+		obj.x_velocity = -obj.x_velocity
+	elseif ry_alt <= current_altitude + EDGE_COLLISION_HEIGHT then
+		-- no collision here, we can move in this direction
+		obj.y_velocity = -obj.y_velocity
+	else
+		-- blocked both ways, stop
+		obj.x_velocity = 0
+		obj.y_velocity = 0
 	end
-	return false
+
+--print("collision!")
+--print("fr x: ", objx,  " fr y: ", objy)
+--print("to x: ", nextx, " to y: ", nexty)
+
+	return true
 end
 
 function get_slope_vector( x, y, current_altitude )
@@ -319,12 +337,13 @@ function get_slope_vector( x, y, current_altitude )
 end
 
 function get_altitude_at_pos( x, y )
+
 	if x < 0 or y < 0 then return INFINITY_FLOOR_ALTITUDE end
 
 	local w = LEVEL_DATA.levels[CURRENT_LEVEL].w
 	local h = LEVEL_DATA.levels[CURRENT_LEVEL].h
 
-	if x > w * GRID_SIZE or y > h * GRID_SIZE then return INFINITY_FLOOR_ALTITUDE end
+	if x >= w * GRID_SIZE or y >= h * GRID_SIZE then return INFINITY_FLOOR_ALTITUDE end
 
 	-- find tile base altitude
 	local tilex = math.floor((x / GRID_SIZE))+1
