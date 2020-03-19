@@ -10,8 +10,9 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-local DEBUG_FLAG = false
+local DEBUG_FLAG = true
 local DEBUG_STRING = ""
+local DEBUG_STEP_FRAME = false
 local DEBUG_FRAME_STEP = false
 local DEBUG_FRAME_COUNTER = 0
 
@@ -21,6 +22,7 @@ local SCREEN_HEIGHT = playdate.display.getHeight()
 local GRID_SIZE = 16
 
 local INFINITY_FLOOR_ALTITUDE = -25
+local EDGE_COLLISION_HEIGHT = 4
 
 local FRICTION = 0.92
 local GRAVITY = 0.4
@@ -107,7 +109,7 @@ function setup()
 end
 
 function playdate.update()
-	if DEBUG_FLAG then
+	if DEBUG_FLAG and DEBUG_STEP_FRAME then
 		if not DEBUG_FRAME_STEP then return end
 	end
 
@@ -160,10 +162,13 @@ function update_orb()
 	next_pos.y = ORB.pos.y + ORB.y_velocity
 
 	-- TODO: collision check using next_pos here!
+	local collision_detected = wall_collision_check(ORB, next_pos.x, next_pos.y)
 
 	-- set orb pos
-	ORB.pos.x = next_pos.x
-	ORB.pos.y = next_pos.y
+	if collision_detected == false then
+		ORB.pos.x = next_pos.x
+		ORB.pos.y = next_pos.y
+	end
 
 	-- calculate altitude
 	-- get tile grid position
@@ -255,16 +260,36 @@ function draw_level(level)
 	end
 end
 
-function collision_check(obj)
-	-- check only in the direction object is moving
+function wall_collision_check(obj, nextx, nexty)
 	-- collision if altitude is higher than 4 pixels
-	-- check and return x and y directions separately
-	-- TODO: check with all other objects
-	
-	collisionx = 0
-	collisiony = 0
+	-- if pos is the same, return
+	objx = math.floor(obj.pos.x + 0.5)
+	objy = math.floor(obj.pos.y + 0.5)
+	nextx = math.floor(nextx + 0.5)
+	nexty = math.floor(nexty + 0.5)
 
-	return collisionx, collisiony
+	if objx == nextx and objy == nexty then return false end
+	
+	local current_altitude = obj.altitude
+	local next_altitude = get_altitude_at_pos(nextx, nexty)
+	-- if altitude is the same, return
+	if current_altitude == next_altitude then return false end
+	
+	-- reverse velocity
+	if next_altitude > current_altitude + EDGE_COLLISION_HEIGHT then
+		if math.abs(nextx - objx) > math.abs(nexty - objy) then
+			if nextx ~= objx then obj.x_velocity = -obj.x_velocity end
+			--obj.x_velocity = -obj.x_velocity
+		else
+		 	if nexty ~= objy then obj.y_velocity = -obj.y_velocity end
+			--obj.y_velocity = -obj.y_velocity
+		end
+print("collision!")
+print("fr x: ", objx,  " fr y: ", objy)
+print("to x: ", nextx, " to y: ", nexty)
+		return true
+	end
+	return false
 end
 
 function get_slope_vector( x, y, current_altitude )
@@ -278,7 +303,7 @@ function get_slope_vector( x, y, current_altitude )
 	local a
 	for ix = -1, 1 do
 		for iy = -1, 1 do
-			if ix ~= 0 and iy ~= 0 then 
+			if ix ~= 0 and iy ~= 0 then -- jump over, don't check current position (0,0)
 				if   x+ix > 0   and   y+iy > 0   and   x+ix <= w   and   y+iy <= h   then 
 					a = get_altitude_at_pos(x+ix,y+iy)
 					if a < current_altitude then
@@ -355,7 +380,7 @@ function draw_debug_grid(level)
 	if not level then level = CURRENT_LEVEL end
 	local level_width = LEVEL_DATA.levels[CURRENT_LEVEL].w
 	local level_height = LEVEL_DATA.levels[CURRENT_LEVEL].h
-	local xoff = 130
+	local xoff = 100
 	local yoff = 4
 
 	local img = BACKGROUND_SPRITE:getImage()
