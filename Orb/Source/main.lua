@@ -10,7 +10,7 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-local DEBUG_FLAG = true
+local DEBUG_FLAG = false
 local DEBUG_STRING = ""
 local DEBUG_VAL = 0.0
 local DEBUG_STEP_FRAME = false
@@ -167,7 +167,6 @@ function update_orb()
 	next_pos.x = ORB.pos.x + ORB.x_velocity
 	next_pos.y = ORB.pos.y + ORB.y_velocity
 
-	-- FIXME: collision check using next_pos here!
 	local collision_detected = wall_collision_check(ORB, next_pos.x, next_pos.y)
 
 	-- set orb pos
@@ -191,14 +190,11 @@ function update_orb()
 		ORB.altitude = alt
 		ORB.fall_velocity = 0
 	end
-
-	-- FIXME: slope checks for next position, and if next position is much lower then velocity gets a large push!
-	if ORB.fall_velocity == 0 then
-		-- add slope velocity
-		local slope_vx, slope_vy = get_slope_vector(ORB.pos.x, ORB.pos.y, ORB.altitude)
-		ORB.x_velocity = ORB.x_velocity - slope_vx
-		ORB.y_velocity = ORB.y_velocity - slope_vy
-	end
+	
+	-- add slope velocity
+	local slope_vx, slope_vy = get_slope_vector(ORB.pos.x, ORB.pos.y, ORB.altitude)
+	ORB.x_velocity = ORB.x_velocity - slope_vx
+	ORB.y_velocity = ORB.y_velocity - slope_vy
 
 	-- move sprite
 	local isox, isoy = grid_to_iso(ORB.pos.x, ORB.pos.y, 0, 0)
@@ -330,12 +326,14 @@ function get_slope_vector( x, y, current_altitude )
 				if check_altitude < current_altitude then -- only add force if check_altitude is lower than current_altitude
 					-- force is equal to difference between check_altitude and current_altitude
 					force = current_altitude - check_altitude
-					-- ix and iy is the direction
-					fx = ix * force
-					fy = iy * force
-					-- add negative force to total slope value
-					slope_vx = slope_vx - fx
-					slope_vy = slope_vy - fy
+					if force <= 1 then -- if force is greater than 1, this is not a slope (it's an edge)
+						-- ix and iy is the direction
+						fx = ix * force
+						fy = iy * force
+						-- add negative force to total slope value
+						slope_vx = slope_vx - fx
+						slope_vy = slope_vy - fy
+					end
 				end
 			end
 		end
