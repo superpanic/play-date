@@ -10,8 +10,9 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-local DEBUG_FLAG = false
+local DEBUG_FLAG = true
 local DEBUG_STRING = ""
+local DEBUG_VAL = 0.0
 local DEBUG_STEP_FRAME = false
 local DEBUG_FRAME_STEP = false
 local DEBUG_FRAME_COUNTER = 0
@@ -25,7 +26,7 @@ local INFINITY_FLOOR_ALTITUDE = -25
 local EDGE_COLLISION_HEIGHT = 4
 
 local FRICTION = 0.92
-local GRAVITY = 0.4
+local GRAVITY = 0.75
 
 -- state vars
 local GAME_STATE = {
@@ -138,7 +139,8 @@ function playdate.update()
 		DEBUG_FRAME_STEP = false
 		DEBUG_FRAME_COUNTER = DEBUG_FRAME_COUNTER + 1
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
-		lib_gfx.drawText(DEBUG_STRING, 10, SCREEN_HEIGHT-22)
+		lib_gfx.drawText(DEBUG_STRING, 5, 5)
+		lib_gfx.drawText(tostring(DEBUG_VAL), 5, 20)
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeCopy)
 	end
 	
@@ -165,7 +167,7 @@ function update_orb()
 	next_pos.x = ORB.pos.x + ORB.x_velocity
 	next_pos.y = ORB.pos.y + ORB.y_velocity
 
-	-- TODO: collision check using next_pos here!
+	-- FIXME: collision check using next_pos here!
 	local collision_detected = wall_collision_check(ORB, next_pos.x, next_pos.y)
 
 	-- set orb pos
@@ -181,7 +183,8 @@ function update_orb()
 	-- ORB.altitude = get_altitude_at_pos(ORB.pos.x, ORB.pos.y)
 
 	local alt = get_altitude_at_pos(math.floor(ORB.pos.x+0.5), math.floor(ORB.pos.y+0.5))
-	if alt < ORB.altitude then
+	
+	if alt < ORB.altitude - ORB.fall_velocity then
 		ORB.fall_velocity = ORB.fall_velocity + GRAVITY
 		ORB.altitude = math.max(alt, ORB.altitude - ORB.fall_velocity)
 	else
@@ -189,11 +192,13 @@ function update_orb()
 		ORB.fall_velocity = 0
 	end
 
-
-	-- add slope velocity
-	local slope_vx, slope_vy = get_slope_vector(ORB.pos.x, ORB.pos.y, ORB.altitude)
-	ORB.x_velocity = ORB.x_velocity - slope_vx
-	ORB.y_velocity = ORB.y_velocity - slope_vy
+	-- FIXME: slope checks for next position, and if next position is much lower then velocity gets a large push!
+	if ORB.fall_velocity == 0 then
+		-- add slope velocity
+		local slope_vx, slope_vy = get_slope_vector(ORB.pos.x, ORB.pos.y, ORB.altitude)
+		ORB.x_velocity = ORB.x_velocity - slope_vx
+		ORB.y_velocity = ORB.y_velocity - slope_vy
+	end
 
 	-- move sprite
 	local isox, isoy = grid_to_iso(ORB.pos.x, ORB.pos.y, 0, 0)
@@ -208,14 +213,7 @@ function update_orb()
 
 	local image_frame = get_orb_frame()
 	ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
-	if DEBUG_FLAG then
-	--	DEBUG_STRING = (
-	--		"x:"..string.format("%03d",math.floor(ORB.pos.x + 0.5))..
-	--		" y:"..string.format("%03d",math.floor(ORB.pos.y + 0.5))
-	--	)
-		DEBUG_STRING = ( "alt: "..string.format("%03d", math.floor(ORB.altitude + 0.5)) )
 
-	end
 end
 
 function update_level_offset()
@@ -307,31 +305,37 @@ function wall_collision_check(obj, nextx, nexty)
 		obj.y_velocity = 0
 	end
 
---print("collision!")
---print("fr x: ", objx,  " fr y: ", objy)
---print("to x: ", nextx, " to y: ", nexty)
-
 	return true
 end
 
 function get_slope_vector( x, y, current_altitude )
+	x = math.floor(x+0.5)
+	y = math.floor(y+0.5)
+
 	if not current_altitude then current_altitude = get_altitude_at_pos( x, y ) end
 
 	local w = LEVEL_DATA.levels[CURRENT_LEVEL].w * GRID_SIZE
 	local h = LEVEL_DATA.levels[CURRENT_LEVEL].h * GRID_SIZE
+
 	local slope_vx = 0
 	local slope_vy = 0
+	local force = 0
+	local fx, fy = 0, 0
 
-	local a
-	for ix = -1, 1 do
-		for iy = -1, 1 do
-			if ix ~= 0 and iy ~= 0 then -- jump over, don't check current position (0,0)
-				if   x+ix > 0   and   y+iy > 0   and   x+ix <= w   and   y+iy <= h   then 
-					a = get_altitude_at_pos(x+ix,y+iy)
-					if a < current_altitude then
-						slope_vx = slope_vx + ix * (a-current_altitude)
-						slope_vy = slope_vy + iy * (a-current_altitude)
-					end
+	local check_altitude = current_altitude
+	for iy = -1, 1 do
+		for ix = -1, 1 do
+			if ix == 0 and iy == 0 then else -- don't check the pixel we stand on
+				check_altitude = get_altitude_at_pos(x+ix,y+iy)	-- checking all directions, (because if we are standing still we need to check all directions anyway!)
+				if check_altitude < current_altitude then -- only add force if check_altitude is lower than current_altitude
+					-- force is equal to difference between check_altitude and current_altitude
+					force = current_altitude - check_altitude
+					-- ix and iy is the direction
+					fx = ix * force
+					fy = iy * force
+					-- add negative force to total slope value
+					slope_vx = slope_vx - fx
+					slope_vy = slope_vy - fy
 				end
 			end
 		end
