@@ -10,7 +10,7 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-local DEBUG_FLAG = true
+local DEBUG_FLAG = false
 local DEBUG_STRING = ""
 local DEBUG_STEP_FRAME = false
 local DEBUG_FRAME_STEP = false
@@ -153,9 +153,13 @@ function update_orb()
 		ORB.y_velocity = ORB.y_velocity + (vectory * ORB.acceleration)
 	end
 
-	ORB.x_velocity = ORB.x_velocity * ORB.friction
-	ORB.y_velocity = ORB.y_velocity * ORB.friction
-
+	if math.abs(ORB.x_velocity) < 0.001 then ORB.x_velocity = 0 else
+		ORB.x_velocity = ORB.x_velocity * ORB.friction
+	end
+	if math.abs(ORB.y_velocity) < 0.001 then ORB.y_velocity = 0 else
+		ORB.y_velocity = ORB.y_velocity * ORB.friction
+	end
+	
 	-- set next pos
 	local next_pos = {}
 	next_pos.x = ORB.pos.x + ORB.x_velocity
