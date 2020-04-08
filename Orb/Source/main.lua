@@ -34,7 +34,8 @@ local GAME_STATE = {
 	ready   = 2, 
 	playing = 3, 
 	paused  = 4, 
-	over    = 5
+	goal    = 5,
+	over    = 6
 }
 
 local CURRENT_STATE = GAME_STATE.initial
@@ -92,7 +93,12 @@ function setup()
 	ORB.sprite:moveTo(ORB.pos.x, ORB.pos.y)
 	ORB.sprite:setZIndex(1000)
 	ORB.sprite:add()
-	
+
+--	m = ORB.sprite:getImage():getMaskImage()
+--	lib_gfx.lockFocus(m)
+--		m:setInverted(true)
+--	lib_gfx.unlockFocus()
+
 -- background as a sprite
 	local bg_img = lib_gfx.image.new(SCREEN_WIDTH, SCREEN_HEIGHT)
 	lib_gfx.lockFocus(bg_img)
@@ -128,8 +134,18 @@ function playdate.update()
 	elseif CURRENT_STATE == GAME_STATE.playing then
 		update_orb()
 		draw_level()
+		goal_check()
 		lib_spr.update() -- update all sprites
 		update_level_offset()
+	
+
+	elseif CURRENT_STATE == GAME_STATE.goal then
+		level_clear()
+		update_orb()
+		draw_level()
+		lib_spr.update() -- update all sprites
+		update_level_offset()
+
 		
 	elseif CURRENT_STATE == GAME_STATE.paused then
 		paused()
@@ -146,6 +162,27 @@ function playdate.update()
 	
 end
 
+function level_clear()
+	add_friction(0.5)
+end
+
+function goal_check()
+	if ( get_tile_type(ORB.pos.x,ORB.pos.y) == "goal" ) then 
+		CURRENT_STATE = GAME_STATE.goal
+		ORB.accelerate_flag = false
+		print("goal!")
+	end
+end
+
+function add_friction(f)
+	if math.abs(ORB.x_velocity) < 0.001 then ORB.x_velocity = 0 else
+		ORB.x_velocity = ORB.x_velocity * f
+	end
+	if math.abs(ORB.y_velocity) < 0.001 then ORB.y_velocity = 0 else
+		ORB.y_velocity = ORB.y_velocity * f
+	end
+end
+
 function update_orb()
 	-- get current direction
 	local vectorx, vectory = degrees_to_vector( playdate.getCrankPosition()-45 )
@@ -155,13 +192,8 @@ function update_orb()
 		ORB.y_velocity = ORB.y_velocity + (vectory * ORB.acceleration)
 	end
 
-	if math.abs(ORB.x_velocity) < 0.001 then ORB.x_velocity = 0 else
-		ORB.x_velocity = ORB.x_velocity * ORB.friction
-	end
-	if math.abs(ORB.y_velocity) < 0.001 then ORB.y_velocity = 0 else
-		ORB.y_velocity = ORB.y_velocity * ORB.friction
-	end
-	
+	add_friction(ORB.friction)
+
 	-- set next pos
 	local next_pos = {}
 	next_pos.x = ORB.pos.x + ORB.x_velocity
@@ -342,6 +374,19 @@ function get_slope_vector( x, y, current_altitude )
 	return slope_vx/8, slope_vy/8
 end
 
+function get_tile_type( x, y )
+	if x < 0 or y < 0 then return "outofbounds" end
+	local w = LEVEL_DATA.levels[CURRENT_LEVEL].w
+	local h = LEVEL_DATA.levels[CURRENT_LEVEL].h
+	if x >= w * GRID_SIZE or y >= h * GRID_SIZE then return "outofbounds" end
+
+	local tilex = math.floor((x / GRID_SIZE))+1
+	local tiley = math.floor((y / GRID_SIZE))+1
+	local tile_index = w * (tiley-1) + tilex
+	local tile_type =  LEVEL_DATA.levels[CURRENT_LEVEL].tiles[tile_index]
+	return TILE_DATA.tiles[tile_type].type
+end
+
 function get_altitude_at_pos( x, y )
 
 	if x < 0 or y < 0 then return INFINITY_FLOOR_ALTITUDE end
@@ -470,12 +515,11 @@ end
 -- buttons
 
 function playdate.BButtonDown()
-	if current_state == GAME_STATE.paused then return end
-	ORB.accelerate_flag = true
+	if CURRENT_STATE == GAME_STATE.paused then return end
+	if CURRENT_STATE == GAME_STATE.playing then ORB.accelerate_flag = true end
 end
 
 function playdate.BButtonUp()
-	if current_state == GAME_STATE.paused then return end
 	ORB.accelerate_flag = false
 end
 
