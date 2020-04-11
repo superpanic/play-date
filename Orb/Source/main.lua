@@ -10,19 +10,23 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
+
 local DEBUG_FLAG = false
-local DEBUG_STRING = ""
-local DEBUG_VAL = 0.0
+	local DEBUG_STRING = ""
+	local DEBUG_VAL = 0.0
+
 local DEBUG_STEP_FRAME = false
-local DEBUG_FRAME_STEP = false
-local DEBUG_FRAME_COUNTER = 0
+	local DEBUG_FRAME_STEP = false
+	local DEBUG_FRAME_COUNTER = 0
 
 local SCREEN_WIDTH = playdate.display.getWidth()
 local SCREEN_HEIGHT = playdate.display.getHeight()
 
 local GRID_SIZE = 16
+local HALF_GRID_SIZE = GRID_SIZE / 2
 
-local INFINITY_FLOOR_ALTITUDE = -25
+local INFINITY_FLOOR_ALTITUDE = -1000
+local ALTITUDE_LIMIT = -500
 local EDGE_COLLISION_HEIGHT = 4
 
 local FRICTION = 0.92
@@ -59,6 +63,13 @@ function new_game_object(name, sprite, pos)
 	local obj ={}
 	obj.name = name
 	obj.sprite = sprite
+	
+	-- use sprite cover to draw on top of object
+	obj.sprite_cover = lib_spr.new()
+	local img = lib_gfx.image.new(GRID_SIZE*2, GRID_SIZE*2)
+	obj.sprite_cover:setImage(img)
+	obj.sprite_cover:add()
+
 	obj.pos = {}
 	obj.pos.x = pos.x
 	obj.pos.y = pos.y
@@ -74,6 +85,11 @@ function new_game_object(name, sprite, pos)
 	
 	obj.print_name = function() 
 		print(obj.name) 
+	end
+
+	obj.setZIndex = function(z)
+		obj.sprite:setZIndex(z)
+		obj.sprite_cover:setZIndex(z+1)
 	end
 	
 	return obj
@@ -91,7 +107,7 @@ function setup()
 	ORB.print_name()
 	move_orb_to_start_position()
 	ORB.sprite:moveTo(ORB.pos.x, ORB.pos.y)
-	ORB.sprite:setZIndex(1000)
+	ORB.setZIndex(1000)
 	ORB.sprite:add()
 
 --	m = ORB.sprite:getImage():getMaskImage()
@@ -102,7 +118,7 @@ function setup()
 -- background as a sprite
 	local bg_img = lib_gfx.image.new(SCREEN_WIDTH, SCREEN_HEIGHT)
 	lib_gfx.lockFocus(bg_img)
-		lib_gfx.setColor(lib_gfx.kColorBlack)
+		lib_gfx.setColor(lib_gfx.kColorClear)
 		lib_gfx.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT)
 	lib_gfx.unlockFocus()
 	BACKGROUND_SPRITE:setImage(bg_img)
@@ -134,7 +150,7 @@ function playdate.update()
 	elseif CURRENT_STATE == GAME_STATE.playing then
 		update_orb()
 		draw_level()
-		goal_check()
+		end_level_check()
 		lib_spr.update() -- update all sprites
 		update_level_offset()
 	
@@ -146,6 +162,8 @@ function playdate.update()
 		lib_spr.update() -- update all sprites
 		update_level_offset()
 
+	elseif CURRENT_STATE == GAME_STATE.dead then
+		-- nothing
 		
 	elseif CURRENT_STATE == GAME_STATE.paused then
 		paused()
@@ -163,14 +181,19 @@ function playdate.update()
 end
 
 function level_clear()
-	add_friction(0.5)
+	add_friction(0.75)
 end
 
-function goal_check()
-	if ( get_tile_type(ORB.pos.x,ORB.pos.y) == "goal" ) then 
+function end_level_check()
+	if ( get_tile_type( math.floor(ORB.pos.x+0.5), math.floor(ORB.pos.y+0.5) ) == "goal" ) then 
 		CURRENT_STATE = GAME_STATE.goal
 		ORB.accelerate_flag = false
 		print("goal!")
+	end
+	if ORB.altitude <= ALTITUDE_LIMIT then
+		CURRENT_STATE = GAME_STATE.dead
+		print("dead!")
+		return
 	end
 end
 
@@ -261,12 +284,11 @@ function draw_level(level)
 	if not level then level = CURRENT_LEVEL end
 
 	clear_background()
+	z_mask_reset(ORB)
 
 	local w = LEVEL_DATA.levels[level].w 
 	local h = LEVEL_DATA.levels[level].h
 	
-	local print_flag = false
-
 	for y = 1, h do
 		for x = 1, w do
 			local index = w * (y-1) + x
@@ -275,9 +297,13 @@ function draw_level(level)
 			
 			-- calculate tile screen position
 			local isox, isoy = grid_to_iso( (x-1) * GRID_SIZE, (y-1) * GRID_SIZE)
+						
+			--z_mask_draw(ORB, index, tile, isox, isoy, height_offset)
+			
 			-- add tile image offset
 			isox = isox + TILE_DATA.tiles[tile].xoffset + LEVEL_OFFSET.x
 			isoy = isoy + TILE_DATA.tiles[tile].yoffset + LEVEL_OFFSET.y
+			
 			-- add latitude offset
 			isoy = isoy - height_offset
 
@@ -285,11 +311,43 @@ function draw_level(level)
 			lib_gfx.lockFocus(BACKGROUND_SPRITE:getImage())
 				image:drawAt(isox,isoy)
 			lib_gfx.unlockFocus()
+
+			z_mask_draw(ORB, isox, isoy, height_offset, image)
 		end
 	end
 
 	if DEBUG_FLAG then
 		draw_debug_grid(CURRENT_LEVEL)
+	end
+end
+
+function z_mask_reset(obj)
+	lib_gfx.lockFocus(obj.sprite_cover:getImage())
+		lib_gfx.setColor(lib_gfx.kColorClear)
+		lib_gfx.fillRect(0,0,GRID_SIZE*2,GRID_SIZE*2)
+		if DEBUG_FLAG then
+			lib_gfx.setColor(lib_gfx.kColorWhite)
+			lib_gfx.drawRect(0,0,GRID_SIZE*2,GRID_SIZE*2)
+		end
+	lib_gfx.unlockFocus()
+	obj.sprite_cover:moveTo( obj.sprite:getPosition() )
+end
+
+function z_mask_draw(obj, tilex, tiley, height_offset, image)	
+	local objx, objy = obj.sprite:getPosition() -- screen position
+	-- TODO: why does it work to subtract GRID_SIZE?
+	objx = objx - GRID_SIZE
+	objy = objy - GRID_SIZE
+
+	if math.abs( tilex-objx ) <= GRID_SIZE then
+		if math.abs( tiley-objy ) <= GRID_SIZE then
+			if height_offset > obj.altitude then 
+				-- draw tile image to obj sprite_cover
+				lib_gfx.lockFocus(obj.sprite_cover:getImage())
+					image:drawAt( tilex - objx, tiley - objy)
+				lib_gfx.unlockFocus()
+			end
+		end
 	end
 end
 
