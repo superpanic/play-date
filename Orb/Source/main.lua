@@ -11,7 +11,7 @@ lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
 
-local DEBUG_FLAG = false
+local DEBUG_FLAG = true
 	local DEBUG_STRING = ""
 	local DEBUG_VAL = 0.0
 
@@ -265,6 +265,8 @@ function update_orb()
 	local image_frame = get_orb_frame()
 	ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
 
+	DEBUG_VAL = ORB.altitude
+
 end
 
 function update_level_offset()
@@ -312,7 +314,8 @@ function draw_level(level)
 				image:drawAt(isox,isoy)
 			lib_gfx.unlockFocus()
 
-			z_mask_draw(ORB, isox, isoy, height_offset, image)
+--			z_mask_draw(ORB, isox, isoy, height_offset, image, tile)
+			z_mask_draw(ORB, x, y, tile, image, isox, isoy )
 		end
 	end
 
@@ -325,17 +328,55 @@ function z_mask_reset(obj)
 	lib_gfx.lockFocus(obj.sprite_cover:getImage())
 		lib_gfx.setColor(lib_gfx.kColorClear)
 		lib_gfx.fillRect(0,0,GRID_SIZE*2,GRID_SIZE*2)
+
 		if DEBUG_FLAG then
 			lib_gfx.setColor(lib_gfx.kColorWhite)
 			lib_gfx.drawRect(0,0,GRID_SIZE*2,GRID_SIZE*2)
 		end
+
 	lib_gfx.unlockFocus()
 	obj.sprite_cover:moveTo( obj.sprite:getPosition() )
 end
 
-function z_mask_draw(obj, tilex, tiley, height_offset, image)	
+function z_mask_draw( obj, tile_col, tile_row, tile, image, tile_iso_x, tile_iso_y )
+	obj_col = math.floor(obj.pos.x / GRID_SIZE) + 1
+	obj_row = math.floor(obj.pos.y / GRID_SIZE) + 1
+
+	-- check 1
+	-- are we standing on this tile?
+	if obj_col == tile_col and obj_row == tile_row then 
+		if DEBUG_FLAG then DEBUG_STRING = TILE_DATA.tiles[tile].name end
+		return -- dont mask if orb is standing on tile!
+	end
+
+	-- check 2
+	-- is tile adjacent?
+	-- if no, then return
+	-- actually if the tile if very high above the orb, it can still cover the orb, even though it's far away...
+
+	-- check 3
+	-- is tiles altitude higher than the orb?
+	-- if no, then return
+	
+	-- check 4
+	-- is the tile sloping away from the orb?
+	-- is the tile edge at the same altitude as the orb?
+	-- if yes, then return
+
+	-- still here?
+	-- draw the tile ontop of the orb
 	local objx, objy = obj.sprite:getPosition() -- screen position
-	-- TODO: why does it work to subtract GRID_SIZE?
+	objx = objx - GRID_SIZE
+	objy = objy - GRID_SIZE
+	lib_gfx.lockFocus(obj.sprite_cover:getImage())
+		image:drawAt( tile_iso_x - objx, tile_iso_y - objy )
+	lib_gfx.unlockFocus()
+
+end
+
+function z_mask_draw_old( obj, tilex, tiley, height_offset, image, tile )
+	local objx, objy = obj.sprite:getPosition() -- screen position
+	-- TODO: why subtract GRID_SIZE?
 	objx = objx - GRID_SIZE
 	objy = objy - GRID_SIZE
 
@@ -344,7 +385,8 @@ function z_mask_draw(obj, tilex, tiley, height_offset, image)
 			if height_offset > obj.altitude then 
 				-- draw tile image to obj sprite_cover
 				lib_gfx.lockFocus(obj.sprite_cover:getImage())
-					image:drawAt( tilex - objx, tiley - objy)
+					image:drawAt( tilex - objx, tiley - objy )
+					DEBUG_STRING = TILE_DATA.tiles[tile].name
 				lib_gfx.unlockFocus()
 			end
 		end
