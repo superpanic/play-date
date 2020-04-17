@@ -10,14 +10,13 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-
-local DEBUG_FLAG = true
-	local DEBUG_STRING = ""
-	local DEBUG_VAL = 0.0
+local DEBUG_FLAG = false
+local DEBUG_STRING = ""
+local DEBUG_VAL = 0.0
 
 local DEBUG_STEP_FRAME = false
-	local DEBUG_FRAME_STEP = false
-	local DEBUG_FRAME_COUNTER = 0
+local DEBUG_FRAME_STEP = false
+local DEBUG_FRAME_COUNTER = 0
 
 local SCREEN_WIDTH = playdate.display.getWidth()
 local SCREEN_HEIGHT = playdate.display.getHeight()
@@ -87,7 +86,7 @@ function new_game_object(name, sprite, pos)
 		print(obj.name) 
 	end
 
-	obj.setZIndex = function(z)
+	obj.set_z_index = function(z)
 		obj.sprite:setZIndex(z)
 		obj.sprite_cover:setZIndex(z+1)
 	end
@@ -107,7 +106,7 @@ function setup()
 	ORB.print_name()
 	move_orb_to_start_position()
 	ORB.sprite:moveTo(ORB.pos.x, ORB.pos.y)
-	ORB.setZIndex(1000)
+	ORB.set_z_index(1000)
 	ORB.sprite:add()
 
 --	m = ORB.sprite:getImage():getMaskImage()
@@ -167,6 +166,7 @@ function playdate.update()
 		
 	elseif CURRENT_STATE == GAME_STATE.paused then
 		paused()
+		
 	end
 
 	if DEBUG_FLAG then
@@ -208,8 +208,22 @@ end
 
 function update_orb()
 	-- get current direction
-	local vectorx, vectory = degrees_to_vector( playdate.getCrankPosition()-45 )
-
+	-- local vectorx, vectory = degrees_to_vector( playdate.getCrankPosition()-45 )
+	local vectorx, vectory, vectorz
+	if playdate.accelerometerIsRunning() then
+		vectorx, vectory, vectorz = playdate.readAccelerometer()
+		vectory = vectory - 0.5
+		vectorx, vectory = rotate_vector(vectorx, vectory) -- rotate 45 degrees
+		vectorx = vectorx * 4
+		vectory = vectory * 4
+		if DEBUG_FLAG then DEBUG_STRING = string.format("x:%.2f, y:%.2f", vectorx, vectory) end
+	else
+		-- use crank for direction instead
+		vectorx, vectory = degrees_to_vector( playdate.getCrankPosition()-45 )
+		vectorx = vectorx * 1.5
+		vectory = vectory * 1.5
+	end
+	
 	if ORB.accelerate_flag then
 		ORB.x_velocity = ORB.x_velocity + (vectorx * ORB.acceleration)
 		ORB.y_velocity = ORB.y_velocity + (vectory * ORB.acceleration)
@@ -314,8 +328,7 @@ function draw_level(level)
 				image:drawAt(isox,isoy)
 			lib_gfx.unlockFocus()
 
---			z_mask_draw(ORB, isox, isoy, height_offset, image, tile)
-			z_mask_draw(ORB, x, y, tile, image, isox, isoy )
+			z_mask_draw(ORB, x, y, tile, image, isox, isoy, height_offset )
 		end
 	end
 
@@ -338,33 +351,26 @@ function z_mask_reset(obj)
 	obj.sprite_cover:moveTo( obj.sprite:getPosition() )
 end
 
-function z_mask_draw( obj, tile_col, tile_row, tile, image, tile_iso_x, tile_iso_y )
+function z_mask_draw( obj, tile_col, tile_row, tile, image, tile_iso_x, tile_iso_y, tile_altitude )
 	obj_col = math.floor(obj.pos.x / GRID_SIZE) + 1
 	obj_row = math.floor(obj.pos.y / GRID_SIZE) + 1
 
-	-- check 1
-	-- are we standing on this tile?
-	if obj_col == tile_col and obj_row == tile_row then 
-		if DEBUG_FLAG then DEBUG_STRING = TILE_DATA.tiles[tile].name end
+	-- check 1: are we standing on this tile?
+	if obj_col == tile_col and obj_row == tile_row then
+		-- if DEBUG_FLAG then DEBUG_STRING = TILE_DATA.tiles[tile].name end
 		return -- dont mask if orb is standing on tile!
 	end
 
-	-- check 2
-	-- is tile adjacent?
-	-- if no, then return
-	-- actually if the tile if very high above the orb, it can still cover the orb, even though it's far away...
-
-	-- check 3
-	-- is tiles altitude higher than the orb?
-	-- if no, then return
+	-- check 2: is tile to the left or the north of the orb? then return
+	if tile_col < obj_col or tile_row < obj_row then return end
 	
-	-- check 4
-	-- is the tile sloping away from the orb?
-	-- is the tile edge at the same altitude as the orb?
-	-- if yes, then return
+	-- check 3: is tile lower or same altitude as obj?
+	local alt_diff = tile_altitude - obj.altitude
+	-- if alt_diff <= 0 then return end
+	-- this is a hack and does not work on low tiles that cover the object.
+	if alt_diff < HALF_GRID_SIZE then return end
 
-	-- still here?
-	-- draw the tile ontop of the orb
+	-- ok, assume the tile is covering the object
 	local objx, objy = obj.sprite:getPosition() -- screen position
 	objx = objx - GRID_SIZE
 	objy = objy - GRID_SIZE
@@ -372,25 +378,6 @@ function z_mask_draw( obj, tile_col, tile_row, tile, image, tile_iso_x, tile_iso
 		image:drawAt( tile_iso_x - objx, tile_iso_y - objy )
 	lib_gfx.unlockFocus()
 
-end
-
-function z_mask_draw_old( obj, tilex, tiley, height_offset, image, tile )
-	local objx, objy = obj.sprite:getPosition() -- screen position
-	-- TODO: why subtract GRID_SIZE?
-	objx = objx - GRID_SIZE
-	objy = objy - GRID_SIZE
-
-	if math.abs( tilex-objx ) <= GRID_SIZE then
-		if math.abs( tiley-objy ) <= GRID_SIZE then
-			if height_offset > obj.altitude then 
-				-- draw tile image to obj sprite_cover
-				lib_gfx.lockFocus(obj.sprite_cover:getImage())
-					image:drawAt( tilex - objx, tiley - objy )
-					DEBUG_STRING = TILE_DATA.tiles[tile].name
-				lib_gfx.unlockFocus()
-			end
-		end
-	end
 end
 
 function wall_collision_check(obj, nextx, nexty)
@@ -528,9 +515,8 @@ function get_orb_frame()
 end
 
 function move_orb_to_start_position()
-	-- TODO: don't use magic value 8.0
-	ORB.pos.x = 8.0
-	ORB.pos.y = 8.0
+	ORB.pos.x = HALF_GRID_SIZE
+	ORB.pos.y = HALF_GRID_SIZE
 end
 
 function offset_background(x,y)
@@ -591,6 +577,15 @@ function degrees_to_vector(angle)
 	return vx, vy
 end
 
+function rotate_vector( x, y, rad )
+	if not rad then rad = -0.785398 end -- 45 degrees
+	cos = math.cos(rad)
+	sin = math.sin(rad)
+	px = x * cos - y * sin
+	py = x * sin + y * cos
+	return px, py
+end
+
 function iso_to_grid(x, y, offsetx, offsety)
 	if not offsetx then offsetx = 0 end
 	if not offsety then offsety = 0 end
@@ -616,11 +611,27 @@ end
 
 function playdate.BButtonDown()
 	if CURRENT_STATE == GAME_STATE.paused then return end
-	if CURRENT_STATE == GAME_STATE.playing then ORB.accelerate_flag = true end
+	if CURRENT_STATE == GAME_STATE.playing then 
+		ORB.accelerate_flag = true 
+	end
 end
+
 
 function playdate.BButtonUp()
 	ORB.accelerate_flag = false
+end
+
+function playdate.AButtonDown()	
+	if CURRENT_STATE == GAME_STATE.paused then return end
+	if CURRENT_STATE == GAME_STATE.playing then 
+		ORB.accelerate_flag = true 
+		playdate.startAccelerometer()
+	end
+end
+
+function playdate.AButtonUp()
+	ORB.accelerate_flag = false
+	playdate.stopAccelerometer()
 end
 
 function playdate.rightButtonDown()
