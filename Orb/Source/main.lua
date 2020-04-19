@@ -33,12 +33,12 @@ local GRAVITY = 0.75
 
 -- state vars
 local GAME_STATE = {
-	initial = 1, 
-	ready   = 2, 
-	playing = 3, 
-	paused  = 4, 
-	goal    = 5,
-	over    = 6
+	initial  = 1, 
+	ready    = 2, 
+	playing  = 3, 
+	paused   = 4, 
+	goal     = 5,
+	gameover = 6
 }
 
 local CURRENT_STATE = GAME_STATE.initial
@@ -52,9 +52,9 @@ local CURRENT_LEVEL = 3
 local BACKGROUND_SPRITE = lib_spr.new()
 local TILE_IMAGES = lib_gfx.imagetable.new('Artwork/level_tiles')
 local LEVEL_DATA = playdate.datastore.read("Levels/levels")
-	print(LEVEL_DATA.description)
+	print(LEVEL_DATA.description) -- to make sure the json is readable
 local TILE_DATA = playdate.datastore.read("Levels/tiles")
-	print(TILE_DATA.description)
+	print(TILE_DATA.description) -- to make sure the json is readable
 
 local LEVEL_OFFSET = { x=60, y=20, velx=0, vely=0 }
 
@@ -140,12 +140,10 @@ function playdate.update()
 		setup()
 		CURRENT_STATE = GAME_STATE.ready
 
-
 	elseif CURRENT_STATE == GAME_STATE.ready then
 		print("start")
 		CURRENT_STATE = GAME_STATE.playing
 		
-
 	elseif CURRENT_STATE == GAME_STATE.playing then
 		update_orb()
 		draw_level()
@@ -153,7 +151,6 @@ function playdate.update()
 		lib_spr.update() -- update all sprites
 		update_level_offset()
 	
-
 	elseif CURRENT_STATE == GAME_STATE.goal then
 		level_clear()
 		update_orb()
@@ -162,11 +159,16 @@ function playdate.update()
 		update_level_offset()
 
 	elseif CURRENT_STATE == GAME_STATE.dead then
+		if game_over_check() then
+			CURRENT_STATE = GAME_STATE.gameover
+		end
+
+	elseif CURRENT_STATE == GAME_STATE.gameover then
 		-- nothing
-		
+
 	elseif CURRENT_STATE == GAME_STATE.paused then
 		paused()
-		
+
 	end
 
 	if DEBUG_FLAG then
@@ -182,6 +184,11 @@ end
 
 function level_clear()
 	add_friction(0.75)
+end
+
+function game_over_check()
+	-- nothing (yet)
+	return false
 end
 
 function end_level_check()
@@ -491,6 +498,9 @@ function get_altitude_at_pos( x, y )
 
 	local tile_type = LEVEL_DATA.levels[CURRENT_LEVEL].tiles[tile_index]
 	local tile_altitude = LEVEL_DATA.levels[CURRENT_LEVEL].altitude[tile_index]
+
+	-- check if this is an empty hole tile:
+	if TILE_DATA.tiles[tile_type].type == "hole" then return INFINITY_FLOOR_ALTITUDE end
 
 	-- find local tile altitude
 	local tile_heightmap_x = math.floor( (x - GRID_SIZE * (tilex-1) ))+1
