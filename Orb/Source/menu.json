@@ -1,0 +1,42 @@
+{
+	"description": "menu.json game menu with function calls.",
+	"menu": [
+		{
+			"name":"NEW GAME",
+			"active":true,
+			"funct":"new_game",
+			"menu":null
+		},
+
+		{
+			"name":"SETTINGS",
+			"active":true,
+			"funct":null,
+			"menu": [
+
+				{
+					"name":"MUSIC",
+					"active":true,
+					"funct":"music_switch",
+					"menu":null
+				},
+
+				{
+					"name":"MOTION CONTROLS",
+					"active":false,
+					"funct":"motion_control_switch",
+					"menu":null
+				}
+
+			]
+
+		},
+
+		{
+			"name":"CONTINUE",
+			"active":false,
+			"funct":"continue",
+			"menu":null
+		}
+	]
+}

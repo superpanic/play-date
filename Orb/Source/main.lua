@@ -34,14 +34,20 @@ local GRAVITY = 0.75
 -- state vars
 local GAME_STATE = {
 	initial  = 1, 
-	ready    = 2, 
-	playing  = 3, 
-	paused   = 4, 
-	goal     = 5,
-	gameover = 6
+	setup    = 2,
+	menu     = 3,
+	ready    = 4, 
+	playing  = 5, 
+	paused   = 6, 
+	goal     = 7,
+	gameover = 8
 }
 
 local CURRENT_STATE = GAME_STATE.initial
+
+local MENU_SELECT_COUNTER = 1
+local MENU_DATA = playdate.datastore.read("menu")
+	print(MENU_DATA.description) -- to make sure the json is readable
 
 -- ORB vars
 local ORB = {}
@@ -136,15 +142,26 @@ function playdate.update()
 	end
 
 	if CURRENT_STATE == GAME_STATE.initial then
+		CURRENT_STATE = GAME_STATE.menu
+
+	elseif CURRENT_STATE == GAME_STATE.menu then
+		-- draw menu
+		menu()
+
+	elseif CURRENT_STATE == GAME_STATE.setup then
+		-- is a game already running? then return to it
+		-- no game running, setup a new game
 		print("setup")
 		setup()
 		CURRENT_STATE = GAME_STATE.ready
 
 	elseif CURRENT_STATE == GAME_STATE.ready then
+		-- ready to roll!
 		print("start")
 		CURRENT_STATE = GAME_STATE.playing
 		
 	elseif CURRENT_STATE == GAME_STATE.playing then
+		-- action!
 		update_orb()
 		draw_level()
 		end_level_check()
@@ -180,6 +197,32 @@ function playdate.update()
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeCopy)
 	end
 	
+end
+
+function menu()
+	for index = 1, #MENU_DATA.menu do
+		if index == MENU_SELECT_COUNTER then lib_gfx.setImageDrawMode(lib_gfx.kDrawModeNXOR)
+		else lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite) end
+		lib_gfx.drawText(MENU_DATA.menu[index].name, 55, 10+20*index)
+	end
+	lib_gfx.setImageDrawMode(lib_gfx.kDrawModeCopy)
+
+--	lib_gfx.setImageDrawMode(lib_gfx.kDrawModeNXOR)
+--	lib_gfx.drawText("NEW GAME", 55, 30)
+--	lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
+--	lib_gfx.drawText("SETTINGS", 55, 50)
+--	lib_gfx.drawText("CONTINUE", 55, 70)
+--	lib_gfx.setImageDrawMode(lib_gfx.kDrawModeCopy)
+end
+
+function new_game()
+	print("new game")
+	CURRENT_STATE = GAME_STATE.setup
+end
+
+function continue()
+	print("continue")
+	-- TODO:
 end
 
 function level_clear()
@@ -632,7 +675,6 @@ function playdate.BButtonUp()
 end
 
 function playdate.AButtonDown()	
-	if CURRENT_STATE == GAME_STATE.paused then return end
 	if CURRENT_STATE == GAME_STATE.playing then 
 		ORB.accelerate_flag = true 
 		playdate.startAccelerometer()
@@ -640,8 +682,19 @@ function playdate.AButtonDown()
 end
 
 function playdate.AButtonUp()
-	ORB.accelerate_flag = false
-	playdate.stopAccelerometer()
+	if CURRENT_STATE == GAME_STATE.menu then
+		if not MENU_DATA.menu[MENU_SELECT_COUNTER].funct then
+			print("no function")
+		else
+			--print(MENU_DATA.menu[MENU_SELECT_COUNTER].funct)
+			local f = MENU_DATA.menu[MENU_SELECT_COUNTER].funct
+			_G[f]()
+		end
+	end
+	if CURRENT_STATE == GAME_STATE.playing then
+		ORB.accelerate_flag = false
+		playdate.stopAccelerometer()
+	end
 end
 
 function playdate.rightButtonDown()
@@ -652,15 +705,22 @@ function playdate.leftButtonDown()
 	
 end
 
-function playdate.downButtonDown()
-	DEBUG_FRAME_STEP = true
+function playdate.upButtonDown() -- up button
+	if CURRENT_STATE == GAME_STATE.menu then
+		if MENU_SELECT_COUNTER <= 1 then
+			MENU_SELECT_COUNTER = #MENU_DATA.menu
+		else
+			MENU_SELECT_COUNTER = MENU_SELECT_COUNTER - 1
+		end
+	end
 end
 
-function playdate.upButtonDown()
-	if (CURRENT_LEVEL < #LEVEL_DATA.levels) then
-		CURRENT_LEVEL = CURRENT_LEVEL +1
-	else
-		CURRENT_LEVEL = 1
+function playdate.downButtonDown() -- down button
+	if CURRENT_STATE == GAME_STATE.menu then
+		if MENU_SELECT_COUNTER < #MENU_DATA.menu then
+			MENU_SELECT_COUNTER = MENU_SELECT_COUNTER + 1
+		else
+			MENU_SELECT_COUNTER = 1
+		end
 	end
-	move_orb_to_start_position()
 end
