@@ -18,8 +18,13 @@ local DEBUG_STEP_FRAME = false
 local DEBUG_FRAME_STEP = false
 local DEBUG_FRAME_COUNTER = 0
 
-local SCREEN_WIDTH = playdate.display.getWidth()
+-- full screen size
+local SCREEN_WIDTH  = playdate.display.getWidth()
 local SCREEN_HEIGHT = playdate.display.getHeight()
+
+-- game world area size
+local GAME_AREA_WIDTH  = SCREEN_WIDTH - 32
+local GAME_AREA_HEIGHT = SCREEN_HEIGHT
 
 local GRID_SIZE = 16
 local HALF_GRID_SIZE = GRID_SIZE / 2
@@ -27,6 +32,8 @@ local HALF_GRID_SIZE = GRID_SIZE / 2
 local INFINITY_FLOOR_ALTITUDE = -1000
 local ALTITUDE_LIMIT = -500
 local EDGE_COLLISION_HEIGHT = 4
+
+local CRANK_VECTOR = {x=0, y=0}
 
 local FRICTION = 0.92
 local GRAVITY = 0.75
@@ -52,6 +59,10 @@ local MENU_DATA = playdate.datastore.read("menu")
 -- ORB vars
 local ORB = {}
 local ORB_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/ORB')
+
+-- interface
+local INTERFACE_IMAGE = lib_gfx.image.new("Artwork/interface.png")
+local INTERFACE_SPRITE = lib_spr.new()
 
 -- level vars
 local CURRENT_LEVEL = 3
@@ -115,21 +126,22 @@ function setup()
 	ORB.set_z_index(1000)
 	ORB.sprite:add()
 
---	m = ORB.sprite:getImage():getMaskImage()
---	lib_gfx.lockFocus(m)
---		m:setInverted(true)
---	lib_gfx.unlockFocus()
-
 -- background as a sprite
-	local bg_img = lib_gfx.image.new(SCREEN_WIDTH, SCREEN_HEIGHT)
+	local bg_img = lib_gfx.image.new(GAME_AREA_WIDTH, GAME_AREA_HEIGHT)
 	lib_gfx.lockFocus(bg_img)
 		lib_gfx.setColor(lib_gfx.kColorClear)
-		lib_gfx.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT)
+		lib_gfx.fillRect(0,0,GAME_AREA_WIDTH,GAME_AREA_HEIGHT)
 	lib_gfx.unlockFocus()
 	BACKGROUND_SPRITE:setImage(bg_img)
-	BACKGROUND_SPRITE:moveTo(SCREEN_WIDTH/2,SCREEN_HEIGHT/2)
+	BACKGROUND_SPRITE:moveTo(GAME_AREA_WIDTH/2,SCREEN_HEIGHT/2)
 	BACKGROUND_SPRITE:setZIndex(-1000)
 	BACKGROUND_SPRITE:add()
+
+-- interface
+	INTERFACE_SPRITE:setImage(INTERFACE_IMAGE)
+	INTERFACE_SPRITE:moveTo(GAME_AREA_WIDTH+16,SCREEN_HEIGHT/2)
+	INTERFACE_SPRITE:setZIndex(2000)
+	INTERFACE_SPRITE:add()
 	
 -- reset crank
 	playdate.getCrankChange()
@@ -144,9 +156,14 @@ function playdate.update()
 	if CURRENT_STATE == GAME_STATE.initial then
 		CURRENT_STATE = GAME_STATE.menu
 
+
+
+	-- menu loop
 	elseif CURRENT_STATE == GAME_STATE.menu then
 		-- draw menu
 		menu()
+
+
 
 	elseif CURRENT_STATE == GAME_STATE.setup then
 		-- is a game already running? then return to it
@@ -160,6 +177,8 @@ function playdate.update()
 		print("start")
 		CURRENT_STATE = GAME_STATE.playing
 		
+
+	-- main game loop
 	elseif CURRENT_STATE == GAME_STATE.playing then
 		-- action!
 		update_orb()
@@ -167,13 +186,16 @@ function playdate.update()
 		end_level_check()
 		lib_spr.update() -- update all sprites
 		update_level_offset()
-	
+		draw_interface()
+
+
 	elseif CURRENT_STATE == GAME_STATE.goal then
 		level_clear()
 		update_orb()
 		draw_level()
 		lib_spr.update() -- update all sprites
 		update_level_offset()
+		draw_interface()
 
 	elseif CURRENT_STATE == GAME_STATE.dead then
 		if game_over_check() then
@@ -200,19 +222,13 @@ function playdate.update()
 end
 
 function menu()
+	-- loop throught json menu data structure and print to screen
 	for index = 1, #MENU_DATA.menu do
 		if index == MENU_SELECT_COUNTER then lib_gfx.setImageDrawMode(lib_gfx.kDrawModeNXOR)
 		else lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite) end
 		lib_gfx.drawText(MENU_DATA.menu[index].name, 55, 10+20*index)
 	end
 	lib_gfx.setImageDrawMode(lib_gfx.kDrawModeCopy)
-
---	lib_gfx.setImageDrawMode(lib_gfx.kDrawModeNXOR)
---	lib_gfx.drawText("NEW GAME", 55, 30)
---	lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
---	lib_gfx.drawText("SETTINGS", 55, 50)
---	lib_gfx.drawText("CONTINUE", 55, 70)
---	lib_gfx.setImageDrawMode(lib_gfx.kDrawModeCopy)
 end
 
 function new_game()
@@ -232,6 +248,27 @@ end
 function game_over_check()
 	-- nothing (yet)
 	return false
+end
+
+function draw_interface()
+	-- TODO:
+	lib_gfx.lockFocus(INTERFACE_SPRITE:getImage())
+		-- crank circle
+		local px = 8
+		local py = 92
+		lib_gfx.setColor(lib_gfx.kColorWhite)
+		lib_gfx.fillCircleAtPoint(px, py, 4.5)
+		lib_gfx.setColor(lib_gfx.kColorBlack)
+		lib_gfx.drawPixel( px, py )
+		lib_gfx.drawLine( px, py, px+(CRANK_VECTOR.x*5), py+(CRANK_VECTOR.y*5))
+		-- speed meter
+		px=2
+		py=70
+		lib_gfx.setColor(lib_gfx.kColorWhite)
+		lib_gfx.fillRect(px,py,20,7)
+	lib_gfx.unlockFocus()
+	
+	INTERFACE_SPRITE:markDirty()
 end
 
 function end_level_check()
@@ -269,7 +306,13 @@ function update_orb()
 		if DEBUG_FLAG then DEBUG_STRING = string.format("x:%.2f, y:%.2f", vectorx, vectory) end
 	else
 		-- use crank for direction instead
-		vectorx, vectory = degrees_to_vector( playdate.getCrankPosition()-45 )
+		local crankpos = playdate.getCrankPosition()
+
+-- TODO: rewrite using affine transform objects (presumably faster?)
+-- playdate.geometry.affineTransform:rotate(deg)
+		CRANK_VECTOR.x, CRANK_VECTOR.y = degrees_to_vector( playdate.getCrankPosition() )
+
+		vectorx, vectory = degrees_to_vector( playdate.getCrankPosition() - 45 )		
 		vectorx = vectorx * 1.5
 		vectory = vectory * 1.5
 	end
@@ -339,9 +382,9 @@ function update_level_offset()
 
 	local orb_x, orb_y = ORB.sprite:getPosition()
 	if orb_x < GRID_SIZE * 3 then LEVEL_OFFSET.velx = LEVEL_OFFSET.velx + 0.5 end
-	if orb_x > SCREEN_WIDTH - GRID_SIZE * 3 then LEVEL_OFFSET.velx = LEVEL_OFFSET.velx - 0.5 end
+	if orb_x > GAME_AREA_WIDTH - GRID_SIZE * 3 then LEVEL_OFFSET.velx = LEVEL_OFFSET.velx - 0.5 end
 	if orb_y < GRID_SIZE * 2 then LEVEL_OFFSET.vely = LEVEL_OFFSET.vely + 0.5 end
-	if orb_y > SCREEN_HEIGHT - GRID_SIZE * 2 then LEVEL_OFFSET.vely = LEVEL_OFFSET.vely - 0.5 end
+	if orb_y > GAME_AREA_HEIGHT - GRID_SIZE * 2 then LEVEL_OFFSET.vely = LEVEL_OFFSET.vely - 0.5 end
 
 	offset_background(LEVEL_OFFSET.velx, LEVEL_OFFSET.vely)
 end
@@ -354,15 +397,19 @@ function draw_level(level)
 
 	local w = LEVEL_DATA.levels[level].w 
 	local h = LEVEL_DATA.levels[level].h
+
+	local index, tile, height_offset = 0
+	local isox, isoy
+	local draw_limit = GRID_SIZE * 2
 	
 	for y = 1, h do
 		for x = 1, w do
-			local index = w * (y-1) + x
-			local tile = LEVEL_DATA.levels[level].tiles[index]
-			local height_offset = LEVEL_DATA.levels[level].altitude[index]
+			index = w * (y-1) + x
+			tile = LEVEL_DATA.levels[level].tiles[index]
+			height_offset = LEVEL_DATA.levels[level].altitude[index]
 			
 			-- calculate tile screen position
-			local isox, isoy = grid_to_iso( (x-1) * GRID_SIZE, (y-1) * GRID_SIZE)
+			isox, isoy = grid_to_iso( (x-1) * GRID_SIZE, (y-1) * GRID_SIZE)
 						
 			--z_mask_draw(ORB, index, tile, isox, isoy, height_offset)
 			
@@ -373,12 +420,17 @@ function draw_level(level)
 			-- add latitude offset
 			isoy = isoy - height_offset
 
-			local image = TILE_IMAGES:getImage(tile)
-			lib_gfx.lockFocus(BACKGROUND_SPRITE:getImage())
-				image:drawAt(isox,isoy)
-			lib_gfx.unlockFocus()
+			-- check screen bounds first
+			if isox > -draw_limit and isox < GAME_AREA_WIDTH + draw_limit then
+				if isoy > -draw_limit and isoy < GAME_AREA_HEIGHT + draw_limit then
+					-- draw image
+					lib_gfx.lockFocus(BACKGROUND_SPRITE:getImage())
+						TILE_IMAGES:getImage(tile):drawAt(isox,isoy)
+					lib_gfx.unlockFocus()
+					z_mask_draw(ORB, x, y, tile, TILE_IMAGES:getImage(tile), isox, isoy, height_offset )
+				end
+			end
 
-			z_mask_draw(ORB, x, y, tile, image, isox, isoy, height_offset )
 		end
 	end
 
@@ -624,6 +676,7 @@ end
 -- algorithms / math
 
 function degrees_to_vector(angle)
+	-- use when controlling with crank
 	local crankRads = math.rad(angle)
 	local vx = math.sin(crankRads)
 	local vy = -1 * math.cos(crankRads)
@@ -631,6 +684,7 @@ function degrees_to_vector(angle)
 end
 
 function rotate_vector( x, y, rad )
+	-- used when controlling accelerometer
 	if not rad then rad = -0.785398 end -- 45 degrees
 	cos = math.cos(rad)
 	sin = math.sin(rad)
@@ -674,7 +728,7 @@ function playdate.BButtonUp()
 	ORB.accelerate_flag = false
 end
 
-function playdate.AButtonDown()	
+function playdate.AButtonDown()
 	if CURRENT_STATE == GAME_STATE.playing then 
 		ORB.accelerate_flag = true 
 		playdate.startAccelerometer()
@@ -686,8 +740,8 @@ function playdate.AButtonUp()
 		if not MENU_DATA.menu[MENU_SELECT_COUNTER].funct then
 			print("no function")
 		else
-			--print(MENU_DATA.menu[MENU_SELECT_COUNTER].funct)
 			local f = MENU_DATA.menu[MENU_SELECT_COUNTER].funct
+			-- TODO: check if function exists
 			_G[f]()
 		end
 	end
