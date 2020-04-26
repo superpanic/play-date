@@ -64,9 +64,10 @@ local ORB_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/ORB')
 local INTERFACE_IMAGE = lib_gfx.image.new("Artwork/interface.png")
 local INTERFACE_SPRITE = lib_spr.new()
 local INTERFACE_FONT = playdate.graphics.loadFont("Fonts/orb_font")
+lib_gfx.setFont(INTERFACE_FONT)
 
 -- level vars
-local CURRENT_LEVEL = 3
+local CURRENT_LEVEL = 1
 local BACKGROUND_SPRITE = lib_spr.new()
 local TILE_IMAGES = lib_gfx.imagetable.new('Artwork/level_tiles')
 local LEVEL_DATA = playdate.datastore.read("Levels/levels")
@@ -253,6 +254,7 @@ end
 
 function draw_interface()
 	-- TODO:
+	
 	lib_gfx.lockFocus(INTERFACE_SPRITE:getImage())
 		-- crank circle
 		local px = 8
@@ -270,11 +272,14 @@ function draw_interface()
 		lib_gfx.setColor(lib_gfx.kColorWhite)
 		lib_gfx.fillRect( px, py, math.min( 27, (math.abs(ORB.x_velocity)+math.abs(ORB.y_velocity)+ORB.fall_velocity)*6 ), 5 )
 		-- alt meter
+		lib_gfx.setColor(lib_gfx.kColorBlack)
+		lib_gfx.fillRect(2,111,30,5)
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
-		INTERFACE_FONT:drawText("09",10,10)
+		local s = string.format("%03.1f", ORB.altitude)
+		lib_gfx.drawTextAligned(s, 32, 111, kTextAlignment.right)
+		--INTERFACE_FONT:drawText(ORB.altitude,110)
 		--lib_gfx.drawText("text", 10, 10)
 	lib_gfx.unlockFocus()
-	
 	INTERFACE_SPRITE:markDirty()
 end
 
