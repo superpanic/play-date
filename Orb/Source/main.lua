@@ -63,6 +63,7 @@ local ORB_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/ORB')
 -- interface
 local INTERFACE_IMAGE = lib_gfx.image.new("Artwork/interface.png")
 local INTERFACE_SPRITE = lib_spr.new()
+local INTERFACE_FONT = playdate.graphics.loadFont("Fonts/orb_font")
 
 -- level vars
 local CURRENT_LEVEL = 3
@@ -262,10 +263,16 @@ function draw_interface()
 		lib_gfx.drawPixel( px, py )
 		lib_gfx.drawLine( px, py, px+(CRANK_VECTOR.x*5), py+(CRANK_VECTOR.y*5))
 		-- speed meter
-		px=2
-		py=70
+		px=3
+		py=71
+		lib_gfx.setColor(lib_gfx.kColorBlack)
+		lib_gfx.fillRect(px,py,27,5)
 		lib_gfx.setColor(lib_gfx.kColorWhite)
-		lib_gfx.fillRect(px,py,20,7)
+		lib_gfx.fillRect( px, py, math.min( 27, (math.abs(ORB.x_velocity)+math.abs(ORB.y_velocity)+ORB.fall_velocity)*6 ), 5 )
+		-- alt meter
+		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
+		INTERFACE_FONT:drawText("09",10,10)
+		--lib_gfx.drawText("text", 10, 10)
 	lib_gfx.unlockFocus()
 	
 	INTERFACE_SPRITE:markDirty()
