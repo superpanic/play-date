@@ -1,5 +1,6 @@
 {
 	"description": "menu.json game menu with function calls.",
+	"selected": [1,0,0],
 	"menu": [
 		{
 			"name":"NEW GAME",
@@ -26,8 +27,13 @@
 					"active":false,
 					"funct":"motion_control_switch",
 					"menu":null
+				},
+				{
+					"name":"BACK",
+					"active":true,
+					"funct":"menu_back",
+					"menu":null
 				}
-
 			]
 
 		},

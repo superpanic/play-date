@@ -535,9 +535,7 @@ function z_mask_draw( obj, tile_col, tile_row, tile, image, tile_isox, tile_isoy
 	
 	-- check 3: is tile lower or same altitude as obj?
 	local alt_diff = tile_altitude - obj.altitude
-	-- if alt_diff <= 0 then return end
-	-- this is a hack and does not work on low tiles that cover the object.
-	if alt_diff < HALF_GRID_SIZE then return end
+	if alt_diff <= 0 then return end -- earlier value was not 0 but HALF_GRID_SIZE
 
 	-- ok, assume the tile is covering the object
 	local objx, objy = obj.sprite:getPosition() -- screen position
