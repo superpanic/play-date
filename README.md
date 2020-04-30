@@ -1,11 +1,11 @@
-# orb
+# Orb
 
-a marble madness inspired game for the panic inc play-date gaming console.
+A Marble Madness inspired game for the Panic Inc Playdate gaming console.
 https://en.wikipedia.org/wiki/Marble_Madness
 https://panic.com/
 https://play.date/
 
-## tools and notes
+## Tools and notes
 
-check this out:
+Line collision algorithm.
 https://github.com/Yonaba/Algorithm-Implementations/blob/master/Bresenham_Based_Supercover_Line/Lua/Yonaba/bresenham_based_supercover.lua
