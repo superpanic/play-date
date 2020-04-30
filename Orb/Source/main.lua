@@ -67,7 +67,7 @@ local INTERFACE_FONT = playdate.graphics.loadFont("Fonts/orb_font")
 lib_gfx.setFont(INTERFACE_FONT)
 
 -- level vars
-local CURRENT_LEVEL = 3
+local CURRENT_LEVEL = 1
 local BACKGROUND_SPRITE = lib_spr.new()
 local LEVEL_IMAGE_SIZE = 1024
 local TILE_IMAGES = lib_gfx.imagetable.new('Artwork/level_tiles')
@@ -197,7 +197,7 @@ function playdate.update()
 	elseif CURRENT_STATE == GAME_STATE.goal then
 		level_clear()
 		update_orb()
-		draw_level()
+		offset_background()
 		-- moved this to last: lib_spr.update()
 		update_level_offset()
 		draw_interface()
@@ -257,9 +257,7 @@ function game_over_check()
 	return false
 end
 
-function draw_interface()
-	-- TODO:
-	
+function draw_interface()	
 	lib_gfx.lockFocus(INTERFACE_SPRITE:getImage())
 		-- crank circle
 		local px = 8
@@ -269,6 +267,8 @@ function draw_interface()
 		lib_gfx.setColor(lib_gfx.kColorBlack)
 		lib_gfx.drawPixel( px, py )
 		lib_gfx.drawLine( px, py, px+(CRANK_VECTOR.x*5), py+(CRANK_VECTOR.y*5))
+		-- game timer
+
 		-- speed meter
 		px=3
 		py=71
@@ -277,11 +277,13 @@ function draw_interface()
 		lib_gfx.setColor(lib_gfx.kColorWhite)
 		lib_gfx.fillRect( px, py, math.min( 27, (math.abs(ORB.x_velocity)+math.abs(ORB.y_velocity)+ORB.fall_velocity)*6 ), 5 )
 		-- alt meter
+		px=32
+		py=111
 		lib_gfx.setColor(lib_gfx.kColorBlack)
-		lib_gfx.fillRect(2,111,30,5)
+		lib_gfx.fillRect(px-30, py, px-2, 5)
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
 		local s = string.format("%03.1f", ORB.altitude)
-		lib_gfx.drawTextAligned(s, 32, 111, kTextAlignment.right)
+		lib_gfx.drawTextAligned(s, px, py, kTextAlignment.right)
 		--INTERFACE_FONT:drawText(ORB.altitude,110)
 		--lib_gfx.drawText("text", 10, 10)
 	lib_gfx.unlockFocus()
@@ -290,9 +292,12 @@ end
 
 function end_level_check()
 	if ( get_tile_type( math.floor(ORB.pos.x+0.5), math.floor(ORB.pos.y+0.5) ) == "goal" ) then 
-		CURRENT_STATE = GAME_STATE.goal
-		ORB.accelerate_flag = false
-		print("goal!")
+		-- do an altitude check (to see if we are really standing on the goal plate)
+		if ( ORB.altitude == get_altitude_at_pos(ORB.pos.x, ORB.pos.y) ) then
+			CURRENT_STATE = GAME_STATE.goal
+			ORB.accelerate_flag = false
+			print("goal!")
+		end
 	end
 	if ORB.altitude <= ALTITUDE_LIMIT then
 		CURRENT_STATE = GAME_STATE.dead
@@ -325,8 +330,6 @@ function update_orb()
 		-- use crank for direction instead
 		local crankpos = playdate.getCrankPosition()
 
--- TODO: rewrite using affine transform objects (presumably faster?)
--- playdate.geometry.affineTransform:rotate(deg)
 		CRANK_VECTOR.x, CRANK_VECTOR.y = degrees_to_vector( playdate.getCrankPosition() )
 
 		vectorx, vectory = degrees_to_vector( playdate.getCrankPosition() - 45 )		
