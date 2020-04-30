@@ -67,7 +67,7 @@ local INTERFACE_FONT = playdate.graphics.loadFont("Fonts/orb_font")
 lib_gfx.setFont(INTERFACE_FONT)
 
 -- level vars
-local CURRENT_LEVEL = 1
+local CURRENT_LEVEL = 3
 local BACKGROUND_SPRITE = lib_spr.new()
 local LEVEL_IMAGE_SIZE = 1024
 local TILE_IMAGES = lib_gfx.imagetable.new('Artwork/level_tiles')
@@ -76,7 +76,7 @@ local LEVEL_DATA = playdate.datastore.read("Levels/levels")
 local TILE_DATA = playdate.datastore.read("Levels/tiles")
 	print(TILE_DATA.description) -- to make sure the json is readable
 
-local LEVEL_OFFSET = { floatx=60.0, floaty=20.0, x=60, y=20, velx=0, vely=0 }
+local LEVEL_OFFSET = { floatx=60.0, floaty=20.0, x=60, y=20, velx=0, vely=0, drawy=0 }
 
 function new_game_object(name, sprite, pos)
 	local obj ={}
@@ -412,15 +412,12 @@ function update_level_offset()
 end
 
 function offset_background()
-	local y = math.floor(LEVEL_IMAGE_SIZE/2+LEVEL_OFFSET.y+0.5)
+	local y = math.floor(LEVEL_IMAGE_SIZE/2+LEVEL_OFFSET.y-LEVEL_OFFSET.drawy+0.5)
 	BACKGROUND_SPRITE:moveTo(LEVEL_OFFSET.x, y)
 end
 
 function draw_level(level)
 	if not level then level = CURRENT_LEVEL end
-
-	clear_background()
-	z_mask_reset(ORB)
 
 	local w = LEVEL_DATA.levels[level].w 
 	local h = LEVEL_DATA.levels[level].h
@@ -428,7 +425,30 @@ function draw_level(level)
 	local index, tile, height_offset = 0
 	local isox, isoy
 	local draw_limit = GRID_SIZE * 2
+
+	-- reset draw y offset
+	-- 1. draw tiles at positive offset
+	-- 2. move babckground to negative offset
+	-- 3. don't move sprites at all!
+
+	local draw_offset = 0
+	for y = 1, h do
+		for x = 1, w do
+			index = w * (y-1) + x
+			tile = LEVEL_DATA.levels[level].tiles[index]
+			height_offset = LEVEL_DATA.levels[level].altitude[index]
+			-- calculate tile screen position
+			isox, isoy = grid_to_iso( (x-1) * GRID_SIZE, (y-1) * GRID_SIZE)
+			isoy = isoy + TILE_DATA.tiles[tile].yoffset
+			-- add latitude offset
+			isoy = isoy - height_offset
+			if isoy < draw_offset then draw_offset = isoy end
+		end
+	end
 	
+	LEVEL_OFFSET.drawy = -(math.ceil(draw_offset+GRID_SIZE))
+	print("draw offset is:", LEVEL_OFFSET.drawy)
+
 	for y = 1, h do
 		for x = 1, w do
 			index = w * (y-1) + x
@@ -445,7 +465,7 @@ function draw_level(level)
 			isox = isox + LEVEL_IMAGE_SIZE / 2
 			
 			-- add latitude offset
-			isoy = isoy - height_offset
+			isoy = isoy - height_offset + LEVEL_OFFSET.drawy
 
 			-- draw image
 			lib_gfx.lockFocus(BACKGROUND_SPRITE:getImage())
@@ -454,7 +474,6 @@ function draw_level(level)
 
 		end
 	end
-
 end
 
 function z_mask_update(obj)
@@ -753,15 +772,17 @@ function rotate_vector( x, y, rad )
 	return px, py
 end
 
-function iso_to_grid(x, y, offsetx, offsety)
-	if not offsetx then offsetx = 0 end
-	if not offsety then offsety = 0 end
-	x = x - LEVEL_OFFSET.x
-	y = y - LEVEL_OFFSET.y
-	local gx = x + y * 2 - offsetx --+ GRID_SIZE
-	local gy = y * 2 - (x - offsetx) --+ GRID_SIZE
-	return gx, gy
-end
+--[[ 
+	function iso_to_grid(x, y, offsetx, offsety)
+		if not offsetx then offsetx = 0 end
+		if not offsety then offsety = 0 end
+		x = x - LEVEL_OFFSET.x
+		y = y - LEVEL_OFFSET.y
+		local gx = x + y * 2 - offsetx --+ GRID_SIZE
+		local gy = y * 2 - (x - offsetx) --+ GRID_SIZE
+		return gx, gy
+	end 
+]]
 
 function grid_to_iso(x, y, offsetx, offsety)
 	if not offsetx then offsetx = 0 end
