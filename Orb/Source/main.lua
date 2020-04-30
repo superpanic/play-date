@@ -76,7 +76,7 @@ local LEVEL_DATA = playdate.datastore.read("Levels/levels")
 local TILE_DATA = playdate.datastore.read("Levels/tiles")
 	print(TILE_DATA.description) -- to make sure the json is readable
 
-local LEVEL_OFFSET = { x=60, y=20, velx=0, vely=0 }
+local LEVEL_OFFSET = { floatx=60.0, floaty=20.0, x=60, y=20, velx=0, vely=0 }
 
 function new_game_object(name, sprite, pos)
 	local obj ={}
@@ -180,20 +180,19 @@ function playdate.update()
 	elseif CURRENT_STATE == GAME_STATE.ready then
 		print("start")
 		draw_level()
-		offset_level()
+		offset_background()
 		CURRENT_STATE = GAME_STATE.playing
 		
 
 	-- main game loop
 	elseif CURRENT_STATE == GAME_STATE.playing then
 		update_orb()
-		offset_level()
-		end_level_check()
+		offset_background()
 		-- moved this to last: lib_spr.update()
 		update_level_offset()
 		draw_interface()
 		lib_spr.update() -- update all sprites
-
+		end_level_check()
 
 	elseif CURRENT_STATE == GAME_STATE.goal then
 		level_clear()
@@ -221,6 +220,7 @@ function playdate.update()
 		DEBUG_FRAME_STEP = false
 		DEBUG_FRAME_COUNTER = DEBUG_FRAME_COUNTER + 1
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
+		if DEBUG_STRING == "" then DEBUG_STRING = "debug mode" end
 		lib_gfx.drawText(DEBUG_STRING, 5, 5)
 		lib_gfx.drawText(tostring(DEBUG_VAL), 5, 20)
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeCopy)
@@ -405,12 +405,11 @@ function update_level_offset()
 	if orb_y < GRID_SIZE * 2 then LEVEL_OFFSET.vely = LEVEL_OFFSET.vely + 0.5 end
 	if orb_y > GAME_AREA_HEIGHT - GRID_SIZE * 2 then LEVEL_OFFSET.vely = LEVEL_OFFSET.vely - 0.5 end
 
-	offset_background(LEVEL_OFFSET.velx, LEVEL_OFFSET.vely)
+	offset_level(LEVEL_OFFSET.velx, LEVEL_OFFSET.vely)
 end
 
-function offset_level()
+function offset_background()
 	local y = math.floor(LEVEL_IMAGE_SIZE/2+LEVEL_OFFSET.y+0.5)
-	local x = math.floor(LEVEL_OFFSET.x)
 	BACKGROUND_SPRITE:moveTo(LEVEL_OFFSET.x, y)
 end
 
@@ -464,22 +463,22 @@ function z_mask_update(obj)
 	local h = LEVEL_DATA.levels[level].h
 
 	local index, tile, height_offset = 0
-	local isox, isoy
+	local tile_isox, tile_isoy
 
 	for y = 1, h do
 		for x = 1, w do
 			index = w * (y-1) + x
 			tile = LEVEL_DATA.levels[level].tiles[index]
 			height_offset = LEVEL_DATA.levels[level].altitude[index]
-			isox, isoy = grid_to_iso( (x-1) * GRID_SIZE, (y-1) * GRID_SIZE)
+			tile_isox, tile_isoy = grid_to_iso( (x-1) * GRID_SIZE, (y-1) * GRID_SIZE)
 			
-			isox = isox + TILE_DATA.tiles[tile].xoffset
-			isoy = isoy + TILE_DATA.tiles[tile].yoffset - height_offset
-			isox = isox + LEVEL_OFFSET.x
-			isoy = isoy + LEVEL_OFFSET.y
-			isox = math.floor(isox+0.5)
-			isoy = math.floor(isoy+0.5)
-			z_mask_draw(obj, x, y, tile, TILE_IMAGES:getImage(tile), isox, isoy, height_offset )
+			tile_isox = tile_isox + TILE_DATA.tiles[tile].xoffset
+			tile_isoy = tile_isoy + TILE_DATA.tiles[tile].yoffset - height_offset
+			tile_isox = tile_isox + LEVEL_OFFSET.x
+			tile_isoy = tile_isoy + LEVEL_OFFSET.y
+			tile_isox = math.floor(tile_isox+0.5)
+			tile_isoy = math.floor(tile_isoy+0.5)
+			z_mask_draw(obj, x, y, tile, TILE_IMAGES:getImage(tile), tile_isox, tile_isoy, height_offset )
 		end
 	end
 
@@ -490,16 +489,16 @@ function z_mask_reset(obj)
 		lib_gfx.setColor(lib_gfx.kColorClear)
 		lib_gfx.fillRect(0,0,GRID_SIZE*2,GRID_SIZE*2)
 
-		--if DEBUG_FLAG then
+		if DEBUG_FLAG then
 			lib_gfx.setColor(lib_gfx.kColorWhite)
 			lib_gfx.drawRect(0,0,GRID_SIZE*2,GRID_SIZE*2)
-		--end
+		end
 
 	lib_gfx.unlockFocus()
 	obj.sprite_cover:moveTo( obj.sprite:getPosition() )
 end
 
-function z_mask_draw( obj, tile_col, tile_row, tile, image, tile_iso_x, tile_iso_y, tile_altitude )
+function z_mask_draw( obj, tile_col, tile_row, tile, image, tile_isox, tile_isoy, tile_altitude )
 	obj_col = math.floor(obj.pos.x / GRID_SIZE) + 1
 	obj_row = math.floor(obj.pos.y / GRID_SIZE) + 1
 
@@ -522,9 +521,11 @@ function z_mask_draw( obj, tile_col, tile_row, tile, image, tile_iso_x, tile_iso
 	local objx, objy = obj.sprite:getPosition() -- screen position
 	objx = objx - GRID_SIZE
 	objy = objy - GRID_SIZE
+
+	-- add special cases (like slopes) here --
 	
 	lib_gfx.lockFocus(obj.sprite_cover:getImage())
-		image:drawAt( tile_iso_x - objx, tile_iso_y - objy )
+		image:drawAt( tile_isox - objx, tile_isoy - objy )
 	lib_gfx.unlockFocus()
 end
 
@@ -670,9 +671,13 @@ function move_orb_to_start_position()
 	ORB.pos.y = HALF_GRID_SIZE
 end
 
-function offset_background(x,y)
-	LEVEL_OFFSET.x = LEVEL_OFFSET.x + x
-	LEVEL_OFFSET.y = LEVEL_OFFSET.y + y
+function offset_level(x,y)
+	-- mutate
+	LEVEL_OFFSET.floatx = LEVEL_OFFSET.floatx + x
+	LEVEL_OFFSET.floaty = LEVEL_OFFSET.floaty + y
+	-- set
+	LEVEL_OFFSET.x = math.floor(LEVEL_OFFSET.floatx + 0.5)
+	LEVEL_OFFSET.y = math.floor(LEVEL_OFFSET.floaty + 0.5)
 end
 
 function clear_background()
@@ -758,8 +763,8 @@ end
 function grid_to_iso(x, y, offsetx, offsety)
 	if not offsetx then offsetx = 0 end
 	if not offsety then offsety = 0 end
-	local ix = x-y + offsetx -- + LEVEL_OFFSET.x
-	local iy = math.abs(x+y)/2 + offsety -- + LEVEL_OFFSET.y
+	local ix = x-y + offsetx 
+	local iy = math.abs(x+y)/2 + offsety 
 	return ix, iy
 end
 
