@@ -10,7 +10,7 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-local DEBUG_FLAG = false
+local DEBUG_FLAG = true
 local DEBUG_STRING = ""
 local DEBUG_VAL = 0.0
 
@@ -47,7 +47,8 @@ local GAME_STATE = {
 	playing  = 5, 
 	paused   = 6, 
 	goal     = 7,
-	gameover = 8
+	gameover = 8,
+	cleanup  = 9
 }
 
 local CURRENT_STATE = GAME_STATE.initial
@@ -60,15 +61,19 @@ local MENU_DATA = playdate.datastore.read("menu")
 local ORB = {}
 local ORB_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/ORB')
 
+-- game
+local GAME_TIMER = 0
+local GAME_TIME_STAMP = 0
+
 -- interface
 local INTERFACE_IMAGE = lib_gfx.image.new("Artwork/interface.png")
-local INTERFACE_SPRITE = lib_spr.new()
+local INTERFACE_SPRITE = {}
 local INTERFACE_FONT = playdate.graphics.loadFont("Fonts/orb_font")
 lib_gfx.setFont(INTERFACE_FONT)
 
 -- level vars
-local CURRENT_LEVEL = 3
-local BACKGROUND_SPRITE = lib_spr.new()
+local CURRENT_LEVEL = 1
+local BACKGROUND_SPRITE = {} 
 local LEVEL_IMAGE_SIZE = 1024
 local TILE_IMAGES = lib_gfx.imagetable.new('Artwork/level_tiles')
 local LEVEL_DATA = playdate.datastore.read("Levels/levels")
@@ -130,9 +135,8 @@ function setup()
 	ORB.sprite:add()
 
 -- background as a sprite
---	local bg_img = lib_gfx.image.new(GAME_AREA_WIDTH, GAME_AREA_HEIGHT)
-	local bg_img = lib_gfx.image.new(LEVEL_IMAGE_SIZE, LEVEL_IMAGE_SIZE)
-
+	BACKGROUND_SPRITE = lib_spr.new()
+	local bg_img = lib_gfx.image.new(LEVEL_IMAGE_SIZE, LEVEL_IMAGE_SIZE)	
 	lib_gfx.lockFocus(bg_img)
 		lib_gfx.setColor(lib_gfx.kColorClear)
 		lib_gfx.fillRect(0,0,GAME_AREA_WIDTH,GAME_AREA_HEIGHT)
@@ -143,6 +147,7 @@ function setup()
 	BACKGROUND_SPRITE:add()
 
 -- interface
+	INTERFACE_SPRITE = lib_spr.new()
 	INTERFACE_SPRITE:setImage(INTERFACE_IMAGE)
 	INTERFACE_SPRITE:moveTo(GAME_AREA_WIDTH+16,SCREEN_HEIGHT/2)
 	INTERFACE_SPRITE:setZIndex(2000)
@@ -169,7 +174,6 @@ function playdate.update()
 		menu()
 
 
-
 	elseif CURRENT_STATE == GAME_STATE.setup then
 		-- is a game already running? then return to it
 		-- no game running, setup a new game
@@ -181,6 +185,7 @@ function playdate.update()
 		print("start")
 		draw_level()
 		offset_background()
+		GAME_TIME_STAMP = playdate.getCurrentTimeMilliseconds()
 		CURRENT_STATE = GAME_STATE.playing
 		
 
@@ -188,17 +193,16 @@ function playdate.update()
 	elseif CURRENT_STATE == GAME_STATE.playing then
 		update_orb()
 		offset_background()
-		-- moved this to last: lib_spr.update()
 		update_level_offset()
 		draw_interface()
-		lib_spr.update() -- update all sprites
 		end_level_check()
+		update_game_timer()
+		lib_spr.update() -- update all sprites
 
 	elseif CURRENT_STATE == GAME_STATE.goal then
 		level_clear()
 		update_orb()
 		offset_background()
-		-- moved this to last: lib_spr.update()
 		update_level_offset()
 		draw_interface()
 		lib_spr.update() -- update all sprites
@@ -214,6 +218,9 @@ function playdate.update()
 	elseif CURRENT_STATE == GAME_STATE.paused then
 		paused()
 
+	elseif CURRENT_STATE == GAME_STATE.cleanup then
+		cleanup()
+		CURRENT_STATE = GAME_STATE.setup
 	end
 
 	if DEBUG_FLAG then
@@ -228,6 +235,23 @@ function playdate.update()
 	
 end
 
+function cleanup()
+	-- sprites
+	print(" cleaning up, active sprites: ".. lib_spr.spriteCount())
+	if not ORB.sprite then return end
+	ORB.sprite:remove()
+	ORB.sprite_cover:remove()
+	ORB = {}
+	if not BACKGROUND_SPRITE then return end
+	BACKGROUND_SPRITE:remove()
+	BACKGROUND_SPRITE = {}
+	INTERFACE_SPRITE:remove()
+	INTERFACE_SPRITE = {}
+	print("   all clear, active sprites: ".. lib_spr.spriteCount())
+	-- vars
+	LEVEL_OFFSET = { floatx=60.0, floaty=20.0, x=60, y=20, velx=0, vely=0, drawy=0 }
+end
+
 function menu()
 	-- loop throught json menu data structure and print to screen
 	for index = 1, #MENU_DATA.menu do
@@ -236,6 +260,10 @@ function menu()
 		lib_gfx.drawText(MENU_DATA.menu[index].name, 55, 10+20*index)
 	end
 	lib_gfx.setImageDrawMode(lib_gfx.kDrawModeCopy)
+end
+
+function update_game_timer()
+	GAME_TIMER = (LEVEL_DATA.levels[CURRENT_LEVEL].time * 1000) - (playdate.getCurrentTimeMilliseconds() - GAME_TIME_STAMP)
 end
 
 function new_game()
@@ -257,32 +285,43 @@ function game_over_check()
 	return false
 end
 
-function draw_interface()	
+function draw_interface()
+	local s = ""
+	local px = 0
+	local py = 0
+	local ox = 0 -- offset all x
+	local oy = 0 -- offset all y
 	lib_gfx.lockFocus(INTERFACE_SPRITE:getImage())
 		-- crank circle
-		local px = 8
-		local py = 92
+		px = 8 + ox
+		py = 92 + oy
 		lib_gfx.setColor(lib_gfx.kColorWhite)
 		lib_gfx.fillCircleAtPoint(px, py, 4.5)
 		lib_gfx.setColor(lib_gfx.kColorBlack)
 		lib_gfx.drawPixel( px, py )
 		lib_gfx.drawLine( px, py, px+(CRANK_VECTOR.x*5), py+(CRANK_VECTOR.y*5))
 		-- game timer
-
+		px = 32 + ox
+		py = 35 + oy
+		lib_gfx.setColor(lib_gfx.kColorBlack)
+		lib_gfx.fillRect(px-30, py, px-2, 5)
+		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
+		s = string.format("%02.2f", math.max(GAME_TIMER/1000, 0.0))
+		lib_gfx.drawTextAligned(s, px, py, kTextAlignment.right)
 		-- speed meter
-		px=3
-		py=71
+		px = 3 + ox
+		py = 71 + oy
 		lib_gfx.setColor(lib_gfx.kColorBlack)
 		lib_gfx.fillRect(px,py,27,5)
 		lib_gfx.setColor(lib_gfx.kColorWhite)
 		lib_gfx.fillRect( px, py, math.min( 27, (math.abs(ORB.x_velocity)+math.abs(ORB.y_velocity)+ORB.fall_velocity)*6 ), 5 )
 		-- alt meter
-		px=32
-		py=111
+		px = 32 + ox
+		py = 109 + oy
 		lib_gfx.setColor(lib_gfx.kColorBlack)
 		lib_gfx.fillRect(px-30, py, px-2, 5)
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
-		local s = string.format("%03.1f", ORB.altitude)
+		s = string.format("%03.1f", ORB.altitude)
 		lib_gfx.drawTextAligned(s, px, py, kTextAlignment.right)
 		--INTERFACE_FONT:drawText(ORB.altitude,110)
 		--lib_gfx.drawText("text", 10, 10)
@@ -447,7 +486,6 @@ function draw_level(level)
 	end
 	
 	LEVEL_OFFSET.drawy = -(math.ceil(draw_offset+GRID_SIZE))
-	print("draw offset is:", LEVEL_OFFSET.drawy)
 
 	for y = 1, h do
 		for x = 1, w do
@@ -476,7 +514,7 @@ function draw_level(level)
 	end
 end
 
-function z_mask_update(obj)
+function z_mask_update(obj, level)
 	if not level then level = CURRENT_LEVEL end
 	
 	z_mask_reset(obj)
@@ -831,7 +869,13 @@ function playdate.AButtonUp()
 end
 
 function playdate.rightButtonDown()
-	
+	CURRENT_STATE = GAME_STATE.cleanup
+	if CURRENT_LEVEL < #LEVEL_DATA.levels then
+		CURRENT_LEVEL = CURRENT_LEVEL+1
+	else
+		CURRENT_LEVEL = 1
+	end
+	print("current level: "..CURRENT_LEVEL)
 end
 
 function playdate.leftButtonDown()
