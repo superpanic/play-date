@@ -59,19 +59,42 @@
 			context.clearRect(source_image_xpos, source_image_ypos, source_image_width, source_image_height);
 			redraw_source();
 			draw_selected_box()
-			if (
-				x > source_image_xpos && 
-				x < source_image_xpos + source_image_width && 
-				y > source_image_ypos && 
-				y < source_image_ypos + source_image_height
-			) {
+			if ( x > source_image_xpos && x < source_image_xpos + source_image_width && y > source_image_ypos && y < source_image_ypos + source_image_height ) {
 				let gridx = source_image_xpos + Math.floor( (x - source_image_xpos) / source_tile_width) * source_tile_width;
 				let gridy = source_image_ypos + Math.floor( (y - source_image_ypos) / source_tile_height) * source_tile_height;
 				context.beginPath();
-				context.strokeStyle = 'grey';
+				context.strokeStyle = 'lightsteelblue';
 				context.rect( gridx+1, gridy+1, source_tile_width-2, source_tile_height-2 )
 				context.stroke();	
 			}
+			// target
+			if ( x > x_offset && x < x_offset + level_image_width && y > y_offset && y < y_offset + level_image_height )  {
+				let gx = x - x_offset - level_image_width/2;
+				let gy = y - y_offset;
+				let isoxy = iso_to_grid(gx,gy);
+				let ix = Math.floor(isoxy[0]/32)
+				let iy = Math.floor(isoxy[1]/32)
+				if(ix>=0&&ix<32&&iy>=0&&iy<32) {
+					console.log(ix, iy);
+					let gridxy = grid_to_iso(ix,iy);
+					let x16 = gridxy[0]*16;
+					let y16 = gridxy[1]*16;
+					draw_tile_outline(x16, y16, x_offset+level_image_width/2, y_offset+grid_size/2, 'red');
+				}
+			}
+
+		}
+
+		function iso_to_grid(x, y) {
+			let gx = x + y * 2;
+			let gy = y * 2 - x;
+			return [gx, gy];
+		}
+
+		function grid_to_iso(x, y) {
+			let ix = x - y;
+			let iy = Math.abs(x + y) / 2;
+			return [ix, iy]
 		}
 
 		function on_mouse_click(e) {
@@ -89,7 +112,7 @@
 				let cols = source_image_height / source_tile_height;
 				let gridx = Math.floor((x - source_image_xpos) / source_tile_width);
 				let gridy = Math.floor((y - source_image_ypos) / source_tile_height);
-				selected_tile = (gridy * cols) + gridx;
+				selected_tile = ((gridy * cols) + gridx) + 1; // adding 1 as lua counts arrays from 1
 				console.log(selected_tile);
 				draw_selected_box();
 			}
@@ -125,7 +148,7 @@
 			let cols = source_image_height / source_tile_height;
 			if(selected_tile > rows*cols) {return;}
 			
-			let st = selected_tile;
+			let st = selected_tile-1; // adjusting for lua array being 1-based.
 
 			let x = (st % rows) * source_tile_width + source_image_xpos;
 			let y = Math.floor(st / cols) * source_tile_height + source_image_ypos;
@@ -137,21 +160,21 @@
 
 		// target area
 		function draw_iso_grid() {
-			let ix, iy
+			let ix, iy;
 			for (let y = 0; y <= map_rows; y++) {
 				for (let x = 0; x <= map_cols; x++) {
 					ix = x - y;
 					iy = Math.abs(x + y) / 2;
-					draw_tile_outline(ix * grid_size, iy * grid_size, level_image_width / 2 + x_offset, grid_size / 2 + y_offset);
+					draw_tile_outline(ix * grid_size, iy * grid_size, level_image_width / 2 + x_offset, grid_size / 2 + y_offset, 'lightsteelblue');
 				}
 			}
 		}
 
-		function draw_tile_outline(x,y,xo,yo) {
+		function draw_tile_outline(x,y,xo,yo,color) {
 			x=x+xo;
 			y=y+yo;
 			context.beginPath();
-			context.strokeStyle = 'gainsboro';
+			context.strokeStyle = color;
 			context.moveTo(x-grid_size, y);
 			context.lineTo(x,y-grid_size / 2);
 			context.lineTo(x+grid_size, y);
