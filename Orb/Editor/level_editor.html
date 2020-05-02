@@ -34,6 +34,7 @@
 		let altitudes = new Array(map_cols * map_rows);
 
 		let selected_tile = NONE;
+		let selected_source = [0,0];
 		
 		let canvas = document.getElementById('editor_canvas');
 		let context = canvas.getContext('2d');
@@ -72,14 +73,22 @@
 				let gx = x - x_offset - level_image_width/2;
 				let gy = y - y_offset;
 				let isoxy = iso_to_grid(gx,gy);
-				let ix = Math.floor(isoxy[0]/32)
-				let iy = Math.floor(isoxy[1]/32)
+				let ix = Math.floor(isoxy[0]/32);
+				let iy = Math.floor(isoxy[1]/32);
 				if(ix>=0&&ix<32&&iy>=0&&iy<32) {
-					console.log(ix, iy);
-					let gridxy = grid_to_iso(ix,iy);
+					// clear last tile with grey
+					let gridxy = grid_to_iso(selected_tile[0], selected_tile[1]);
 					let x16 = gridxy[0]*16;
 					let y16 = gridxy[1]*16;
-					draw_tile_outline(x16, y16, x_offset+level_image_width/2, y_offset+grid_size/2, 'red');
+					draw_tile_outline(x16, y16, x_offset + level_image_width / 2, y_offset + grid_size / 2, 'lightsteelblue', 2);
+
+					// update selected tile:
+					selected_tile = [ix, iy];
+					//console.log(ix, iy);
+					gridxy = grid_to_iso(ix,iy);
+					x16 = gridxy[0]*16;
+					y16 = gridxy[1]*16;
+					draw_tile_outline(x16, y16, x_offset+level_image_width/2, y_offset+grid_size/2, 'red', 1);
 				}
 			}
 
@@ -165,16 +174,17 @@
 				for (let x = 0; x <= map_cols; x++) {
 					ix = x - y;
 					iy = Math.abs(x + y) / 2;
-					draw_tile_outline(ix * grid_size, iy * grid_size, level_image_width / 2 + x_offset, grid_size / 2 + y_offset, 'lightsteelblue');
+					draw_tile_outline(ix * grid_size, iy * grid_size, level_image_width / 2 + x_offset, grid_size / 2 + y_offset, 'lightsteelblue', 2);
 				}
 			}
 		}
 
-		function draw_tile_outline(x,y,xo,yo,color) {
+		function draw_tile_outline(x,y,xo,yo,color,thickness) {
 			x=x+xo;
 			y=y+yo;
 			context.beginPath();
 			context.strokeStyle = color;
+			context.lineWidth = thickness;
 			context.moveTo(x-grid_size, y);
 			context.lineTo(x,y-grid_size / 2);
 			context.lineTo(x+grid_size, y);
