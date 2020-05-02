@@ -10,7 +10,7 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-local DEBUG_FLAG = true
+local DEBUG_FLAG = false
 local DEBUG_STRING = ""
 local DEBUG_VAL = 0.0
 
@@ -74,7 +74,8 @@ lib_gfx.setFont(INTERFACE_FONT)
 -- level vars
 local CURRENT_LEVEL = 1
 local BACKGROUND_SPRITE = {} 
-local LEVEL_IMAGE_SIZE = 1024
+local LEVEL_IMAGE_WIDTH = 1024
+local LEVEL_IMAGE_HEIGHT = 512
 local TILE_IMAGES = lib_gfx.imagetable.new('Artwork/level_tiles')
 local LEVEL_DATA = playdate.datastore.read("Levels/levels")
 	print(LEVEL_DATA.description) -- to make sure the json is readable
@@ -136,7 +137,7 @@ function setup()
 
 -- background as a sprite
 	BACKGROUND_SPRITE = lib_spr.new()
-	local bg_img = lib_gfx.image.new(LEVEL_IMAGE_SIZE, LEVEL_IMAGE_SIZE)	
+	local bg_img = lib_gfx.image.new(LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT)	
 	lib_gfx.lockFocus(bg_img)
 		lib_gfx.setColor(lib_gfx.kColorClear)
 		lib_gfx.fillRect(0,0,GAME_AREA_WIDTH,GAME_AREA_HEIGHT)
@@ -308,6 +309,14 @@ function draw_interface()
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
 		s = string.format("%02.2f", math.max(GAME_TIMER/1000, 0.0))
 		lib_gfx.drawTextAligned(s, px, py, kTextAlignment.right)
+		-- score
+		px = 32 + ox
+		py = 53 + oy
+		lib_gfx.setColor(lib_gfx.kColorBlack)
+		lib_gfx.fillRect(px-30, py, px-2, 5)
+		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
+		s = string.format("%06d", 55)
+		lib_gfx.drawTextAligned(s, px, py, kTextAlignment.right)
 		-- speed meter
 		px = 3 + ox
 		py = 71 + oy
@@ -451,7 +460,7 @@ function update_level_offset()
 end
 
 function offset_background()
-	local y = math.floor(LEVEL_IMAGE_SIZE/2+LEVEL_OFFSET.y-LEVEL_OFFSET.drawy+0.5)
+	local y = math.floor(LEVEL_IMAGE_HEIGHT/2+LEVEL_OFFSET.y-LEVEL_OFFSET.drawy+0.5)
 	BACKGROUND_SPRITE:moveTo(LEVEL_OFFSET.x, y)
 end
 
@@ -500,7 +509,7 @@ function draw_level(level)
 			isoy = isoy + TILE_DATA.tiles[tile].yoffset
 			
 			-- start drawing at center x of image
-			isox = isox + LEVEL_IMAGE_SIZE / 2
+			isox = isox + LEVEL_IMAGE_WIDTH / 2
 			
 			-- add latitude offset
 			isoy = isoy - height_offset + LEVEL_OFFSET.drawy
@@ -744,7 +753,7 @@ function clear_background()
 		lib_gfx.fillRect(0,0,SCREEN_WIDTH, SCREEN_HEIGHT)
 
 		--lib_gfx.setColor(lib_gfx.kColorWhite)
-		--lib_gfx.drawRect(0,0,LEVEL_IMAGE_SIZE-1,LEVEL_IMAGE_SIZE-1)
+		--lib_gfx.drawRect(0,0,LEVEL_IMAGE_WIDTH-1,LEVEL_IMAGE_HEIGHT-1)
 	lib_gfx.unlockFocus()
 end
 

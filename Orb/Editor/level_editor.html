@@ -1,0 +1,199 @@
+<html>
+<body>
+	<canvas id='editor_canvas' width='2048' height='1024' style='position:absolute; left:0; top:0'></canvas>
+	<!-- <label id='result' style='position:absolute; left:0; top:550'>Click on the image at the bottom to select a tile, then click on the grid to draw.</label> -->
+	<script>
+		let image = new Image();
+		image.src = '../Source/Artwork/level_tiles-table-48-48.png';
+			
+		const map_cols = 31;
+		const map_rows = 31;
+	
+		const grid_size  = 16;
+
+		const source_tile_width  = 48;
+		const source_tile_height = 48;
+
+		const source_image_width = 240;
+		const source_image_height = 240;
+
+		const level_image_width = 1024;
+		const level_image_height = 512;
+
+		const x_offset = 48;
+		const y_offset = 48;
+
+		const source_image_xpos = source_tile_width * 23
+		const source_image_ypos = source_tile_height * 1
+
+		const xy_iso_conversion = 2;
+
+		const NONE = -1;
+
+		let tiles = new Array(map_cols * map_rows);
+		let altitudes = new Array(map_cols * map_rows);
+
+		let selected_tile = NONE;
+		
+		let canvas = document.getElementById('editor_canvas');
+		let context = canvas.getContext('2d');
+
+		// text field
+		let text_field = document.createElement("TEXTAREA");
+		draw_text_field(text_field);
+		//text_field.value = tiles;
+
+		canvas.addEventListener('click', on_mouse_click);
+		canvas.addEventListener('mousemove', on_mouse_move);
+		document.addEventListener('keydown', on_keydown);
+
+		image.addEventListener('load', redraw_source);
+
+	 	draw_edge_limit(x_offset, y_offset);
+		draw_iso_grid();
+		//draw_grid();
+	
+		function on_mouse_click(e) { 
+			let x = e.clientX;
+			let y = e.clientY;
+
+			// source
+			if (
+				x > source_image_xpos &&
+				x < source_image_xpos + source_image_width &&
+				y > source_image_ypos &&
+				y < source_image_ypos + source_image_height
+			) {
+				selected_tile = 6;
+				draw_selected_box();
+			}
+
+			// target
+			if (x > x_offset && x < x_offset + level_image_width && y > y_offset && y < y_offset + level_image_height) {
+				console.log('target click')
+			}
+		}
+
+		function on_mouse_move(e) {
+			let x = e.clientX;
+			let y = e.clientY;
+			// source
+			if (
+				x > source_image_xpos && 
+				x < source_image_xpos + source_image_width && 
+				y > source_image_ypos && 
+				y < source_image_ypos + source_image_height
+			) {
+				let gridx = source_image_xpos + Math.floor( (x - source_image_xpos) / source_tile_width) * source_tile_width;
+				let gridy = source_image_ypos + Math.floor( (y - source_image_ypos) / source_tile_height) * source_tile_height;
+				context.clearRect(source_image_xpos, source_image_ypos, source_image_width, source_image_height);
+				redraw_source();
+				context.beginPath();
+				context.strokeStyle = 'grey';
+				context.rect( gridx+1, gridy+1, source_tile_width-2, source_tile_height-2 )
+				context.stroke();
+				draw_selected_box()
+			}
+		}
+
+		function on_keydown(e) {
+			switch (e.key) {
+				case 'w':
+					console.log('up');
+					break;
+				case 's':
+					console.log('down');
+					break;
+				case 'x':
+					console.log('delete');
+					break;
+			}
+		}
+
+		// source area
+		function redraw_source() { 
+			context.drawImage(image, source_image_xpos, source_image_ypos);
+		}
+
+		function draw_selected_box() {
+			if(selected_tile == NONE) {return;}
+			let rows = source_image_width / source_tile_width;
+			let cols = source_image_height / source_tile_height;
+			if(selected_tile > rows*cols) {return;}
+			
+			let st = selected_tile-1
+			let x = (st % rows) * source_tile_width + source_image_xpos;
+			let y = Math.floor(st / cols) * source_tile_height + source_image_ypos;
+			context.beginPath();
+			context.strokeStyle = 'red';
+			context.rect(x+1, y+1, source_tile_width-2, source_tile_height-2);
+			context.stroke();
+		}
+
+		function draw_grid() {
+			let map_height = map_rows * grid_size;
+			let map_width = map_cols * grid_size;
+
+			// draw grid
+			for (let x = 0; x <= map_cols; x++) {
+				context.moveTo(x * grid_size, 0);
+				context.lineTo(x * grid_size, map_height);
+			}
+			context.stroke();
+			for (let y = 0; y <= map_rows; y++) {
+				context.moveTo(0, y * grid_size);
+				context.lineTo(map_width, y * grid_size);
+			}
+			context.stroke();
+		}
+
+		// target area
+		function draw_iso_grid() {
+			let ix, iy
+			for (let y = 0; y <= map_rows; y++) {
+				for (let x = 0; x <= map_cols; x++) {
+					ix = x - y;
+					iy = Math.abs(x + y) / 2;
+					draw_tile_outline(ix * grid_size, iy * grid_size, level_image_width / 2 + x_offset, grid_size / 2 + y_offset);
+				}
+			}
+		}
+
+		function draw_tile_outline(x,y,xo,yo) {
+			x=x+xo;
+			y=y+yo;
+			context.beginPath();
+			context.strokeStyle = 'gainsboro';
+			context.moveTo(x-grid_size, y);
+			context.lineTo(x,y-grid_size / 2);
+			context.lineTo(x+grid_size, y);
+			context.lineTo(x,y+grid_size / 2);
+			context.lineTo(x-grid_size, y);
+			context.stroke();
+		}
+
+		function draw_edge_limit(x, y) {
+			context.beginPath();
+			context.strokeStyle = 'red';
+			context.rect(x, y, level_image_width, level_image_height);
+			context.stroke();
+		}
+
+		// text field
+		function draw_text_field(t) {
+			document.body.appendChild(t);
+			t.setAttribute("type", "text");
+			t.style = "font-family:monospace;";
+			t.style.position = 'absolute';
+			t.style.left = source_image_xpos + 'px';
+			t.style.top = source_image_ypos + source_image_height + y_offset + 'px';
+			t.style.width = source_image_width + 'px';
+			t.style.height = x_offset + level_image_height - (source_image_ypos + source_image_height + y_offset) + 'px';
+		}
+		
+
+
+
+	</script>
+</body>
+</html>
