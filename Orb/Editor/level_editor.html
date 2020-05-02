@@ -51,9 +51,30 @@
 
 	 	draw_edge_limit(x_offset, y_offset);
 		draw_iso_grid();
-		//draw_grid();
-	
-		function on_mouse_click(e) { 
+
+		function on_mouse_move(e) {
+			let x = e.clientX;
+			let y = e.clientY;
+			// source
+			context.clearRect(source_image_xpos, source_image_ypos, source_image_width, source_image_height);
+			redraw_source();
+			draw_selected_box()
+			if (
+				x > source_image_xpos && 
+				x < source_image_xpos + source_image_width && 
+				y > source_image_ypos && 
+				y < source_image_ypos + source_image_height
+			) {
+				let gridx = source_image_xpos + Math.floor( (x - source_image_xpos) / source_tile_width) * source_tile_width;
+				let gridy = source_image_ypos + Math.floor( (y - source_image_ypos) / source_tile_height) * source_tile_height;
+				context.beginPath();
+				context.strokeStyle = 'grey';
+				context.rect( gridx+1, gridy+1, source_tile_width-2, source_tile_height-2 )
+				context.stroke();	
+			}
+		}
+
+		function on_mouse_click(e) {
 			let x = e.clientX;
 			let y = e.clientY;
 
@@ -64,35 +85,18 @@
 				y > source_image_ypos &&
 				y < source_image_ypos + source_image_height
 			) {
-				selected_tile = 6;
+				let rows = source_image_width / source_tile_width;
+				let cols = source_image_height / source_tile_height;
+				let gridx = Math.floor((x - source_image_xpos) / source_tile_width);
+				let gridy = Math.floor((y - source_image_ypos) / source_tile_height);
+				selected_tile = (gridy * cols) + gridx;
+				console.log(selected_tile);
 				draw_selected_box();
 			}
 
 			// target
 			if (x > x_offset && x < x_offset + level_image_width && y > y_offset && y < y_offset + level_image_height) {
 				console.log('target click')
-			}
-		}
-
-		function on_mouse_move(e) {
-			let x = e.clientX;
-			let y = e.clientY;
-			// source
-			if (
-				x > source_image_xpos && 
-				x < source_image_xpos + source_image_width && 
-				y > source_image_ypos && 
-				y < source_image_ypos + source_image_height
-			) {
-				let gridx = source_image_xpos + Math.floor( (x - source_image_xpos) / source_tile_width) * source_tile_width;
-				let gridy = source_image_ypos + Math.floor( (y - source_image_ypos) / source_tile_height) * source_tile_height;
-				context.clearRect(source_image_xpos, source_image_ypos, source_image_width, source_image_height);
-				redraw_source();
-				context.beginPath();
-				context.strokeStyle = 'grey';
-				context.rect( gridx+1, gridy+1, source_tile_width-2, source_tile_height-2 )
-				context.stroke();
-				draw_selected_box()
 			}
 		}
 
@@ -121,29 +125,13 @@
 			let cols = source_image_height / source_tile_height;
 			if(selected_tile > rows*cols) {return;}
 			
-			let st = selected_tile-1
+			let st = selected_tile;
+
 			let x = (st % rows) * source_tile_width + source_image_xpos;
 			let y = Math.floor(st / cols) * source_tile_height + source_image_ypos;
 			context.beginPath();
 			context.strokeStyle = 'red';
 			context.rect(x+1, y+1, source_tile_width-2, source_tile_height-2);
-			context.stroke();
-		}
-
-		function draw_grid() {
-			let map_height = map_rows * grid_size;
-			let map_width = map_cols * grid_size;
-
-			// draw grid
-			for (let x = 0; x <= map_cols; x++) {
-				context.moveTo(x * grid_size, 0);
-				context.lineTo(x * grid_size, map_height);
-			}
-			context.stroke();
-			for (let y = 0; y <= map_rows; y++) {
-				context.moveTo(0, y * grid_size);
-				context.lineTo(map_width, y * grid_size);
-			}
 			context.stroke();
 		}
 
