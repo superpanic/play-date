@@ -34,7 +34,7 @@
 		let altitudes = new Array(map_cols * map_rows);
 
 		let selected_tile = NONE;
-		let selected_source = [0,0];
+		let selected_target = [0,0];
 		
 		let canvas = document.getElementById('editor_canvas');
 		let context = canvas.getContext('2d');
@@ -48,7 +48,7 @@
 		canvas.addEventListener('mousemove', on_mouse_move);
 		document.addEventListener('keydown', on_keydown);
 
-		image.addEventListener('load', redraw_source);
+		image.addEventListener('load', redraw_source_image);
 
 	 	draw_edge_limit(x_offset, y_offset);
 		draw_iso_grid();
@@ -56,18 +56,20 @@
 		function on_mouse_move(e) {
 			let x = e.clientX;
 			let y = e.clientY;
+
 			// source
 			context.clearRect(source_image_xpos, source_image_ypos, source_image_width, source_image_height);
-			redraw_source();
-			draw_selected_box()
+			redraw_source_image();			
 			if ( x > source_image_xpos && x < source_image_xpos + source_image_width && y > source_image_ypos && y < source_image_ypos + source_image_height ) {
 				let gridx = source_image_xpos + Math.floor( (x - source_image_xpos) / source_tile_width) * source_tile_width;
-				let gridy = source_image_ypos + Math.floor( (y - source_image_ypos) / source_tile_height) * source_tile_height;
+ 				let gridy = source_image_ypos + Math.floor( (y - source_image_ypos) / source_tile_height) * source_tile_height;
 				context.beginPath();
 				context.strokeStyle = 'lightsteelblue';
 				context.rect( gridx+1, gridy+1, source_tile_width-2, source_tile_height-2 )
-				context.stroke();	
+				context.stroke();
 			}
+			draw_selected_box()
+
 			// target
 			if ( x > x_offset && x < x_offset + level_image_width && y > y_offset && y < y_offset + level_image_height )  {
 				let gx = x - x_offset - level_image_width/2;
@@ -77,13 +79,13 @@
 				let iy = Math.floor(isoxy[1]/32);
 				if(ix>=0&&ix<32&&iy>=0&&iy<32) {
 					// clear last tile with grey
-					let gridxy = grid_to_iso(selected_tile[0], selected_tile[1]);
+					let gridxy = grid_to_iso(selected_target[0], selected_target[1]);
 					let x16 = gridxy[0]*16;
 					let y16 = gridxy[1]*16;
 					draw_tile_outline(x16, y16, x_offset + level_image_width / 2, y_offset + grid_size / 2, 'lightsteelblue', 2);
 
 					// update selected tile:
-					selected_tile = [ix, iy];
+					selected_target = [ix, iy];
 					//console.log(ix, iy);
 					gridxy = grid_to_iso(ix,iy);
 					x16 = gridxy[0]*16;
@@ -147,7 +149,7 @@
 		}
 
 		// source area
-		function redraw_source() { 
+		function redraw_source_image() { 
 			context.drawImage(image, source_image_xpos, source_image_ypos);
 		}
 
