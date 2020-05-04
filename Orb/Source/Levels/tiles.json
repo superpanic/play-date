@@ -1,4 +1,5 @@
 {
+	"loadmessage": "loaded tile.json",
 	"description": "tiles.json contains height map information in 16 x 16 resolution for each tile.",
 	"tiles": [
 		{
@@ -332,17 +333,17 @@
 		},
 
 
-		{ "id": 14,"name": "fourteen","type": "unspec","xoffset": -0,"yoffset": -0,"heightmap": [0] },
-		{ "id": 15,"name": "fifteen","type": "unspec","xoffset": -0,"yoffset": -0,"heightmap": [0] },
-		{ "id": 16,"name": "sixteen","type": "unspec","xoffset": -0,"yoffset": -0,"heightmap": [0] },
-		{ "id": 17,"name": "seventeen","type": "unspec","xoffset": -0,"yoffset": -0,"heightmap": [0] },
+		{ "id": 14, "name": "fourteen", "type": "unspec", "xoffset": -24, "yoffset": -17, "heightmap": [0] },
+		{ "id": 15, "name": "fifteen", "type": "unspec", "xoffset": -24, "yoffset": -17, "heightmap": [0] },
+		{ "id": 16, "name": "sixteen", "type": "unspec", "xoffset": -24, "yoffset": -17, "heightmap": [0] },
+		{ "id": 17, "name": "seventeen", "type": "unspec", "xoffset": -24, "yoffset": -17, "heightmap": [0] },
 		
 		{ 
 			"id": 18,
 			"name": "empty space",
 			"type": "hole",
-			"xoffset": -0,
-			"yoffset": -0,
+			"xoffset": -24,
+			"yoffset": -17,
 			"heightmap": [0] 
 		},
 		

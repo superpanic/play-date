@@ -1,40 +1,62 @@
 <html>
 <body>
 	<canvas id='editor_canvas' width='2048' height='1024' style='position:absolute; left:0; top:0'></canvas>
-	<!-- <label id='result' style='position:absolute; left:0; top:550'>Click on the image at the bottom to select a tile, then click on the grid to draw.</label> -->
+	<!-- <label id='result' style='position:absolute; left:48; top:20'>Level editor for Orb play-date game</label> -->
+	<!-- <input id='offsetfile' type='file' style='position:absolute; left:1096; top:580'> -->
+	<input type="file" id="selectFiles" value="Import" style="position:absolute; left:48; top:580"  />
 	<script>
 		let image = new Image();
 		image.src = '../Source/Artwork/level_tiles-table-48-48.png';
-			
-		const map_cols = 31;
-		const map_rows = 31;
+
+		let offset_values;
+		let offset_values_loaded = false;
+
+		document.getElementById('selectFiles').onchange = function() {
+			var files = document.getElementById('selectFiles').files;
+			console.log(files);
+			if (files.length <= 0) {
+				alert("no file selected")
+				return false;
+			}
+			var fr = new FileReader();
+			fr.onload = function (e) {
+				console.log(e);
+				offset_values = JSON.parse(e.target.result);
+				console.log(offset_values.loadmessage);
+				offset_values_loaded = true;
+			}
+			fr.readAsText(files.item(0));
+		};
+
+		const MAP_COLS = 32;
+		const MAP_ROWS = 32;
 	
-		const grid_size  = 16;
+		const GRID_SIZE  = 16;
 
-		const source_tile_width  = 48;
-		const source_tile_height = 48;
+		const SOURCE_TILE_WIDTH  = 48;
+		const SOURCE_TILE_HEIGHT = 48;
 
-		const source_image_width = 240;
-		const source_image_height = 240;
+		const SOURCE_IMAGE_WIDTH = 240;
+		const SOURCE_IMAGE_HEIGHT = 240;
 
-		const level_image_width = 1024;
-		const level_image_height = 512;
+		const LEVEL_IMAGE_WIDTH = 1024;
+		const LEVEL_IMAGE_HEIGHT = 512;
 
-		const x_offset = 48;
-		const y_offset = 48;
+		const X_OFFSET = 48;
+		const Y_OFFSET = 48;
 
-		const source_image_xpos = source_tile_width * 23
-		const source_image_ypos = source_tile_height * 1
+		const SOURCE_IMAGE_XPOS = SOURCE_TILE_WIDTH * 23
+		const SOURCE_IMAGE_YPOS = SOURCE_TILE_HEIGHT * 1
 
-		const xy_iso_conversion = 2;
+		const NONE = 0;
 
-		const NONE = -1;
-
-		let tiles = new Array(map_cols * map_rows);
-		let altitudes = new Array(map_cols * map_rows);
-
-		let selected_tile = NONE;
+		let tile_array = new Array(MAP_COLS * MAP_ROWS); tile_array.fill(NONE);
+		let altitude_array = new Array(MAP_COLS * MAP_ROWS); altitude_array.fill(0);
+		
+		let selected_source_tile = NONE;
 		let selected_target = [0,0];
+		let selected_target_pos = [0,0];
+		let target_area_flag = true;
 		
 		let canvas = document.getElementById('editor_canvas');
 		let context = canvas.getContext('2d');
@@ -42,7 +64,7 @@
 		// text field
 		let text_field = document.createElement("TEXTAREA");
 		draw_text_field(text_field);
-		//text_field.value = tiles;
+		text_field.value = tile_array;
 
 		canvas.addEventListener('click', on_mouse_click);
 		canvas.addEventListener('mousemove', on_mouse_move);
@@ -50,7 +72,7 @@
 
 		image.addEventListener('load', redraw_source_image);
 
-	 	draw_edge_limit(x_offset, y_offset);
+	 	draw_edge_limit(X_OFFSET, Y_OFFSET);
 		draw_iso_grid();
 
 		function on_mouse_move(e) {
@@ -58,79 +80,79 @@
 			let y = e.clientY;
 
 			// source
-			context.clearRect(source_image_xpos, source_image_ypos, source_image_width, source_image_height);
+			context.clearRect(SOURCE_IMAGE_XPOS, SOURCE_IMAGE_YPOS, SOURCE_IMAGE_WIDTH, SOURCE_IMAGE_HEIGHT);
 			redraw_source_image();			
-			if ( x > source_image_xpos && x < source_image_xpos + source_image_width && y > source_image_ypos && y < source_image_ypos + source_image_height ) {
-				let gridx = source_image_xpos + Math.floor( (x - source_image_xpos) / source_tile_width) * source_tile_width;
- 				let gridy = source_image_ypos + Math.floor( (y - source_image_ypos) / source_tile_height) * source_tile_height;
+			if ( x > SOURCE_IMAGE_XPOS && x < SOURCE_IMAGE_XPOS + SOURCE_IMAGE_WIDTH && y > SOURCE_IMAGE_YPOS && y < SOURCE_IMAGE_YPOS + SOURCE_IMAGE_HEIGHT ) {
+				let gridx = SOURCE_IMAGE_XPOS + Math.floor( (x - SOURCE_IMAGE_XPOS) / SOURCE_TILE_WIDTH) * SOURCE_TILE_WIDTH;
+ 				let gridy = SOURCE_IMAGE_YPOS + Math.floor( (y - SOURCE_IMAGE_YPOS) / SOURCE_TILE_HEIGHT) * SOURCE_TILE_HEIGHT;
 				context.beginPath();
 				context.strokeStyle = 'lightsteelblue';
-				context.rect( gridx+1, gridy+1, source_tile_width-2, source_tile_height-2 )
+				context.rect( gridx+1, gridy+1, SOURCE_TILE_WIDTH-2, SOURCE_TILE_HEIGHT-2 )
 				context.stroke();
 			}
 			draw_selected_box()
 
+			redraw_all_target_tiles();
+
 			// target
-			if ( x > x_offset && x < x_offset + level_image_width && y > y_offset && y < y_offset + level_image_height )  {
-				let gx = x - x_offset - level_image_width/2;
-				let gy = y - y_offset;
+			if ( x > X_OFFSET && x < X_OFFSET + LEVEL_IMAGE_WIDTH && y > Y_OFFSET && y < Y_OFFSET + LEVEL_IMAGE_HEIGHT )  {
+				let gx = x - X_OFFSET - LEVEL_IMAGE_WIDTH/2;
+				let gy = y - Y_OFFSET;
 				let isoxy = iso_to_grid(gx,gy);
-				let ix = Math.floor(isoxy[0]/32);
-				let iy = Math.floor(isoxy[1]/32);
-				if(ix>=0&&ix<32&&iy>=0&&iy<32) {
+				let ix = Math.floor(isoxy[0]/MAP_COLS);
+				let iy = Math.floor(isoxy[1]/MAP_ROWS);
+				if(ix>=0&&ix<MAP_COLS&&iy>=0&&iy<MAP_ROWS) {
 					// clear last tile with grey
 					let gridxy = grid_to_iso(selected_target[0], selected_target[1]);
 					let x16 = gridxy[0]*16;
 					let y16 = gridxy[1]*16;
-					draw_tile_outline(x16, y16, x_offset + level_image_width / 2, y_offset + grid_size / 2, 'lightsteelblue', 2);
+					draw_tile_outline(x16, y16, X_OFFSET + LEVEL_IMAGE_WIDTH / 2, Y_OFFSET + GRID_SIZE / 2, 'lightsteelblue', 2);
 
 					// update selected tile:
 					selected_target = [ix, iy];
-					//console.log(ix, iy);
+					let target_index = iy * MAP_COLS + ix;
 					gridxy = grid_to_iso(ix,iy);
 					x16 = gridxy[0]*16;
 					y16 = gridxy[1]*16;
-					draw_tile_outline(x16, y16, x_offset+level_image_width/2, y_offset+grid_size/2, 'red', 1);
+					selected_target_pos = [x16,y16];
+					draw_tile_outline(x16, y16, X_OFFSET+LEVEL_IMAGE_WIDTH/2, Y_OFFSET+GRID_SIZE/2, 'red', 1);
 				}
 			}
+			
 
-		}
-
-		function iso_to_grid(x, y) {
-			let gx = x + y * 2;
-			let gy = y * 2 - x;
-			return [gx, gy];
-		}
-
-		function grid_to_iso(x, y) {
-			let ix = x - y;
-			let iy = Math.abs(x + y) / 2;
-			return [ix, iy]
 		}
 
 		function on_mouse_click(e) {
 			let x = e.clientX;
 			let y = e.clientY;
 
+			if (!offset_values_loaded) {
+				alert("load offset values first");
+				return;
+			}
+
 			// source
 			if (
-				x > source_image_xpos &&
-				x < source_image_xpos + source_image_width &&
-				y > source_image_ypos &&
-				y < source_image_ypos + source_image_height
+				x > SOURCE_IMAGE_XPOS &&
+				x < SOURCE_IMAGE_XPOS + SOURCE_IMAGE_WIDTH &&
+				y > SOURCE_IMAGE_YPOS &&
+				y < SOURCE_IMAGE_YPOS + SOURCE_IMAGE_HEIGHT
 			) {
-				let rows = source_image_width / source_tile_width;
-				let cols = source_image_height / source_tile_height;
-				let gridx = Math.floor((x - source_image_xpos) / source_tile_width);
-				let gridy = Math.floor((y - source_image_ypos) / source_tile_height);
-				selected_tile = ((gridy * cols) + gridx) + 1; // adding 1 as lua counts arrays from 1
-				console.log(selected_tile);
+				let cols = SOURCE_IMAGE_HEIGHT / SOURCE_TILE_HEIGHT;
+				let rows = SOURCE_IMAGE_WIDTH / SOURCE_TILE_WIDTH;
+				let gridx = Math.floor((x - SOURCE_IMAGE_XPOS) / SOURCE_TILE_WIDTH);
+				let gridy = Math.floor((y - SOURCE_IMAGE_YPOS) / SOURCE_TILE_HEIGHT);
+				selected_source_tile = ((gridy * cols) + gridx) + 1; // adding 1 as lua counts arrays from 1
 				draw_selected_box();
 			}
 
 			// target
-			if (x > x_offset && x < x_offset + level_image_width && y > y_offset && y < y_offset + level_image_height) {
-				console.log('target click')
+			if (x > X_OFFSET && x < X_OFFSET + LEVEL_IMAGE_WIDTH && y > Y_OFFSET && y < Y_OFFSET + LEVEL_IMAGE_HEIGHT) {
+				//draw_tile_image(selected_target_pos[0], selected_target_pos[1], X_OFFSET + LEVEL_IMAGE_WIDTH / 2, Y_OFFSET + GRID_SIZE / 2);
+				let i = selected_target[1] * MAP_COLS + selected_target[0];
+				tile_array[i] = selected_source_tile;
+				text_field.value = tile_array;
+				redraw_all_target_tiles();
 			}
 		}
 
@@ -150,33 +172,61 @@
 
 		// source area
 		function redraw_source_image() { 
-			context.drawImage(image, source_image_xpos, source_image_ypos);
+			context.drawImage(image, SOURCE_IMAGE_XPOS, SOURCE_IMAGE_YPOS);
 		}
 
 		function draw_selected_box() {
-			if(selected_tile == NONE) {return;}
-			let rows = source_image_width / source_tile_width;
-			let cols = source_image_height / source_tile_height;
-			if(selected_tile > rows*cols) {return;}
+			if(selected_source_tile == NONE) {return;}
+			let rows = SOURCE_IMAGE_WIDTH / SOURCE_TILE_WIDTH;
+			let cols = SOURCE_IMAGE_HEIGHT / SOURCE_TILE_HEIGHT;
+			if(selected_source_tile > rows*cols) {return;}
 			
-			let st = selected_tile-1; // adjusting for lua array being 1-based.
-
-			let x = (st % rows) * source_tile_width + source_image_xpos;
-			let y = Math.floor(st / cols) * source_tile_height + source_image_ypos;
+			let st = selected_source_tile-1; // adjusting for lua array being 1-based.
+			let x = (st % cols) * SOURCE_TILE_WIDTH + SOURCE_IMAGE_XPOS;
+			let y = Math.floor(st / cols) * SOURCE_TILE_HEIGHT + SOURCE_IMAGE_YPOS;
 			context.beginPath();
 			context.strokeStyle = 'red';
-			context.rect(x+1, y+1, source_tile_width-2, source_tile_height-2);
+			context.rect(x+1, y+1, SOURCE_TILE_WIDTH-2, SOURCE_TILE_HEIGHT-2);
 			context.stroke();
 		}
 
 		// target area
 		function draw_iso_grid() {
 			let ix, iy;
-			for (let y = 0; y <= map_rows; y++) {
-				for (let x = 0; x <= map_cols; x++) {
+			for (let y = 0; y < MAP_ROWS; y++) {
+				for (let x = 0; x < MAP_COLS; x++) {
 					ix = x - y;
 					iy = Math.abs(x + y) / 2;
-					draw_tile_outline(ix * grid_size, iy * grid_size, level_image_width / 2 + x_offset, grid_size / 2 + y_offset, 'lightsteelblue', 2);
+					draw_tile_outline(ix * GRID_SIZE, iy * GRID_SIZE, LEVEL_IMAGE_WIDTH / 2 + X_OFFSET, GRID_SIZE / 2 + Y_OFFSET, 'lightsteelblue', 2);
+				}
+			}
+		}
+
+		function redraw_all_target_tiles() {
+			if (tile_array.length != MAP_ROWS * MAP_COLS) {
+				console.log("tile array length does not match map size (rows*columns)");
+				return;
+			}
+
+			let rows = SOURCE_IMAGE_WIDTH / SOURCE_TILE_WIDTH;
+			let cols = SOURCE_IMAGE_HEIGHT / SOURCE_TILE_HEIGHT;
+
+			for (let y=0; y<MAP_ROWS; y++) {
+				for (let x=0; x<MAP_COLS; x++) {
+					let i = y*MAP_COLS + x;
+					if(tile_array[i] == 0) { continue; }
+
+					let til = tile_array[i]-1; // adjusting for lua array being 1-based.
+					let tile_offset_xy = get_tile_offset(til);
+
+					let soux = (til % cols) * SOURCE_TILE_WIDTH //+ SOURCE_IMAGE_XPOS;
+					let souy = Math.floor(til / cols) * SOURCE_TILE_HEIGHT //+ SOURCE_IMAGE_YPOS;
+
+					let gridxy = grid_to_iso(x, y);
+					let tarx = gridxy[0] * 16 + LEVEL_IMAGE_WIDTH/2 + X_OFFSET + tile_offset_xy[0];
+					let tary = gridxy[1] * 16 + Y_OFFSET + tile_offset_xy[1];
+	
+					context.drawImage(image, soux, souy, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT, tarx, tary, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT);
 				}
 			}
 		}
@@ -187,18 +237,40 @@
 			context.beginPath();
 			context.strokeStyle = color;
 			context.lineWidth = thickness;
-			context.moveTo(x-grid_size, y);
-			context.lineTo(x,y-grid_size / 2);
-			context.lineTo(x+grid_size, y);
-			context.lineTo(x,y+grid_size / 2);
-			context.lineTo(x-grid_size, y);
+			context.moveTo(x-GRID_SIZE, y);
+			context.lineTo(x,y-GRID_SIZE / 2);
+			context.lineTo(x+GRID_SIZE, y);
+			context.lineTo(x,y+GRID_SIZE / 2);
+			context.lineTo(x-GRID_SIZE, y);
 			context.stroke();
+		}
+
+		function draw_tile_image(x,y,xo,yo) {
+			if (selected_source_tile == NONE) { return; }
+			let rows = SOURCE_IMAGE_WIDTH / SOURCE_TILE_WIDTH;
+			let cols = SOURCE_IMAGE_HEIGHT / SOURCE_TILE_HEIGHT;
+			if (selected_source_tile > rows * cols) { return; }
+			let st = selected_source_tile - 1; // adjusting for lua array being 1-based.
+			let sx = (st % cols) * SOURCE_TILE_WIDTH;
+			let sy = Math.floor(st / cols) * SOURCE_TILE_HEIGHT;
+			
+			let tile_offset_xy = get_tile_offset(selected_source_tile-1);
+			xo = xo + tile_offset_xy[0];
+			yo = yo - 8 + tile_offset_xy[1];
+
+			context.drawImage(image, sx, sy, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT, x+xo, y+yo, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT);
+		}
+
+		function get_tile_offset(t) {
+			tox = offset_values.tiles[t].xoffset;
+			toy = offset_values.tiles[t].yoffset;
+			return [tox, toy];
 		}
 
 		function draw_edge_limit(x, y) {
 			context.beginPath();
 			context.strokeStyle = 'red';
-			context.rect(x, y, level_image_width, level_image_height);
+			context.rect(x, y, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT);
 			context.stroke();
 		}
 
@@ -208,15 +280,24 @@
 			t.setAttribute("type", "text");
 			t.style = "font-family:monospace;";
 			t.style.position = 'absolute';
-			t.style.left = source_image_xpos + 'px';
-			t.style.top = source_image_ypos + source_image_height + y_offset + 'px';
-			t.style.width = source_image_width + 'px';
-			t.style.height = x_offset + level_image_height - (source_image_ypos + source_image_height + y_offset) + 'px';
+			t.style.left = SOURCE_IMAGE_XPOS + 'px';
+			t.style.top = SOURCE_IMAGE_YPOS + SOURCE_IMAGE_HEIGHT + Y_OFFSET + 'px';
+			t.style.width = SOURCE_IMAGE_WIDTH + 'px';
+			t.style.height = X_OFFSET + LEVEL_IMAGE_HEIGHT - (SOURCE_IMAGE_YPOS + SOURCE_IMAGE_HEIGHT + Y_OFFSET) + 'px';
+		}
+
+		function iso_to_grid(x, y) {
+			let gx = x + y * 2;
+			let gy = y * 2 - x;
+			return [gx, gy];
+		}
+
+		function grid_to_iso(x, y) {
+			let ix = x - y;
+			let iy = Math.abs(x + y) / 2;
+			return [ix, iy]
 		}
 		
-
-
-
 	</script>
 </body>
 </html>
