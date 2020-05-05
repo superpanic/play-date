@@ -1,12 +1,15 @@
 <html>
-<body>
+<body style='background-color:white;'>
 	<canvas id='editor_canvas' width='2048' height='1024' style='position:absolute; left:0; top:0'></canvas>
-	<!-- <label id='result' style='position:absolute; left:48; top:20'>Level editor for Orb play-date game</label> -->
+	<label id='result' style='position:absolute; left:48; top:20; font-family:monospace; font-size:11px'>Use [w] and [s] keys to adjust tile altitude up or down.</label>
 	<!-- <input id='offsetfile' type='file' style='position:absolute; left:1096; top:580'> -->
-	<input type="file" id="selectFiles" value="Import" style="position:absolute; left:48; top:580"  />
+	<input type='file' id='selectFiles' value='Import' style='position:absolute; left:48; top:580; font-family:monospace'  />
 	<script>
 		let image = new Image();
 		image.src = '../Source/Artwork/level_tiles-table-48-48.png';
+
+		let image_red = new Image();
+		image_red.src = './level_tiles-table-48-48_red.png';
 
 		// tile offset values
 		let offset_value_data;
@@ -124,6 +127,12 @@
 					y16 = gridxy[1]*16;
 					selected_target_pos = [x16,y16];
 					draw_tile_outline(x16, y16, X_OFFSET+LEVEL_IMAGE_WIDTH/2, Y_OFFSET+GRID_SIZE/2, 'red', 1);
+
+					let index = iy * MAP_COLS + ix;
+					if (tile_array[index] > 0) {
+						draw_red_tile(tile_array[index],x16,y16);
+					}
+
 				} else {
 					target_area_flag = false;
 				}
@@ -197,6 +206,7 @@
 			context.clearRect(X_OFFSET, Y_OFFSET, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT);
 			draw_iso_grid();
 			redraw_all_target_tiles();
+			draw_red_tile(selected_source_tile, selected_target_pos[0], selected_target_pos[1]);
 		}
 
 		function lower_current_tile() {
@@ -208,6 +218,7 @@
 			context.clearRect(X_OFFSET, Y_OFFSET, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT);
 			draw_iso_grid();
 			redraw_all_target_tiles();
+			draw_red_tile(selected_source_tile, selected_target_pos[0], selected_target_pos[1]);
 		}
 
 		// source area
@@ -286,20 +297,24 @@
 			context.stroke();
 		}
 
-		function draw_tile_image(x,y,xo,yo) {
-			if (selected_source_tile == NONE) { return; }
+		function draw_red_tile(t,x,y) {
+			if (t == NONE) { return; }
+
+			let index = selected_target[1] * MAP_COLS + selected_target[0];
+
 			let rows = SOURCE_IMAGE_WIDTH / SOURCE_TILE_WIDTH;
 			let cols = SOURCE_IMAGE_HEIGHT / SOURCE_TILE_HEIGHT;
-			if (selected_source_tile > rows * cols) { return; }
-			let st = selected_source_tile - 1; // adjusting for lua array being 1-based.
-			let sx = (st % cols) * SOURCE_TILE_WIDTH;
-			let sy = Math.floor(st / cols) * SOURCE_TILE_HEIGHT;
-			
-			let tile_offset_xy = get_tile_offset(selected_source_tile-1);
-			xo = xo + tile_offset_xy[0];
-			yo = yo - 8 + tile_offset_xy[1];
+			t = t-1;
 
-			context.drawImage(image, sx, sy, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT, x+xo, y+yo, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT);
+		//	let st = selected_source_tile - 1; // adjusting for lua array being 1-based.
+			let sx = (t % cols) * SOURCE_TILE_WIDTH;
+			let sy = Math.floor(t / cols) * SOURCE_TILE_HEIGHT;
+			
+			let tile_offset_xy = get_tile_offset(t);
+			x = x + LEVEL_IMAGE_WIDTH/2 + X_OFFSET + tile_offset_xy[0];
+			y = y + Y_OFFSET + tile_offset_xy[1] - altitude_array[index];
+
+			context.drawImage(image_red, sx, sy, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT, x, y, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT);
 		}
 
 		function get_tile_offset(t) {
