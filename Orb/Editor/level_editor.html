@@ -76,7 +76,7 @@
 
 		image.addEventListener('load', redraw_source_image);
 
-	 	draw_edge_limit(X_OFFSET, Y_OFFSET);
+	 	
 		draw_iso_grid();
 
 		function on_mouse_move(e) {
@@ -95,10 +95,14 @@
 				context.stroke();
 			}
 
-			draw_selected_box()
-			redraw_all_target_tiles();
+
 
 			// target
+			//context.clearRect(X_OFFSET,Y_OFFSET,LEVEL_IMAGE_WIDTH,LEVEL_IMAGE_HEIGHT);
+			//draw_iso_grid();
+			draw_selected_box();
+			redraw_all_target_tiles();
+
 			if ( x > X_OFFSET && x < X_OFFSET + LEVEL_IMAGE_WIDTH && y > Y_OFFSET && y < Y_OFFSET + LEVEL_IMAGE_HEIGHT )  {
 				let gx = x - X_OFFSET - LEVEL_IMAGE_WIDTH/2;
 				let gy = y - Y_OFFSET;
@@ -152,14 +156,18 @@
 				draw_selected_box();
 			}
 
+			// return if mouse is not in target area
 			if(!target_area_flag) {return;}
 
 			// target
 			if (x > X_OFFSET && x < X_OFFSET + LEVEL_IMAGE_WIDTH && y > Y_OFFSET && y < Y_OFFSET + LEVEL_IMAGE_HEIGHT) {
-				//draw_tile_image(selected_target_pos[0], selected_target_pos[1], X_OFFSET + LEVEL_IMAGE_WIDTH / 2, Y_OFFSET + GRID_SIZE / 2);
 				let i = selected_target[1] * MAP_COLS + selected_target[0];
 				tile_array[i] = selected_source_tile;
+				// reset altitude for new tile
+				altitude_array[i] = 0;
 				text_field.value = tile_array;
+				context.clearRect(X_OFFSET, Y_OFFSET, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT);
+				draw_iso_grid();
 				redraw_all_target_tiles();
 			}
 		}
@@ -182,12 +190,24 @@
 
 		function lift_current_tile() {
 			if (!target_area_flag) {return;}
-			console.log("lift tile!");
+			let i = selected_target[1] * MAP_COLS + selected_target[0];
+			if (tile_array[i] == NONE) { return; }
+			altitude_array[i] = altitude_array[i] + 8;
+			//console.log("lift tile: " + i + " to: " + altitude_array[i]);
+			context.clearRect(X_OFFSET, Y_OFFSET, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT);
+			draw_iso_grid();
+			redraw_all_target_tiles();
 		}
 
 		function lower_current_tile() {
 			if (!target_area_flag) {return;}
-			console.log("lower tile!");
+			let i = selected_target[1] * MAP_COLS + selected_target[0];
+			if(tile_array[i] == NONE) {return;}
+			altitude_array[i] = altitude_array[i] - 8;
+			//console.log("lower tile: " + i + " to: " + altitude_array[i]);
+			context.clearRect(X_OFFSET, Y_OFFSET, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT);
+			draw_iso_grid();
+			redraw_all_target_tiles();
 		}
 
 		// source area
@@ -212,6 +232,7 @@
 
 		// target area
 		function draw_iso_grid() {
+			draw_edge_limit(X_OFFSET, Y_OFFSET);
 			let ix, iy;
 			for (let y = 0; y < MAP_ROWS; y++) {
 				for (let x = 0; x < MAP_COLS; x++) {
@@ -233,7 +254,7 @@
 
 			for (let y=0; y<MAP_ROWS; y++) {
 				for (let x=0; x<MAP_COLS; x++) {
-					let i = y*MAP_COLS + x;
+					let i = y * MAP_COLS + x;
 					if(tile_array[i] == 0) { continue; }
 
 					let til = tile_array[i]-1; // adjusting for lua array being 1-based.
@@ -244,7 +265,7 @@
 
 					let gridxy = grid_to_iso(x, y);
 					let tarx = gridxy[0] * 16 + LEVEL_IMAGE_WIDTH/2 + X_OFFSET + tile_offset_xy[0];
-					let tary = gridxy[1] * 16 + Y_OFFSET + tile_offset_xy[1];
+					let tary = gridxy[1] * 16 + Y_OFFSET + tile_offset_xy[1] - altitude_array[i];
 	
 					context.drawImage(image, soux, souy, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT, tarx, tary, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT);
 				}
