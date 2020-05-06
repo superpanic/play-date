@@ -470,6 +470,12 @@ function draw_level(level)
 	local w = LEVEL_DATA.levels[level].w 
 	local h = LEVEL_DATA.levels[level].h
 
+	print("loading "..LEVEL_DATA.levels[level].name)
+	if not (w*h == #LEVEL_DATA.levels[level].tiles) and not (w*h == #LEVEL_DATA.levels[level].altitude) then 
+		print("defined level length wrong!") 
+		return 
+	end
+
 	local index, tile, height_offset = 0
 	local isox, isoy
 	local draw_limit = GRID_SIZE * 2

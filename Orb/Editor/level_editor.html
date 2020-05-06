@@ -1,7 +1,7 @@
 <html>
 <body style='background-color:white;'>
 	<canvas id='editor_canvas' width='2048' height='1024' style='position:absolute; left:0; top:0'></canvas>
-	<label id='result' style='position:absolute; left:48; top:20; font-family:monospace; font-size:11px'>Use [w] and [s] keys to adjust tile altitude up or down.</label>
+	<label id='result' style='position:absolute; left:48; top:20; font-family:monospace; font-size:11px'>Use [W] and [S] to adjust tile altitude up or down, [X] to delete tile and [F] to download current level to file. </label>
 	<!-- <input id='offsetfile' type='file' style='position:absolute; left:1096; top:580'> -->
 	<input type='file' id='selectFiles' value='Import' style='position:absolute; left:48; top:580; font-family:monospace'  />
 	<script>
@@ -178,6 +178,7 @@
 				context.clearRect(X_OFFSET, Y_OFFSET, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT);
 				draw_iso_grid();
 				redraw_all_target_tiles();
+				draw_red_tile(tile_array[i], selected_target_pos[0], selected_target_pos[1]);
 			}
 		}
 
@@ -193,8 +194,25 @@
 					break;
 				case 'x':
 					console.log('delete');
+					delete_tile();
+					break;
+				case 'f':
+					console.log('save level')
+					export_level_to_txt();
 					break;
 			}
+		}
+
+		function delete_tile() {
+			if (!target_area_flag) { return; }
+			let i = selected_target[1] * MAP_COLS + selected_target[0];
+			tile_array[i] = 0;
+			altitude_array[i] = 0;
+			console.log('deleted tile at: ' + selected_target[0] + " x " + selected_target[1]);
+			context.clearRect(X_OFFSET, Y_OFFSET, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT);
+			draw_iso_grid();
+			redraw_all_target_tiles();
+			text_field.value = tile_array;
 		}
 
 		function lift_current_tile() {
@@ -206,7 +224,46 @@
 			context.clearRect(X_OFFSET, Y_OFFSET, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT);
 			draw_iso_grid();
 			redraw_all_target_tiles();
-			draw_red_tile(selected_source_tile, selected_target_pos[0], selected_target_pos[1]);
+			//console.log("selected source tile: " + selected_source_tile);
+			//alert("bug: selected source tile is the currently selected tile not the current mouse over tile!")
+			draw_red_tile(tile_array[i], selected_target_pos[0], selected_target_pos[1]);
+		}
+
+		function get_current_level_dimensions() {
+			let max_x = 0;
+			let max_y = 0;
+			for (let y = 0; y < MAP_COLS; y++) {
+				for (let x = 0; x < MAP_ROWS; x++) {
+					i = (y * MAP_ROWS) + x;
+					if(tile_array[i] == NONE) { continue };
+					if(max_x < x) {max_x = x};
+					if(max_y < y) {max_y = y}; 
+				}
+			}
+			return [max_x+1, max_y+1];
+		}
+
+		function get_cropped_array(crop_x, crop_y, arr) {
+			if(arr.length != MAP_ROWS*MAP_COLS) {
+				console.log("array to crop needs to be exact full level size");
+				return;
+			}
+			crop_array = [];
+			for (let y = 0; y < crop_y; y++) {
+				for (let x = 0; x < crop_x; x++) {
+					full_index = (y * MAP_ROWS) + x;
+					cropped_index = (y * crop_x) + x;
+					crop_array[cropped_index] = arr[full_index];
+				}
+			}
+			return crop_array;
+		}
+
+		function clean_tiles(arr) {
+			for(let i=0; i<arr.length; i++) {
+				if(arr[i]==0) arr[i]=18;
+			}
+			return arr;
 		}
 
 		function lower_current_tile() {
@@ -218,7 +275,9 @@
 			context.clearRect(X_OFFSET, Y_OFFSET, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT);
 			draw_iso_grid();
 			redraw_all_target_tiles();
-			draw_red_tile(selected_source_tile, selected_target_pos[0], selected_target_pos[1]);
+			//console.log("selected source tile: " + selected_source_tile);
+			//alert("bug: selected source tile is the currently selected tile not the current mouse over tile!")
+			draw_red_tile(tile_array[i], selected_target_pos[0], selected_target_pos[1]);
 		}
 
 		// source area
@@ -352,6 +411,45 @@
 			let ix = x - y;
 			let iy = Math.abs(x + y) / 2;
 			return [ix, iy]
+		}
+
+		function export_level_to_txt() {
+			let dim = get_current_level_dimensions();
+			console.log("exporting level of size: " + dim[0] + " x " + dim[1]);
+			let til_arr = get_cropped_array(dim[0],dim[1], tile_array);
+			til_arr = clean_tiles(til_arr);
+			let alt_arr = get_cropped_array(dim[0], dim[1], altitude_array);
+			const original_data = {
+				levels: [
+					{
+						id: 1,
+						name: "level 1",
+						time: 30,
+						w: dim[0],
+						h: dim[1],
+						tiles: til_arr,
+						altitude: alt_arr
+					}
+				]
+			};
+
+			const a = document.createElement("a");
+			json_string = JSON.stringify(original_data, null, 2);
+			// clean up some newlines, spaces and add some tabs
+			json_string = json_string.replace(/[\n\r\s]+/g, '');
+			json_string = json_string.replace(/,\"/g, ',\n\"');
+			json_string = json_string.replace(/\[\{/g, '\n\[\n\{\n');
+			json_string = json_string.replace(/\}\]/g, '\n\}\n\]\n');
+			json_string = json_string.replace(/\n\"/g, '\n\t\"');
+			// create a downloadable file object
+			a.href = URL.createObjectURL(new Blob([json_string], {
+				type: "text/plain"
+			}));
+
+			a.setAttribute("download", "leveldata.txt");
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
 		}
 		
 	</script>
