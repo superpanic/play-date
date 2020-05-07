@@ -724,7 +724,13 @@ function get_altitude_at_pos( x, y )
 	local tile_heightmap_index = (GRID_SIZE * (tile_heightmap_y-1) + tile_heightmap_x)
 
 	-- add base altitude to local tile altitude
-	local altitude = TILE_DATA.tiles[tile_type].heightmap[tile_heightmap_index]
+	local altitude;
+	if #TILE_DATA.tiles[tile_type].heightmap == 1 then
+		altitude = TILE_DATA.tiles[tile_type].heightmap[1] -- if tile altitude is flat just one number might be used in array
+	else
+		altitude = TILE_DATA.tiles[tile_type].heightmap[tile_heightmap_index]
+	end
+	
 	altitude = altitude + tile_altitude
 	
 	return altitude
