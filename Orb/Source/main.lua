@@ -339,7 +339,7 @@ function draw_interface()
 end
 
 function end_level_check()
-	if ( get_tile_type( math.floor(ORB.pos.x+0.5), math.floor(ORB.pos.y+0.5) ) == "goal" ) then 
+	if ( get_tile_at( math.floor(ORB.pos.x+0.5), math.floor(ORB.pos.y+0.5) ).type == "goal" ) then 
 		-- do an altitude check (to see if we are really standing on the goal plate)
 		if ( ORB.altitude == get_altitude_at_pos(ORB.pos.x, ORB.pos.y) ) then
 			CURRENT_STATE = GAME_STATE.goal
@@ -364,10 +364,9 @@ function add_friction(f)
 end
 
 function update_orb()
-	-- get current direction
-	-- local vectorx, vectory = degrees_to_vector( playdate.getCrankPosition()-45 )
 	local vectorx, vectory, vectorz
 	if playdate.accelerometerIsRunning() then
+		-- ACCELEROMETER controls direction
 		vectorx, vectory, vectorz = playdate.readAccelerometer()
 		vectory = vectory - 0.5
 		vectorx, vectory = rotate_vector(vectorx, vectory) -- rotate 45 degrees
@@ -375,11 +374,9 @@ function update_orb()
 		vectory = vectory * 4
 		if DEBUG_FLAG then DEBUG_STRING = string.format("x:%.2f, y:%.2f", vectorx, vectory) end
 	else
-		-- use crank for direction instead
+		-- CRANK controls direction
 		local crankpos = playdate.getCrankPosition()
-
 		CRANK_VECTOR.x, CRANK_VECTOR.y = degrees_to_vector( playdate.getCrankPosition() )
-
 		vectorx, vectory = degrees_to_vector( playdate.getCrankPosition() - 45 )		
 		vectorx = vectorx * 1.5
 		vectory = vectory * 1.5
@@ -391,6 +388,8 @@ function update_orb()
 	end
 
 	add_friction(ORB.friction)
+
+	check_special_tiles(ORB)
 
 	-- set next pos
 	local next_pos = {}
@@ -444,6 +443,15 @@ function update_orb()
 
 	DEBUG_VAL = ORB.altitude
 
+end
+
+function check_special_tiles(obj)
+	local t = get_tile_at( obj.pos.x, obj.pos.y )
+	if t.type == "boost" then
+		-- boost tiles with arrows increases velocity
+		obj.x_velocity = obj.x_velocity + t.value[1];
+		obj.y_velocity = obj.y_velocity + t.value[2];
+	end 
 end
 
 function update_level_offset()
@@ -684,16 +692,20 @@ function get_slope_vector( x, y, current_altitude )
 end
 
 function get_tile_type( x, y )
-	if x < 0 or y < 0 then return "outofbounds" end
+	return get_tile_at(x,y).type
+end
+
+function get_tile_at( x, y )
+	if x < 0 or y < 0 then return "oob" end -- out of bounds
 	local w = LEVEL_DATA.levels[CURRENT_LEVEL].w
 	local h = LEVEL_DATA.levels[CURRENT_LEVEL].h
-	if x >= w * GRID_SIZE or y >= h * GRID_SIZE then return "outofbounds" end
+	if x >= w * GRID_SIZE or y >= h * GRID_SIZE then return "oob" end -- out of bounds
 
 	local tilex = math.floor((x / GRID_SIZE))+1
 	local tiley = math.floor((y / GRID_SIZE))+1
 	local tile_index = w * (tiley-1) + tilex
 	local tile_type = LEVEL_DATA.levels[CURRENT_LEVEL].tiles[tile_index]
-	return TILE_DATA.tiles[tile_type].type
+	return TILE_DATA.tiles[tile_type]
 end
 
 function get_altitude_at_pos( x, y )
@@ -730,7 +742,7 @@ function get_altitude_at_pos( x, y )
 	else
 		altitude = TILE_DATA.tiles[tile_type].heightmap[tile_heightmap_index]
 	end
-	
+
 	altitude = altitude + tile_altitude
 	
 	return altitude

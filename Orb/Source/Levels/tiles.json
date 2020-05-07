@@ -307,10 +307,10 @@
 				-7.5,-7,-6.5,-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-0.5,0
 			] 
 		},
-		{ "id": 14, "name": "arrow right", 		"type": "boost", 	"xoffset": -24, "yoffset": -17, "heightmap": [0] },
-		{ "id": 15, "name": "arrow down", 		"type": "boost", 	"xoffset": -24, "yoffset": -17, "heightmap": [0] },
-		{ "id": 16, "name": "arrow left", 		"type": "boost", 	"xoffset": -24, "yoffset": -17, "heightmap": [0] },
-		{ "id": 17, "name": "arrow up", 		"type": "boost", 	"xoffset": -24, "yoffset": -17, "heightmap": [0] },
+		{ "id": 14, "name": "arrow right", 		"type": "boost",  	"xoffset": -24, "yoffset": -17, "heightmap": [0], "value":[ 0.5, 0.0] },
+		{ "id": 15, "name": "arrow down", 		"type": "boost", 	"xoffset": -24, "yoffset": -17, "heightmap": [0], "value":[ 0.0, 0.5] },
+		{ "id": 16, "name": "arrow left", 		"type": "boost", 	"xoffset": -24, "yoffset": -17, "heightmap": [0], "value":[-0.5, 0.0] },
+		{ "id": 17, "name": "arrow up", 		"type": "boost", 	"xoffset": -24, "yoffset": -17, "heightmap": [0], "value":[ 0.0,-0.5] },
 		{ "id": 18, "name": "empty space", 		"type": "hole", 	"xoffset": -24, "yoffset": -17, "heightmap": [0] },
 		{ "id": 19, "name": "goal tile 1 - GO", 	"type": "goal", 	"xoffset": -40, "yoffset": -12, "heightmap": [0] },
 		{ "id": 20, "name": "goal tile 2 - AL", 	"type": "goal", 	"xoffset": -8,  "yoffset": -20, "heightmap": [0] },
