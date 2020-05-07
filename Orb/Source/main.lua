@@ -5,7 +5,7 @@ import "CoreLibs/sprites"
 lib_gfx = playdate.graphics
 lib_spr = playdate.graphics.sprite
 
-playdate.display.setRefreshRate(30)
+playdate.display.setRefreshRate(25)
 playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
@@ -74,8 +74,8 @@ lib_gfx.setFont(INTERFACE_FONT)
 -- level vars
 local CURRENT_LEVEL = 1
 local BACKGROUND_SPRITE = {} 
-local LEVEL_IMAGE_WIDTH = 1024
-local LEVEL_IMAGE_HEIGHT = 512
+local LEVEL_IMAGE_WIDTH = 512
+local LEVEL_IMAGE_HEIGHT = 256
 local TILE_IMAGES = lib_gfx.imagetable.new('Artwork/level_tiles')
 local LEVEL_DATA = playdate.datastore.read("Levels/levels")
 	print(LEVEL_DATA.description) -- to make sure the json is readable
@@ -160,6 +160,7 @@ function setup()
 end
 
 function playdate.update()
+
 	if DEBUG_FLAG and DEBUG_STEP_FRAME then
 		if not DEBUG_FRAME_STEP then return end
 	end
@@ -179,6 +180,7 @@ function playdate.update()
 		-- is a game already running? then return to it
 		-- no game running, setup a new game
 		print("setup")
+		print("fps:", playdate.display.getRefreshRate())
 		setup()
 		CURRENT_STATE = GAME_STATE.ready
 
