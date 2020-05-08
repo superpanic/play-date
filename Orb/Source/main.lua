@@ -3,9 +3,9 @@ import "CoreLibs/sprites"
 
 --playdate.setCollectsGarbage(false)
 
--- global vars:
-lib_gfx = playdate.graphics
-lib_spr = playdate.graphics.sprite
+-- local vars:
+local lib_gfx = playdate.graphics
+local lib_spr = playdate.graphics.sprite
 
 playdate.display.setRefreshRate(25)
 playdate.display.setScale(2)
@@ -36,6 +36,11 @@ local ALTITUDE_LIMIT = -500
 local EDGE_COLLISION_HEIGHT = 4
 
 local CRANK_VECTOR = {x=0, y=0}
+local SINE_LUT = {}
+local COSINE_LUT = {}
+
+local VECTOR_LUT_X = {}
+local VECTOR_LUT_Y = {}
 
 local FRICTION = 0.92
 local GRAVITY = 0.75
@@ -123,6 +128,9 @@ function new_game_object(name, sprite, pos)
 end
 
 function setup()
+
+	generate_vector_LUT()
+
 -- orb (player sprite)
 	local orb_img = ORB_IMAGE_TABLE:getImage(13)
 	local orb_sprite = lib_spr.new()
@@ -379,9 +387,12 @@ function update_orb()
 		if DEBUG_FLAG then DEBUG_STRING = string.format("x:%.2f, y:%.2f", vectorx, vectory) end
 	else
 		-- CRANK controls direction
-		local crankpos = playdate.getCrankPosition()
-		CRANK_VECTOR.x, CRANK_VECTOR.y = degrees_to_vector( playdate.getCrankPosition() )
-		vectorx, vectory = degrees_to_vector( playdate.getCrankPosition() - 45 )		
+		local crank_pos = playdate.getCrankPosition()
+		CRANK_VECTOR.x, CRANK_VECTOR.y = degrees_to_vector_lut( crank_pos )
+		vectorx, vectory = degrees_to_vector_lut( crank_pos - 45 )
+		
+		
+		
 		vectorx = vectorx * 1.5
 		vectory = vectory * 1.5
 	end
@@ -827,6 +838,16 @@ end
 
 -- algorithms / math
 
+function rotate_vector( x, y, rad )
+	-- used when controlling accelerometer
+	if not rad then rad = -0.785398 end -- 45 degrees
+	local cos = math.cos(rad)
+	local sin = math.sin(rad)
+	local px = x * cos - y * sin
+	local py = x * sin + y * cos
+	return px, py
+end
+
 function degrees_to_vector(angle)
 	-- use when controlling with crank
 	local crankRads = math.rad(angle)
@@ -835,15 +856,53 @@ function degrees_to_vector(angle)
 	return vx, vy
 end
 
-function rotate_vector( x, y, rad )
-	-- used when controlling accelerometer
-	if not rad then rad = -0.785398 end -- 45 degrees
-	cos = math.cos(rad)
-	sin = math.sin(rad)
-	px = x * cos - y * sin
-	py = x * sin + y * cos
-	return px, py
+function degrees_to_vector_lut(angle) -- double speed faster
+	-- use when controlling with crank
+	local a = math.floor(angle+0.5)
+	a = a % 360
+	return VECTOR_LUT_X[a+1], VECTOR_LUT_Y[a+1]
 end
+
+function generate_vector_LUT()
+	for d = 0,359 do
+		VECTOR_LUT_X[d+1] = degrees_to_vector_x(d)
+		VECTOR_LUT_Y[d+1] = degrees_to_vector_y(d)
+	end
+end
+
+function degrees_to_vector_x(a)
+	-- use when controlling with crank
+	local r = math.rad(a)
+	local vx = math.sin(r)
+	return vx
+end
+function degrees_to_vector_y(a)
+	-- use when controlling with crank
+	local r = math.rad(a)
+	local vy = -1 * math.cos(r)
+	return vy
+end
+
+function generate_sine_LUT()
+	local delta = 2/360 -- divide full circle of rads (2) in full circle of deg (360) 
+	print("generated sine lut")
+	SINE_LUT[1] = 0
+	for r = 2, 360 do
+		SINE_LUT[r] = math.sin(delta * r)
+		--print(r, SINE_LUT[r])
+	end
+end
+
+function generate_cosine_LUT()
+	local delta = 2/360 -- divide full circle of rads (2) in full circle of deg (360) 
+	print("generated cosine lut")
+	COSINE_LUT[1] = 1
+	for r = 2, 360 do
+		COSINE_LUT[r] = math.cos(delta * r)
+		--print(r, COSINE_LUT[r])
+	end
+end
+
 
 --[[ 
 	function iso_to_grid(x, y, offsetx, offsety)

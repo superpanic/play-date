@@ -1,12 +1,12 @@
-# speed-up notes
+## speed-up notes
 - test: is it the level arrays (tiles and heightmap) or the image redraw that makes the game frame differ when the level grows?
 
-# try to rewrite these for speed
+## try to rewrite these for speed
 - check update_orb()
 - update_level_offset()
 - draw_interface()
 
-# lua performance tests:
+## lua performance tests:
 https://springrts.com/wiki/Lua_Performance
 
 ## SDK 0.8.1 API changes
