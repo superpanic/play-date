@@ -1,6 +1,8 @@
 import "CoreLibs/graphics"
 import "CoreLibs/sprites"
 
+--playdate.setCollectsGarbage(false)
+
 -- global vars:
 lib_gfx = playdate.graphics
 lib_spr = playdate.graphics.sprite
@@ -72,7 +74,7 @@ local INTERFACE_FONT = playdate.graphics.loadFont("Fonts/orb_font")
 lib_gfx.setFont(INTERFACE_FONT)
 
 -- level vars
-local CURRENT_LEVEL = 1
+local CURRENT_LEVEL = 5
 local BACKGROUND_SPRITE = {} 
 local LEVEL_IMAGE_WIDTH = 512
 local LEVEL_IMAGE_HEIGHT = 256

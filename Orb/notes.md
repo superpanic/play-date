@@ -1,33 +1,16 @@
+# speed-up notes
+- test: is it the level arrays (tiles and heightmap) or the image redraw that makes the game frame differ when the level grows?
+
+# try to rewrite these for speed
+- check update_orb()
+- update_level_offset()
+- draw_interface()
+
+# lua performance tests:
+https://springrts.com/wiki/Lua_Performance
+
+## SDK 0.8.1 API changes
 ```lua
--- draw a 16 x 16, dithered grid
-function draw_grid()
-	playdate.graphics.setDitherPattern(0.5)
-	for x = global_grid_size, screen_width, 16 do
-		playdate.graphics.drawLine( x, 0, x, screen_height)
-	end
-	for y = global_grid_size, screen_height, 16 do
-		playdate.graphics.drawLine(0, y, screen_width, y)
-	end
-	playdate.graphics.setDitherPattern(0.0)
-end
-
-function degreesToCoords(angle)
-  local crankRads = math.rad(angle)
-  local x = math.sin(crankRads)
-  local y = -1 * math.cos(crankRads)
-
-  x = (r * x) + centerX
-  y = (r * y) + centerY
-
-  return x,y
-end
-
-local x,y = degreesToCoords(angle)
-
-```
-
-** SDK 0.8.1 API changes
-```
 playdate.graphics.clearStencil → graphics.clearStencilImage
 playdate.graphics.loadImage → graphics.image.new
 playdate.graphics.loadImageTable → graphics.imagetable.new
