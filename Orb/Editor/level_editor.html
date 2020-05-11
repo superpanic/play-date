@@ -2,7 +2,7 @@
 <body style='background-color:white;'>
 	<canvas id='editor_canvas' width='2048' height='1024' style='position:absolute; left:0; top:0'></canvas>
 	<label id='result' style='position:absolute; left:48; top:20; font-family:monospace; font-size:11px'>Use [W] and [S] to adjust tile altitude up or down, [X] to delete tile and [F] to download current level to file. </label>
-	<!-- <input id='offsetfile' type='file' style='position:absolute; left:1096; top:580'> -->
+	<label id='debug_out' style='position:absolute; left:60; top:60; font-family:monospace; font-size:11px'>debug string </label>
 	<input type='file' id='selectFiles' value='Import' style='position:absolute; left:48; top:580; font-family:monospace'  />
 	<script>
 		let image = new Image();
@@ -11,32 +11,12 @@
 		let image_red = new Image();
 		image_red.src = './level_tiles-table-48-48_red.png';
 
-		// tile offset values
-		let offset_value_data;
-		let offset_values_loaded = false;
+		const MAP_COLS = 32; // <- set map size here
+		const MAP_ROWS = MAP_COLS;
+		const LEVEL_IMAGE_WIDTH = MAP_COLS * 32;
+		const LEVEL_IMAGE_HEIGHT = MAP_COLS * 16;
 
-		// input button for loading file containing tile offset values
-		document.getElementById('selectFiles').onchange = function() {
-			var files = document.getElementById('selectFiles').files;
-			console.log(files);
-			if (files.length <= 0) {
-				alert("no file selected")
-				return false;
-			}
-			var fr = new FileReader();
-			fr.onload = function (e) {
-				console.log(e);
-				offset_value_data = JSON.parse(e.target.result);
-				console.log(offset_value_data.loadmessage);
-				offset_values_loaded = true;
-			}
-			fr.readAsText(files.item(0));
-		};
-
-		const MAP_COLS = 32;
-		const MAP_ROWS = 32;
-	
-		const GRID_SIZE  = 16;
+		const GRID_SIZE = 16;
 
 		const SOURCE_TILE_WIDTH  = 48;
 		const SOURCE_TILE_HEIGHT = 48;
@@ -44,14 +24,11 @@
 		const SOURCE_IMAGE_WIDTH = 240;
 		const SOURCE_IMAGE_HEIGHT = 240;
 
-		const LEVEL_IMAGE_WIDTH = 1024;
-		const LEVEL_IMAGE_HEIGHT =512;
-
 		const X_OFFSET = 48;
 		const Y_OFFSET = 48;
 
-		const SOURCE_IMAGE_XPOS = SOURCE_TILE_WIDTH * 23
-		const SOURCE_IMAGE_YPOS = SOURCE_TILE_HEIGHT * 1
+		const SOURCE_IMAGE_XPOS = X_OFFSET + LEVEL_IMAGE_WIDTH + SOURCE_TILE_WIDTH;
+		const SOURCE_IMAGE_YPOS = Y_OFFSET;
 
 		const NONE = 0;
 
@@ -68,6 +45,10 @@
 		let canvas = document.getElementById('editor_canvas');
 		let context = canvas.getContext('2d');
 
+		// debug string
+		let debug_label = document.getElementById('debug_out');
+		debug_label.innerHTML = "debug string";
+
 		// text field
 		let text_field = document.createElement("TEXTAREA");
 		draw_text_field(text_field);
@@ -78,9 +59,34 @@
 		document.addEventListener('keydown', on_keydown);
 
 		image.addEventListener('load', redraw_source_image);
-
 	 	
 		draw_iso_grid();
+
+		// tile offset values
+		let offset_value_data;
+		let offset_values_loaded = false;
+		let load_button = document.getElementById('selectFiles');
+		load_button.style.position = 'absolute';
+		load_button.style.left = X_OFFSET + 'px';
+		load_button.style.top = LEVEL_IMAGE_HEIGHT + Y_OFFSET + 10 + 'px';
+
+		// input button for loading file containing tile offset values
+		load_button.onchange = function () {
+			var files = document.getElementById('selectFiles').files;
+			console.log(files);
+			if (files.length <= 0) {
+				alert("no file selected")
+				return false;
+			}
+			var fr = new FileReader();
+			fr.onload = function (e) {
+				console.log(e);
+				offset_value_data = JSON.parse(e.target.result);
+				console.log(offset_value_data.loadmessage);
+				offset_values_loaded = true;
+			}
+			fr.readAsText(files.item(0));
+		};
 
 		function on_mouse_move(e) {
 			let x = e.clientX;
@@ -98,8 +104,6 @@
 				context.stroke();
 			}
 
-
-
 			// target
 			//context.clearRect(X_OFFSET,Y_OFFSET,LEVEL_IMAGE_WIDTH,LEVEL_IMAGE_HEIGHT);
 			//draw_iso_grid();
@@ -107,32 +111,36 @@
 			redraw_all_target_tiles();
 
 			if ( x > X_OFFSET && x < X_OFFSET + LEVEL_IMAGE_WIDTH && y > Y_OFFSET && y < Y_OFFSET + LEVEL_IMAGE_HEIGHT )  {
+				// offset screen space pixel coordinates
 				let gx = x - X_OFFSET - LEVEL_IMAGE_WIDTH/2;
 				let gy = y - Y_OFFSET;
+				// pixel conversion from screen space to top down grid
 				let isoxy = iso_to_grid(gx,gy);
-				let ix = Math.floor(isoxy[0]/MAP_COLS);
-				let iy = Math.floor(isoxy[1]/MAP_ROWS);
+				// divide and round pixel iso coordinates
+				let ix = Math.floor(isoxy[0]/(GRID_SIZE*2));
+				let iy = Math.floor(isoxy[1]/(GRID_SIZE*2));
+				debug_label.innerHTML = ix.toString() + " : " + iy.toString();
+
+// -------------------------------------- ok to here! ------------------------------------------------
+				// do boundary check
 				if(ix>=0&&ix<MAP_COLS&&iy>=0&&iy<MAP_ROWS) {
 					target_area_flag = true;
 					// clear last tile with grey
 					let gridxy = grid_to_iso(selected_target[0], selected_target[1]);
-					let x16 = gridxy[0]*GRID_SIZE;
-					let y16 = gridxy[1]*GRID_SIZE;
+					let x16 = gridxy[0]*16;
+					let y16 = gridxy[1]*16;
 					draw_tile_outline(x16, y16, X_OFFSET + LEVEL_IMAGE_WIDTH / 2, Y_OFFSET + GRID_SIZE / 2, 'lightsteelblue', 2);
-
 					// update selected tile:
 					selected_target = [ix, iy];
 					gridxy = grid_to_iso(ix,iy);
-					x16 = gridxy[0]*GRID_SIZE;
-					y16 = gridxy[1]*GRID_SIZE;
-					selected_target_pos = [x16,y16];
+					x16 = gridxy[0]*16;
+					y16 = gridxy[1]*16;
+					selected_target_pos = [x16, y16];
 					draw_tile_outline(x16, y16, X_OFFSET+LEVEL_IMAGE_WIDTH/2, Y_OFFSET+GRID_SIZE/2, 'red', 1);
-
 					let index = iy * MAP_COLS + ix;
 					if (tile_array[index] > 0) {
 						draw_red_tile(tile_array[index],x16,y16);
 					}
-
 				} else {
 					target_area_flag = false;
 				}

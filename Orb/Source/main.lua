@@ -1,13 +1,14 @@
 import "CoreLibs/graphics"
 import "CoreLibs/sprites"
-
+import "CoreLibs/utilities/fps"
+print("using outdated CoreLibs/utilities/fps library")
 --playdate.setCollectsGarbage(false)
 
 -- local vars:
 local lib_gfx = playdate.graphics
 local lib_spr = playdate.graphics.sprite
 
-playdate.display.setRefreshRate(25)
+playdate.display.setRefreshRate(30)
 playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
@@ -81,8 +82,8 @@ lib_gfx.setFont(INTERFACE_FONT)
 -- level vars
 local CURRENT_LEVEL = 5
 local BACKGROUND_SPRITE = {} 
-local LEVEL_IMAGE_WIDTH = 512
-local LEVEL_IMAGE_HEIGHT = 256
+local LEVEL_IMAGE_WIDTH = 1024
+local LEVEL_IMAGE_HEIGHT = 512
 local TILE_IMAGES = lib_gfx.imagetable.new('Artwork/level_tiles')
 local LEVEL_DATA = playdate.datastore.read("Levels/levels")
 	print(LEVEL_DATA.description) -- to make sure the json is readable
@@ -211,6 +212,7 @@ function playdate.update()
 		end_level_check()
 		update_game_timer()
 		lib_spr.update() -- update all sprites
+		playdate.drawFPS(10, 10)
 
 	elseif CURRENT_STATE == GAME_STATE.goal then
 		level_clear()
@@ -390,9 +392,6 @@ function update_orb()
 		local crank_pos = playdate.getCrankPosition()
 		CRANK_VECTOR.x, CRANK_VECTOR.y = degrees_to_vector_lut( crank_pos )
 		vectorx, vectory = degrees_to_vector_lut( crank_pos - 45 )
-		
-		
-		
 		vectorx = vectorx * 1.5
 		vectory = vectory * 1.5
 	end
@@ -525,6 +524,7 @@ function draw_level(level)
 	
 	LEVEL_OFFSET.drawy = -(math.ceil(draw_offset+GRID_SIZE))
 
+	lib_gfx.lockFocus(BACKGROUND_SPRITE:getImage())
 	for y = 1, h do
 		for x = 1, w do
 			index = w * (y-1) + x
@@ -544,12 +544,10 @@ function draw_level(level)
 			isoy = isoy - height_offset + LEVEL_OFFSET.drawy
 
 			-- draw image
-			lib_gfx.lockFocus(BACKGROUND_SPRITE:getImage())
-				TILE_IMAGES:getImage(tile):drawAt(isox,isoy)
-			lib_gfx.unlockFocus()
-
+			TILE_IMAGES:getImage(tile):drawAt(isox,isoy)
 		end
 	end
+	lib_gfx.unlockFocus()
 end
 
 function z_mask_update(obj, level)
@@ -560,23 +558,28 @@ function z_mask_update(obj, level)
 	local w = LEVEL_DATA.levels[level].w
 	local h = LEVEL_DATA.levels[level].h
 
-	local index, tile, height_offset = 0
+	local index, tile, tile_altitude = 0
 	local tile_isox, tile_isoy
 
-	for y = 1, h do
-		for x = 1, w do
-			index = w * (y-1) + x
+	-- TODO: going through all tiles every frame
+	for row = 1, h do
+		for col = 1, w do
+			index = w * (row-1) + col
 			tile = LEVEL_DATA.levels[level].tiles[index]
-			height_offset = LEVEL_DATA.levels[level].altitude[index]
-			tile_isox, tile_isoy = grid_to_iso( (x-1) * GRID_SIZE, (y-1) * GRID_SIZE)
+			tile_altitude = LEVEL_DATA.levels[level].altitude[index]
+			tile_isox, tile_isoy = grid_to_iso( (col-1) * GRID_SIZE, (row-1) * GRID_SIZE)
 			
 			tile_isox = tile_isox + TILE_DATA.tiles[tile].xoffset
-			tile_isoy = tile_isoy + TILE_DATA.tiles[tile].yoffset - height_offset
+			tile_isoy = tile_isoy + TILE_DATA.tiles[tile].yoffset - tile_altitude
 			tile_isox = tile_isox + LEVEL_OFFSET.x
 			tile_isoy = tile_isoy + LEVEL_OFFSET.y
 			tile_isox = math.floor(tile_isox+0.5)
 			tile_isoy = math.floor(tile_isoy+0.5)
-			z_mask_draw(obj, x, y, tile, TILE_IMAGES:getImage(tile), tile_isox, tile_isoy, height_offset )
+
+			-- TODO: replace this function call with code from z_mask_draw
+			z_mask_draw(obj, col, row, tile, TILE_IMAGES:getImage(tile), tile_isox, tile_isoy, tile_altitude )
+
+
 		end
 	end
 
@@ -596,18 +599,18 @@ function z_mask_reset(obj)
 	obj.sprite_cover:moveTo( obj.sprite:getPosition() )
 end
 
-function z_mask_draw( obj, tile_col, tile_row, tile, image, tile_isox, tile_isoy, tile_altitude )
-	obj_col = math.floor(obj.pos.x / GRID_SIZE) + 1
-	obj_row = math.floor(obj.pos.y / GRID_SIZE) + 1
+function z_mask_draw( obj, col, row, tile, image, tile_isox, tile_isoy, tile_altitude )
+	local obj_col = math.floor(obj.pos.x / GRID_SIZE) + 1
+	local obj_row = math.floor(obj.pos.y / GRID_SIZE) + 1
 
 	-- check 1: are we standing on this tile?
-	if obj_col == tile_col and obj_row == tile_row then
+	if obj_col == col and obj_row == row then
 		-- if DEBUG_FLAG then DEBUG_STRING = TILE_DATA.tiles[tile].name end
 		return -- dont mask if orb is standing on tile!
 	end
 
 	-- check 2: is tile to the left or the north of the orb? then return
-	if tile_col < obj_col or tile_row < obj_row then return end
+	if col < obj_col or row < obj_row then return end
 	
 	-- check 3: is tile lower or same altitude as obj?
 	local alt_diff = tile_altitude - obj.altitude
