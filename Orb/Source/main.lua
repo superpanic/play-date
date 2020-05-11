@@ -13,7 +13,7 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-local DEBUG_FLAG = true
+local DEBUG_FLAG = false
 local DEBUG_STRING = ""
 local DEBUG_VAL = 0.0
 
@@ -97,6 +97,12 @@ function new_game_object(name, sprite, pos)
 	obj.name = name
 	obj.sprite = sprite
 	
+	-- TODO: use the sprite_effect layer for collisions, fall and goal effects ... 
+	obj.sprite_effect = lib_spr.new()
+	local img = lib_gfx.image.new(GRID_SIZE*2,GRID_SIZE*2)
+	obj.sprite_effect:setImage(img)
+	obj.sprite_effect:add()
+
 	-- use sprite cover to draw on top of object
 	obj.sprite_cover = lib_spr.new()
 	local img = lib_gfx.image.new(GRID_SIZE*2, GRID_SIZE*2)
@@ -122,7 +128,8 @@ function new_game_object(name, sprite, pos)
 
 	obj.set_z_index = function(z)
 		obj.sprite:setZIndex(z)
-		obj.sprite_cover:setZIndex(z+1)
+		obj.sprite_effect:setZIndex(z+1)
+		obj.sprite_cover:setZIndex(z+2)
 	end
 	
 	return obj
@@ -307,7 +314,7 @@ function draw_interface()
 	local ox = 0 -- offset all x
 	local oy = 0 -- offset all y
 	lib_gfx.lockFocus(INTERFACE_SPRITE:getImage())
-		-- crank circle
+	-- crank circle
 		px = 8 + ox
 		py = 92 + oy
 		lib_gfx.setColor(lib_gfx.kColorWhite)
@@ -315,7 +322,7 @@ function draw_interface()
 		lib_gfx.setColor(lib_gfx.kColorBlack)
 		lib_gfx.drawPixel( px, py )
 		lib_gfx.drawLine( px, py, px+(CRANK_VECTOR.x*5), py+(CRANK_VECTOR.y*5))
-		-- game timer
+	-- game timer
 		px = 32 + ox
 		py = 35 + oy
 		lib_gfx.setColor(lib_gfx.kColorBlack)
@@ -323,7 +330,7 @@ function draw_interface()
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
 		s = string.format("%02.2f", math.max(GAME_TIMER/1000, 0.0))
 		lib_gfx.drawTextAligned(s, px, py, kTextAlignment.right)
-		-- score
+	-- score
 		px = 32 + ox
 		py = 53 + oy
 		lib_gfx.setColor(lib_gfx.kColorBlack)
@@ -331,14 +338,14 @@ function draw_interface()
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
 		s = string.format("%06d", 55)
 		lib_gfx.drawTextAligned(s, px, py, kTextAlignment.right)
-		-- speed meter
-		px = 3 + ox
-		py = 71 + oy
-		lib_gfx.setColor(lib_gfx.kColorBlack)
-		lib_gfx.fillRect(px,py,27,5)
-		lib_gfx.setColor(lib_gfx.kColorWhite)
-		lib_gfx.fillRect( px, py, math.min( 27, (math.abs(ORB.x_velocity)+math.abs(ORB.y_velocity)+ORB.fall_velocity)*6 ), 5 )
-		-- alt meter
+	-- speed meter
+		-- px = 3 + ox
+		-- py = 71 + oy
+		-- lib_gfx.setColor(lib_gfx.kColorBlack)
+		-- lib_gfx.fillRect(px,py,27,5)
+		-- lib_gfx.setColor(lib_gfx.kColorWhite)
+		-- lib_gfx.fillRect( px, py, math.min( 27, (math.abs(ORB.x_velocity)+math.abs(ORB.y_velocity)+ORB.fall_velocity)*6 ), 5 )
+	-- alt meter
 		px = 32 + ox
 		py = 109 + oy
 		lib_gfx.setColor(lib_gfx.kColorBlack)
@@ -560,11 +567,16 @@ function z_mask_update(obj, level)
 
 	local index, tile, tile_altitude = 0
 	local tile_isox, tile_isoy
+
+	local obj_col = math.floor(obj.pos.x / GRID_SIZE) + 1
+	local obj_row = math.floor(obj.pos.y / GRID_SIZE) + 1
 	
-	-- TODO: going through all tiles every frame
+	-- TODO: going through all tiles every frame, 
+	-- try to limit this loop to maybe 8 by 8?
+
 	lib_gfx.lockFocus(obj.sprite_cover:getImage())
-		for row = 1, h do
-			for col = 1, w do
+		for row = math.max(1,obj_row), math.min(h,obj_row+3) do
+			for col = math.max(1,obj_col), math.min(w,obj_col+3) do
 				repeat
 					index = w * (row-1) + col
 
@@ -578,9 +590,6 @@ function z_mask_update(obj, level)
 					tile_isoy = math.floor(tile_isoy+0.5)
 					
 					local image = TILE_IMAGES:getImage(tile)
-
-					local obj_col = math.floor(obj.pos.x / GRID_SIZE) + 1
-					local obj_row = math.floor(obj.pos.y / GRID_SIZE) + 1
 					
 					-- check 1: are we standing on this tile?
 					if obj_col == col and obj_row == row then
@@ -605,12 +614,10 @@ function z_mask_update(obj, level)
 
 					-- add special cases (like slopes) here --
 					image:drawAt( tile_isox - objx, tile_isoy - objy )
-					
 				until true
 			end
 		end
 	lib_gfx.unlockFocus()
-
 end
 
 function z_mask_reset(obj)
