@@ -1,6 +1,6 @@
 import "CoreLibs/graphics"
 import "CoreLibs/sprites"
-import "CoreLibs/utilities/fps"
+import "Utils/fps"
 print("using outdated CoreLibs/utilities/fps library")
 --playdate.setCollectsGarbage(false)
 
