@@ -13,7 +13,7 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-local DEBUG_FLAG = false
+local DEBUG_FLAG = true
 local DEBUG_STRING = ""
 local DEBUG_VAL = 0.0
 
@@ -80,7 +80,7 @@ local INTERFACE_FONT = playdate.graphics.loadFont("Fonts/orb_font")
 lib_gfx.setFont(INTERFACE_FONT)
 
 -- level vars
-local CURRENT_LEVEL = 5
+local CURRENT_LEVEL = 2
 local BACKGROUND_SPRITE = {} 
 local LEVEL_IMAGE_WIDTH = 1024
 local LEVEL_IMAGE_HEIGHT = 512
@@ -560,28 +560,56 @@ function z_mask_update(obj, level)
 
 	local index, tile, tile_altitude = 0
 	local tile_isox, tile_isoy
-
+	
 	-- TODO: going through all tiles every frame
-	for row = 1, h do
-		for col = 1, w do
-			index = w * (row-1) + col
-			tile = LEVEL_DATA.levels[level].tiles[index]
-			tile_altitude = LEVEL_DATA.levels[level].altitude[index]
-			tile_isox, tile_isoy = grid_to_iso( (col-1) * GRID_SIZE, (row-1) * GRID_SIZE)
-			
-			tile_isox = tile_isox + TILE_DATA.tiles[tile].xoffset
-			tile_isoy = tile_isoy + TILE_DATA.tiles[tile].yoffset - tile_altitude
-			tile_isox = tile_isox + LEVEL_OFFSET.x
-			tile_isoy = tile_isoy + LEVEL_OFFSET.y
-			tile_isox = math.floor(tile_isox+0.5)
-			tile_isoy = math.floor(tile_isoy+0.5)
+	lib_gfx.lockFocus(obj.sprite_cover:getImage())
+		for row = 1, h do
+			for col = 1, w do
+				repeat
+					index = w * (row-1) + col
 
-			-- TODO: replace this function call with code from z_mask_draw
-			z_mask_draw(obj, col, row, tile, TILE_IMAGES:getImage(tile), tile_isox, tile_isoy, tile_altitude )
+					tile = LEVEL_DATA.levels[level].tiles[index]
+					tile_altitude = LEVEL_DATA.levels[level].altitude[index]
 
+					tile_isox, tile_isoy = grid_to_iso( (col-1) * GRID_SIZE, (row-1) * GRID_SIZE)					
+					tile_isox = tile_isox + TILE_DATA.tiles[tile].xoffset + LEVEL_OFFSET.x
+					tile_isoy = tile_isoy + TILE_DATA.tiles[tile].yoffset - tile_altitude + LEVEL_OFFSET.y
+					tile_isox = math.floor(tile_isox+0.5)
+					tile_isoy = math.floor(tile_isoy+0.5)
+					
+					local image = TILE_IMAGES:getImage(tile)
 
+					local obj_col = math.floor(obj.pos.x / GRID_SIZE) + 1
+					local obj_row = math.floor(obj.pos.y / GRID_SIZE) + 1
+					
+					-- check 1: are we standing on this tile?
+					if obj_col == col and obj_row == row then
+						do break end -- dont mask if orb is standing on tile!
+					end
+					
+					-- check 2: is tile to the left or the north of the orb? then return
+					if col < obj_col or row < obj_row then 
+						do break end
+					end
+
+					-- check 3: is tile lower or same altitude as obj?
+					local alt_diff = tile_altitude - obj.altitude
+					if alt_diff <= 0 then -- earlier value was not 0 but HALF_GRID_SIZE
+						do break end 
+					end 
+
+					-- ok, assume the tile is covering the object
+					local objx, objy = obj.sprite:getPosition() -- screen position
+					objx = objx - GRID_SIZE
+					objy = objy - GRID_SIZE
+
+					-- add special cases (like slopes) here --
+					image:drawAt( tile_isox - objx, tile_isoy - objy )
+					
+				until true
+			end
 		end
-	end
+	lib_gfx.unlockFocus()
 
 end
 
@@ -597,35 +625,6 @@ function z_mask_reset(obj)
 
 	lib_gfx.unlockFocus()
 	obj.sprite_cover:moveTo( obj.sprite:getPosition() )
-end
-
-function z_mask_draw( obj, col, row, tile, image, tile_isox, tile_isoy, tile_altitude )
-	local obj_col = math.floor(obj.pos.x / GRID_SIZE) + 1
-	local obj_row = math.floor(obj.pos.y / GRID_SIZE) + 1
-
-	-- check 1: are we standing on this tile?
-	if obj_col == col and obj_row == row then
-		-- if DEBUG_FLAG then DEBUG_STRING = TILE_DATA.tiles[tile].name end
-		return -- dont mask if orb is standing on tile!
-	end
-
-	-- check 2: is tile to the left or the north of the orb? then return
-	if col < obj_col or row < obj_row then return end
-	
-	-- check 3: is tile lower or same altitude as obj?
-	local alt_diff = tile_altitude - obj.altitude
-	if alt_diff <= 0 then return end -- earlier value was not 0 but HALF_GRID_SIZE
-
-	-- ok, assume the tile is covering the object
-	local objx, objy = obj.sprite:getPosition() -- screen position
-	objx = objx - GRID_SIZE
-	objy = objy - GRID_SIZE
-
-	-- add special cases (like slopes) here --
-	
-	lib_gfx.lockFocus(obj.sprite_cover:getImage())
-		image:drawAt( tile_isox - objx, tile_isoy - objy )
-	lib_gfx.unlockFocus()
 end
 
 function wall_collision_check(obj, nextx, nexty)
