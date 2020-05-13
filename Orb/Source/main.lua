@@ -3,6 +3,7 @@ import "CoreLibs/sprites"
 import "Utils/fps"
 print("using outdated CoreLibs/utilities/fps library")
 --playdate.setCollectsGarbage(false)
+import "audio"
 
 -- local vars:
 local lib_gfx = playdate.graphics
@@ -72,6 +73,9 @@ local ORB_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/ORB')
 -- game
 local GAME_TIMER = 0
 local GAME_TIME_STAMP = 0
+
+-- audio
+local AUDIO_FX = new_audio_fx_player()
 
 -- interface
 local INTERFACE_IMAGE = lib_gfx.image.new("Artwork/interface.png")
@@ -418,8 +422,9 @@ function update_orb()
 	next_pos.y = ORB.pos.y + ORB.y_velocity
 
 	local collision_detected = wall_collision_check(ORB, next_pos.x, next_pos.y)
+	if collision_detected then AUDIO_FX.play_collide() end
 
-	-- set orb pos
+		-- set orb pos
 	if collision_detected == false then
 		ORB.pos.x = next_pos.x
 		ORB.pos.y = next_pos.y
@@ -983,8 +988,9 @@ function playdate.rightButtonDown()
 	print("current level: "..CURRENT_LEVEL)
 end
 
+
 function playdate.leftButtonDown()
-	
+	play_sound()
 end
 
 function playdate.upButtonDown() -- up button
