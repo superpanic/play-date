@@ -1,5 +1,6 @@
 import "CoreLibs/graphics"
 import "CoreLibs/sprites"
+import "CoreLibs/timer"
 import "Utils/fps"
 print("using outdated CoreLibs/utilities/fps library")
 --playdate.setCollectsGarbage(false)
@@ -8,6 +9,7 @@ import "audio"
 -- local vars:
 local lib_gfx = playdate.graphics
 local lib_spr = playdate.graphics.sprite
+local lib_tim = playdate.timer
 
 playdate.display.setRefreshRate(30)
 playdate.display.setScale(2)
@@ -76,6 +78,7 @@ local GAME_TIME_STAMP = 0
 
 -- audio
 local AUDIO_FX = new_audio_fx_player()
+local MUSIC_PLAYER = new_music_player()
 
 -- interface
 local INTERFACE_IMAGE = lib_gfx.image.new("Artwork/interface.png")
@@ -189,7 +192,7 @@ function playdate.update()
 
 	if CURRENT_STATE == GAME_STATE.initial then
 		CURRENT_STATE = GAME_STATE.menu
-
+		MUSIC_PLAYER.play_title(true)
 
 
 	-- menu loop
@@ -203,6 +206,7 @@ function playdate.update()
 		-- no game running, setup a new game
 		print("setup")
 		print("fps:", playdate.display.getRefreshRate())
+		MUSIC_PLAYER.stop_title()
 		setup()
 		CURRENT_STATE = GAME_STATE.ready
 
@@ -248,6 +252,8 @@ function playdate.update()
 		cleanup()
 		CURRENT_STATE = GAME_STATE.setup
 	end
+
+	lib_tim.updateTimers()
 
 	if DEBUG_FLAG then
 		DEBUG_FRAME_STEP = false
