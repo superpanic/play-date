@@ -1,6 +1,6 @@
 {
-	"loadmessage": "loaded tile.json",
-	"description": "tiles.json contains height map information in 16 x 16 resolution for each tile.",
+	"loadmessage": "# loaded tiles.json",
+	"description": "# tiles.json \n   contains height map information in 16 x 16 resolution for each tile",
 	"tiles": [
 		{ "id": 1, "name": "plain", "type": "flat", "xoffset": -24, "yoffset": -17, "heightmap": [0] },
 		{

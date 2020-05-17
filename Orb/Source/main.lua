@@ -66,11 +66,11 @@ local CURRENT_STATE = GAME_STATE.initial
 
 local MENU_SELECT_COUNTER = 1
 local MENU_DATA = playdate.datastore.read("menu")
-	print(MENU_DATA.description) -- to make sure the json is readable
+	print(MENU_DATA.loadmessage) -- to make sure the json is readable
 
 -- ORB vars
 local ORB = {}
-local ORB_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/ORB')
+local ORB_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/orb')
 
 -- game
 local GAME_TIMER = 0
@@ -78,7 +78,7 @@ local GAME_TIME_STAMP = 0
 
 -- audio
 local AUDIO_FX = new_audio_fx_player()
-local MUSIC_PLAYER = new_music_player()
+--local MUSIC_PLAYER = new_music_player()
 
 -- interface
 local INTERFACE_IMAGE = lib_gfx.image.new("Artwork/interface.png")
@@ -93,20 +93,82 @@ local LEVEL_IMAGE_WIDTH = 1024
 local LEVEL_IMAGE_HEIGHT = 512
 local TILE_IMAGES = lib_gfx.imagetable.new('Artwork/level_tiles')
 local LEVEL_DATA = playdate.datastore.read("Levels/levels")
-	print(LEVEL_DATA.description) -- to make sure the json is readable
+	print(LEVEL_DATA.loadmessage) -- to make sure the json is readable
 local TILE_DATA = playdate.datastore.read("Levels/tiles")
-	print(TILE_DATA.description) -- to make sure the json is readable
+	print(TILE_DATA.loadmessage) -- to make sure the json is readable
 
 local LEVEL_OFFSET = { floatx=60.0, floaty=20.0, x=60, y=20, velx=0, vely=0, drawy=0 }
 
-function new_game_object(name, sprite, pos)
+local LEVEL_ITEMS = {}
+local LEVEL_ITEMS_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/items')
+local ITEM_DATA = playdate.datastore.read("Levels/items")
+	print(ITEM_DATA.loadmessage) -- to make sure the json is readable
+
+function new_level_item(id, x, y, x_off, y_off, size, frames, update_func, action_func)
+	local obj = {}
+
+	obj.id = id -- type of item
+	
+	obj.frame_list = frames
+	obj.current_frame = 1
+	
+	obj.sprite = lib_spr.new()
+	obj.sprite:setImage(LEVEL_ITEMS_IMAGE_TABLE:getImage(obj.frame_list[obj.current_frame]))
+	
+	obj.x =(x-1) * GRID_SIZE
+	obj.y = (y-1) * GRID_SIZE
+	obj.x_off = x_off
+	obj.y_off = y_off
+	obj.altitude = get_altitude_at_pos(math.floor(obj.x+0.5), math.floor(obj.y+0.5))
+	local isox, isoy = grid_to_iso(obj.x, obj.y, obj.altitude)
+	obj.isox = isox
+	obj.isoy = isoy
+
+	obj.sprite:add()
+	obj.sprite:setZIndex(2000)
+	obj.action = action
+
+	obj.collision_distance = collision_radius -- not really radius, instead a square
+
+	obj.collision_check = function(x, y)
+		local cd = obj.size
+		if x > obj.x-cd and x < obj.x+cd and y > obj.y-cd and y < obj.y+cd then
+			return true
+		end
+		return false
+	end
+
+	obj.update = update_func -- call function using: _G[obj.update](obj)
+	obj.action = action_func -- call function using: _G[obj.action](obj)
+
+	obj.do_update = function()
+		-- run updates
+		if obj.update then _G[obj.update](obj) end
+		-- update position
+		local isox = math.floor(obj.isox + LEVEL_OFFSET.x + 0.5) + obj.x_off
+		local isoy = math.floor(obj.isoy + LEVEL_OFFSET.y + 0.5) + obj.y_off
+		obj.sprite:moveTo(isox, isoy)
+	end
+
+	obj.do_action = function()
+		if obj.action then _G[obj.action](obj) end
+	end
+
+	obj.set_z_index = function(z)
+		obj.sprite:setZIndex(z)
+	end
+
+	return obj
+end
+
+function new_game_sprite(name, sprite, pos)
 	local obj ={}
 	obj.name = name
 	obj.sprite = sprite
 	
 	-- TODO: use the sprite_effect layer for collisions, fall and goal effects ... 
 	obj.sprite_effect = lib_spr.new()
-	local img = lib_gfx.image.new(GRID_SIZE*2,GRID_SIZE*2)
+	local img = lib_gfx.image.new(GRID_SIZE*2, GRID_SIZE*2) -- might be too small for larger objects
 	obj.sprite_effect:setImage(img)
 	obj.sprite_effect:add()
 
@@ -138,6 +200,10 @@ function new_game_object(name, sprite, pos)
 		obj.sprite_effect:setZIndex(z+1)
 		obj.sprite_cover:setZIndex(z+2)
 	end
+
+	obj.get_z_index = function()
+		return obj.sprite:getZIndex()
+	end
 	
 	return obj
 end
@@ -153,7 +219,7 @@ function setup()
 	local orb_pos = {}
 	orb_pos.x = 0.0
 	orb_pos.y = 0.0
-	ORB = new_game_object("ORB", orb_sprite, orb_pos)
+	ORB = new_game_sprite("ORB", orb_sprite, orb_pos)
 	ORB.print_name()
 	move_orb_to_start_position()
 	ORB.sprite:moveTo(ORB.pos.x, ORB.pos.y)
@@ -192,7 +258,7 @@ function playdate.update()
 
 	if CURRENT_STATE == GAME_STATE.initial then
 		CURRENT_STATE = GAME_STATE.menu
-		MUSIC_PLAYER.play_title(true)
+		--MUSIC_PLAYER.play_title(true)
 
 
 	-- menu loop
@@ -206,13 +272,14 @@ function playdate.update()
 		-- no game running, setup a new game
 		print("setup")
 		print("fps:", playdate.display.getRefreshRate())
-		MUSIC_PLAYER.stop_title()
+		--MUSIC_PLAYER.stop_title()
 		setup()
 		CURRENT_STATE = GAME_STATE.ready
 
 	elseif CURRENT_STATE == GAME_STATE.ready then
 		print("start")
 		draw_level()
+		add_items()
 		offset_background()
 		GAME_TIME_STAMP = playdate.getCurrentTimeMilliseconds()
 		CURRENT_STATE = GAME_STATE.playing
@@ -221,6 +288,7 @@ function playdate.update()
 	-- main game loop
 	elseif CURRENT_STATE == GAME_STATE.playing then
 		update_orb()
+		update_items()
 		offset_background()
 		update_level_offset()
 		draw_interface()
@@ -282,6 +350,32 @@ function cleanup()
 	print("   all clear, active sprites: ".. lib_spr.spriteCount())
 	-- vars
 	LEVEL_OFFSET = { floatx=60.0, floaty=20.0, x=60, y=20, velx=0, vely=0, drawy=0 }
+end
+
+function add_items()
+	-- clear level objects
+	LEVEL_ITEMS = {}
+
+	-- read level data
+	local items = LEVEL_DATA.levels[CURRENT_LEVEL].items
+	if not items then return end
+	if #items == 0 then return end
+	
+	--print("item name: "..items[1].name)
+	for i = 1,#items do
+		local item = items[i]
+		local item_data = ITEM_DATA.items[item.id]
+		LEVEL_ITEMS[i] = new_level_item(item.id, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.frames, item_data.update_func, item_data.action_func)
+		print("type:"..item.type)
+	end
+end
+
+function update_items()
+	if #LEVEL_ITEMS == 0 then return end
+	for i = 1,#LEVEL_ITEMS do
+		local item = LEVEL_ITEMS[i]
+		item.do_update()
+	end
 end
 
 function menu()
@@ -854,6 +948,18 @@ function draw_debug_grid(level)
 --	BACKGROUND_SPRITE.addDirtyRect(xoff, yoff, GRID_SIZE*level_width, GRID_SIZE*level_height)
 end
 
+
+-- item functions
+
+function item_switch_action(obj)
+	-- go through all tiles and switch all tiles that are of type "boost"
+	print("switch action")
+end
+
+function item_switch_update(obj)
+	-- update for switch items
+	-- print("update switch")
+end
 
 
 -- algorithms / math

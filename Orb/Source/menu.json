@@ -1,5 +1,6 @@
 {
-	"description": "menu.json game menu with function calls.",
+	"loadmessage": "# loaded menu.json",
+	"description": "# menu.json\n   game menu with function calls",
 	"selected": [1,0,0],
 	"menu": [
 		{

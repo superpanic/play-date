@@ -1,0 +1,16 @@
+{
+	"loadmessage": "# loaded items.json",
+	"description": "# items.json \n   contains data about different item types",
+	"items": [
+		{ 
+			"id":1,
+			"type":"switch",
+			"frames":[1,2],
+			"xoffset": 1,
+			"yoffset":-12,
+			"size": 4,
+			"update_func":"item_switch_update",
+			"action_func":"item_switch_action"
+		}
+	]
+}

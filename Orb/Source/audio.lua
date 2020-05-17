@@ -140,6 +140,24 @@ function add_instrument_to_all_tracks_in_sequence(seq, inst)
 	return ( longest_track/seq:getTempo() ) * 1000
 end
 
+function load_midi_track(file_name, instrument)
+	local midi = playdate.sound.sequence.new(file_name)
+	local track_cnt = midi:getTrackCount()
+	local track_copy = {}
+	for i = 1, track_cnt do
+		local midi_track = midi:getTrackAtIndex(i)
+		local note_list = midi_track:getNotes()
+		if #note_list > 0 then
+			track_copy = playdate.sound.track.new()
+			for n = 1, #note_list do
+				track_copy:addNote(note_list[n])
+			end
+			track_copy:setInstrument(instrument)
+		end
+	end
+	return track_copy
+end
+
 function new_music_player()
 	local obj = {}
 
@@ -154,15 +172,22 @@ function new_music_player()
 	obj.instr_sine_synth:addVoice(obj.synth)
 
 	-- load title midi sequence
-	obj.title_sequence = playdate.sound.sequence.new('Audio/title.mid')
-	obj.title_sequence_length = add_instrument_to_all_tracks_in_sequence(obj.title_sequence, obj.instr_sine_synth)
+	obj.title_track = load_midi_track('Audio/test.mid', obj.instr_sine_synth)
+	if not obj.title_track then print("title_track is nil") end
+	print("notes: " .. #obj.title_track:getNotes())
+	obj.title_sequence = playdate.sound.sequence.new()
+	obj.title_sequence:setTrackAtIndex(1, obj.title_track)
+	print(obj.title_sequence:getTrackCount())
+
+	--obj.title_sequence = playdate.sound.sequence.new('Audio/title.mid')
+	--obj.title_sequence_length = add_instrument_to_all_tracks_in_sequence(obj.title_sequence, obj.instr_sine_synth)
 
 	obj.play_title = function(loop)
 		print("playing title music")
-		obj.title_sequence:play()
+		--obj.title_sequence:play()
 		if loop then
 			-- TODO: callback timer
-			playdate.timer.performAfterDelay(4000, obj.loop_title)
+			--playdate.timer.performAfterDelay(4000, obj.loop_title)
 			obj.is_looping = true
 		end
 	end
@@ -179,7 +204,7 @@ function new_music_player()
 --		obj.title_sequence:setTempo(1)
 --		obj.title_sequence:stop() -- FIXME: this stop() command causes hard crash on emulator and hardware
 --		obj.title_sequence:goToStep(3721)
-		obj.title_sequence:setTempo(0)
+--		obj.title_sequence:setTempo(0)
 
 		obj.is_looping = false
 	end
