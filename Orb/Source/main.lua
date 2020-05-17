@@ -72,6 +72,16 @@ local MENU_DATA = playdate.datastore.read("menu")
 local ORB = {}
 local ORB_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/orb')
 
+--[[ NUMBER_OF_SPRITE_LAYERS is the number 
+	of layers used for game sprite objects. 
+	each game sprite object uses: 
+	one IMAGE sprite 
+	one EFFECT sprite 
+	one MASK sprite
+	therefore the z-index has to be multiplied 
+	with NUMBER_OF_SPRITE_LAYERS ]]--
+local NUMBER_OF_SPRITE_LAYERS = 3
+
 -- game
 local GAME_TIMER = 0
 local GAME_TIME_STAMP = 0
@@ -87,7 +97,7 @@ local INTERFACE_FONT = playdate.graphics.loadFont("Fonts/orb_font")
 lib_gfx.setFont(INTERFACE_FONT)
 
 -- level vars
-local CURRENT_LEVEL = 2
+local CURRENT_LEVEL = 1
 local BACKGROUND_SPRITE = {} 
 local LEVEL_IMAGE_WIDTH = 1024
 local LEVEL_IMAGE_HEIGHT = 512
@@ -104,14 +114,17 @@ local LEVEL_ITEMS_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/items')
 local ITEM_DATA = playdate.datastore.read("Levels/items")
 	print(ITEM_DATA.loadmessage) -- to make sure the json is readable
 
-function new_level_item(id, x, y, x_off, y_off, size, frames, update_func, action_func)
+function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update_func, action_func)
 	local obj = {}
 
 	obj.id = id -- type of item
 	
 	obj.frame_list = frames
 	obj.current_frame = 1
-	
+
+	obj.collidable = collidable
+	obj.size = size
+
 	obj.sprite = lib_spr.new()
 	obj.sprite:setImage(LEVEL_ITEMS_IMAGE_TABLE:getImage(obj.frame_list[obj.current_frame]))
 	
@@ -120,22 +133,32 @@ function new_level_item(id, x, y, x_off, y_off, size, frames, update_func, actio
 	obj.x_off = x_off
 	obj.y_off = y_off
 	obj.altitude = get_altitude_at_pos(math.floor(obj.x+0.5), math.floor(obj.y+0.5))
-	local isox, isoy = grid_to_iso(obj.x, obj.y, obj.altitude)
+	print("item altitude: "..obj.altitude)
+	local isox, isoy = grid_to_iso(obj.x, obj.y, 0, 0)
+
+	obj.sprite:setZIndex(isoy * NUMBER_OF_SPRITE_LAYERS) 
+
 	obj.isox = isox
 	obj.isoy = isoy
-
+	print(obj.sprite:getZIndex())
+	
 	obj.sprite:add()
-	obj.sprite:setZIndex(2000)
+	
 	obj.action = action
 
 	obj.collision_distance = collision_radius -- not really radius, instead a square
 
 	obj.collision_check = function(x, y)
+		if not collidable then return false end
 		local cd = obj.size
 		if x > obj.x-cd and x < obj.x+cd and y > obj.y-cd and y < obj.y+cd then
 			return true
 		end
 		return false
+	end
+
+	obj.draw_collision_rect = function()
+		continue here!
 	end
 
 	obj.update = update_func -- call function using: _G[obj.update](obj)
@@ -147,7 +170,7 @@ function new_level_item(id, x, y, x_off, y_off, size, frames, update_func, actio
 		-- update position
 		local isox = math.floor(obj.isox + LEVEL_OFFSET.x + 0.5) + obj.x_off
 		local isoy = math.floor(obj.isoy + LEVEL_OFFSET.y + 0.5) + obj.y_off
-		obj.sprite:moveTo(isox, isoy)
+		obj.sprite:moveTo(isox, isoy - obj.altitude)
 	end
 
 	obj.do_action = function()
@@ -196,6 +219,7 @@ function new_game_sprite(name, sprite, pos)
 	end
 
 	obj.set_z_index = function(z)
+		z = z * NUMBER_OF_SPRITE_LAYERS
 		obj.sprite:setZIndex(z)
 		obj.sprite_effect:setZIndex(z+1)
 		obj.sprite_cover:setZIndex(z+2)
@@ -222,8 +246,8 @@ function setup()
 	ORB = new_game_sprite("ORB", orb_sprite, orb_pos)
 	ORB.print_name()
 	move_orb_to_start_position()
-	ORB.sprite:moveTo(ORB.pos.x, ORB.pos.y)
-	ORB.set_z_index(1000)
+	--ORB.sprite:moveTo(ORB.pos.x, ORB.pos.y)
+	ORB.set_z_index(0)
 	ORB.sprite:add()
 
 -- background as a sprite
@@ -235,7 +259,7 @@ function setup()
 	lib_gfx.unlockFocus()
 	BACKGROUND_SPRITE:setImage(bg_img)
 	BACKGROUND_SPRITE:moveTo(GAME_AREA_WIDTH/2,SCREEN_HEIGHT/2)
-	BACKGROUND_SPRITE:setZIndex(-1000)
+	BACKGROUND_SPRITE:setZIndex(-10000)
 	BACKGROUND_SPRITE:add()
 
 -- interface
@@ -347,6 +371,13 @@ function cleanup()
 	BACKGROUND_SPRITE = {}
 	INTERFACE_SPRITE:remove()
 	INTERFACE_SPRITE = {}
+	if LEVEL_ITEMS and #LEVEL_ITEMS > 0 then
+		for i = 1,#LEVEL_ITEMS do
+			LEVEL_ITEMS[i].sprite:remove()
+			LEVEL_ITEMS[i].sprite = nil
+		end
+		LEVEL_ITEMS = nil 
+	end
 	print("   all clear, active sprites: ".. lib_spr.spriteCount())
 	-- vars
 	LEVEL_OFFSET = { floatx=60.0, floaty=20.0, x=60, y=20, velx=0, vely=0, drawy=0 }
@@ -365,7 +396,7 @@ function add_items()
 	for i = 1,#items do
 		local item = items[i]
 		local item_data = ITEM_DATA.items[item.id]
-		LEVEL_ITEMS[i] = new_level_item(item.id, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.frames, item_data.update_func, item_data.action_func)
+		LEVEL_ITEMS[i] = new_level_item(item.id, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.frames, item_data.update_func, item_data.action_func)
 		print("type:"..item.type)
 	end
 end
@@ -524,7 +555,9 @@ function update_orb()
 	local collision_detected = wall_collision_check(ORB, next_pos.x, next_pos.y)
 	if collision_detected then AUDIO_FX.play_collide() end
 
-		-- set orb pos
+	item_collision_check(ORB, next_pos.x, next_pos.y)
+
+	-- set orb pos
 	if collision_detected == false then
 		ORB.pos.x = next_pos.x
 		ORB.pos.y = next_pos.y
@@ -555,7 +588,14 @@ function update_orb()
 	local isox, isoy = grid_to_iso(ORB.pos.x, ORB.pos.y, 0, 0)
 	-- offset orb half image height
 	isoy = isoy - select(1,ORB.sprite:getImage():getSize())/2
-	
+
+	-- set z index before adding offsets
+	ORB.set_z_index(isoy) 
+	-- TODO: get rid of magic number 3 above
+	-- 3 is for the three sprites in total used for a game
+	-- sprite object. one sprite, one effects and one mask
+	-- therefore the z-index has to be multiplied with three
+
 	-- floor value to sync with background movement
 	isox = math.floor( isox + LEVEL_OFFSET.x + 0.5 )
 	isoy = math.floor( isoy - ORB.altitude + LEVEL_OFFSET.y + 0.5 )
@@ -739,8 +779,20 @@ function z_mask_reset(obj)
 	obj.sprite_cover:moveTo( obj.sprite:getPosition() )
 end
 
+function item_collision_check(obj, nextx, nexty)
+	if not LEVEL_ITEMS or #LEVEL_ITEMS == 0 then return end
+	for i = 1,#LEVEL_ITEMS do
+		if LEVEL_ITEMS[i].collision_check(nextx, nexty) then
+			-- found collision
+			obj.x_velocity = -obj.x_velocity
+			obj.y_velocity = -obj.y_velocity
+			return
+		end
+	end
+end
+
 function wall_collision_check(obj, nextx, nexty)
-	-- collision if altitude is higher than 4 pixels
+	-- collision if altitude is higher than EDGE_COLLISION_HEIGHT pixels
 	
 	objx = math.floor(obj.pos.x + 0.5)
 	objy = math.floor(obj.pos.y + 0.5)
