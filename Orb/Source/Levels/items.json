@@ -7,7 +7,7 @@
 			"type":"switch",
 			"frames":[1,2],
 			"xoffset": 1,
-			"yoffset":-12,
+			"yoffset": -20,
 			"size": 8,
 			"collidable": true,
 			"update_func":"item_switch_update",

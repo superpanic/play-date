@@ -1,8 +1,14 @@
 function new_audio_fx_player()
 	local obj = {}
 	
-	obj.trot = 1.05946309436 -- twelfth root of two
-	
+	local trot = 1.05946309436 -- twelfth root of two
+	local first_a = 27.50
+	obj.note_long_table = {first_a}
+	for i = 2, 84 do
+		obj.note_long_table[i] = obj.note_long_table[i-1] * trot
+		print(obj.note_long_table[i])
+	end
+
 	obj.note_table = {
 		C = 261.63,
 		Cb= 277.18,
@@ -36,38 +42,47 @@ function new_audio_fx_player()
 
 
 	-- MODULATORS
-	-- fast sine lfo
+
 	local lfo_sin12 = playdate.sound.lfo.new(playdate.sound.kLFOSine)
-	lfo_sin12:setDepth(0.5)
-	lfo_sin12:setCenter(0.5)
-	--lfo_sin12:setDelay(0.1,0.1)
 	lfo_sin12:setRate(12)
 
-	-- slow sine lfo
 	local lfo_sin2 = playdate.sound.lfo.new(playdate.sound.kLFOSine)
-	lfo_sin2:setDepth(0.5)
-	lfo_sin2:setCenter(0.5)
-	--lfo_sin2:setDelay(0.1,0.1)
 	lfo_sin2:setRate(2)
 
+	local lfo_sin20 = playdate.sound.lfo.new(playdate.sound.kLFOSine)
+	lfo_sin20:setRate(20)
 
 
 	-- EFFECTS
 
-	-- collide
-	obj.sfx_collide = playdate.sound.synth.new(playdate.sound.kWaveTriangle)
+-- wall collide
+	obj.sfx_collide = playdate.sound.synth.new(playdate.sound.kWaveSine)
 	--                       A    D    S    R
-	obj.sfx_collide:setADSR( 0.0, 0.0, 0.2, 0.2)
-	obj.sfx_collide:setFrequencyMod(lfo_sin12)
+	obj.sfx_collide:setADSR( 0.0, 0.5, 0.3, 0.001 )
+	--obj.sfx_collide:setFrequencyMod(lfo_sin2)
 
 	obj.play_collide = function()
 		--playNote(pitch, volume, length)
-		obj.sfx_collide:playNote(obj.note_table.C, 0.5, 0.2)
+		obj.sfx_collide:playNote(160, 0.5, 0.2)
 	end
 	obj.end_collide = function() obj.sfx_collide:noteOff() end
 
 
-	-- roll
+
+-- switch
+	obj.sfx_switch = playdate.sound.synth.new(playdate.sound.kWaveSine)
+	--
+	obj.sfx_switch:setADSR( 0.0, 0.3, 0.2, 0.2 )
+	obj.sfx_switch:setFrequencyMod(lfo_sin20)
+
+	obj.play_switch = function()
+		obj.sfx_switch:playNote(obj.note_table.B, 0.5, 0.12)
+	end
+	obj.end_switch = function() obj.sfx_switch:noteOff() end
+
+
+
+-- roll
 	obj.sfx_roll = playdate.sound.synth.new(playdate.sound.kWaveSine)
 	--                       A     D     S    R
 	obj.sfx_roll:setADSR(   0.25, 0.25, 0.5, 0.5)
@@ -80,7 +95,22 @@ function new_audio_fx_player()
 	obj.end_roll = function() obj.sfx_roll:noteOff() end
 
 
-	-- crash
+
+-- fall
+	obj.sfx_fall = playdate.sound.synth.new(playdate.sound.kWaveSine)
+	--                    A  D  S    R
+	obj.sfx_fall:setADSR( 0, 0, 0.2, 0.2)
+	--obj.sfx_fall:setFrequencyMod(lfo_sin2)
+
+	obj.play_fall = function(p)
+		p = math.floor( (p/8) + #obj.note_long_table / 2)
+		obj.sfx_fall:playNote(obj.note_long_table[p], 0.5, 0.05)
+	end
+	obj.end_fall = function() obj.sfx_fall:noteOff() end
+
+
+
+-- crash
 	obj.sfx_crash = playdate.sound.synth.new(playdate.sound.kWaveNoise)
 	--                    A  D  S    R
 	obj.sfx_crash:setADSR( 0, 0, 0.25, 0.1)

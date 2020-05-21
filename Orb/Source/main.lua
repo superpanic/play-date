@@ -128,21 +128,24 @@ function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update
 	obj.sprite = lib_spr.new()
 	obj.sprite:setImage(LEVEL_ITEMS_IMAGE_TABLE:getImage(obj.frame_list[obj.current_frame]))
 	
-	obj.x =(x-1) * GRID_SIZE
-	obj.y = (y-1) * GRID_SIZE
+	obj.x = ((x-1) * GRID_SIZE)+GRID_SIZE/2
+	obj.y = ((y-1) * GRID_SIZE)+GRID_SIZE/2
 	obj.x_off = x_off
 	obj.y_off = y_off
 	obj.altitude = get_altitude_at_pos(math.floor(obj.x+0.5), math.floor(obj.y+0.5))
 	print("item altitude: "..obj.altitude)
+
 	local isox, isoy = grid_to_iso(obj.x, obj.y, 0, 0)
-
-	obj.sprite:setZIndex(isoy * NUMBER_OF_SPRITE_LAYERS) 
-
 	obj.isox = isox
 	obj.isoy = isoy
+	
+	print(obj.isox, obj.isoy)
+
+	obj.sprite:setZIndex(isoy * NUMBER_OF_SPRITE_LAYERS) 
 	print(obj.sprite:getZIndex())
 	
 	obj.sprite:add()
+	--obj.sprite:setVisible(false)
 	
 	obj.action = action
 
@@ -155,10 +158,6 @@ function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update
 			return true
 		end
 		return false
-	end
-
-	obj.draw_collision_rect = function()
-		continue here!
 	end
 
 	obj.update = update_func -- call function using: _G[obj.update](obj)
@@ -213,6 +212,7 @@ function new_game_sprite(name, sprite, pos)
 	obj.accelerate_flag = false
 	obj.altitude = 0
 	obj.fall_velocity = 0
+	obj.falling = false
 	
 	obj.print_name = function() 
 		print(obj.name) 
@@ -552,12 +552,11 @@ function update_orb()
 	next_pos.x = ORB.pos.x + ORB.x_velocity
 	next_pos.y = ORB.pos.y + ORB.y_velocity
 
-	local collision_detected = wall_collision_check(ORB, next_pos.x, next_pos.y)
-	if collision_detected then AUDIO_FX.play_collide() end
+	local collision_detected = false
+	collision_detected = wall_collision_check(ORB, next_pos.x, next_pos.y)
+	collision_detected = collision_detected or item_collision_check(ORB, next_pos.x, next_pos.y)
 
-	item_collision_check(ORB, next_pos.x, next_pos.y)
-
-	-- set orb pos
+	-- if we did not collide with anything move orb
 	if collision_detected == false then
 		ORB.pos.x = next_pos.x
 		ORB.pos.y = next_pos.y
@@ -574,9 +573,16 @@ function update_orb()
 	if alt < ORB.altitude - ORB.fall_velocity then
 		ORB.fall_velocity = ORB.fall_velocity + GRAVITY
 		ORB.altitude = math.max(alt, ORB.altitude - ORB.fall_velocity)
+		if ORB.fall_velocity > GRAVITY * 3 then -- are we falling fast?
+			ORB.falling = true
+		end
 	else
 		ORB.altitude = alt
 		ORB.fall_velocity = 0
+		if ORB.falling then
+			ORB.falling = false
+			AUDIO_FX.play_fall(alt)
+		end
 	end
 	
 	-- add slope velocity
@@ -700,6 +706,7 @@ function draw_level(level)
 		end
 	end
 	lib_gfx.unlockFocus()
+	BACKGROUND_SPRITE:markDirty()
 end
 
 function z_mask_update(obj, level)
@@ -780,15 +787,20 @@ function z_mask_reset(obj)
 end
 
 function item_collision_check(obj, nextx, nexty)
-	if not LEVEL_ITEMS or #LEVEL_ITEMS == 0 then return end
+	if not LEVEL_ITEMS or #LEVEL_ITEMS == 0 then return false end
 	for i = 1,#LEVEL_ITEMS do
 		if LEVEL_ITEMS[i].collision_check(nextx, nexty) then
 			-- found collision
-			obj.x_velocity = -obj.x_velocity
-			obj.y_velocity = -obj.y_velocity
-			return
+			obj.x_velocity = -obj.x_velocity*0.5
+			obj.y_velocity = -obj.y_velocity*0.5
+			LEVEL_ITEMS[i].do_action()
+			
+			AUDIO_FX.play_switch()
+			
+			return true
 		end
 	end
+	return false
 end
 
 function wall_collision_check(obj, nextx, nexty)
@@ -830,6 +842,8 @@ function wall_collision_check(obj, nextx, nexty)
 		obj.x_velocity = 0
 		obj.y_velocity = 0
 	end
+	
+	AUDIO_FX.play_collide()
 
 	return true
 end
@@ -1001,11 +1015,30 @@ function draw_debug_grid(level)
 end
 
 
--- item functions
-
+-- item actions
 function item_switch_action(obj)
+	-- switch frame
+	if obj.current_frame < #obj.frame_list then
+		obj.current_frame = obj.current_frame+1
+	else
+		obj.current_frame = 1
+	end
+	obj.sprite:setImage(LEVEL_ITEMS_IMAGE_TABLE:getImage(obj.frame_list[obj.current_frame]))
 	-- go through all tiles and switch all tiles that are of type "boost"
-	print("switch action")
+	local switch_list_from = { 14, 15, 16, 17 }
+	local switch_list_to   = { 16, 17, 14, 15 }
+	print("switching all directional tiles")
+	local level_tiles = LEVEL_DATA.levels[CURRENT_LEVEL].tiles
+	for i = 1, #level_tiles do
+		local switch_to = nil
+		for j = 1, #switch_list_from do
+			if level_tiles[i] == switch_list_from[j] then 
+				switch_to = switch_list_to[j] 
+			end
+		end
+		if switch_to then level_tiles[i] = switch_to end
+	end
+	draw_level()
 end
 
 function item_switch_update(obj)
