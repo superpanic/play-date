@@ -71,6 +71,7 @@ local MENU_DATA = playdate.datastore.read("menu")
 -- ORB vars
 local ORB = {}
 local ORB_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/orb')
+local ORB_IMAGE_FX = lib_gfx.imagetable.new('Artwork/orb_fx')
 
 --[[ NUMBER_OF_SPRITE_LAYERS is the number 
 	of layers used for game sprite objects. 
@@ -114,6 +115,9 @@ local LEVEL_ITEMS_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/items')
 local ITEM_DATA = playdate.datastore.read("Levels/items")
 	print(ITEM_DATA.loadmessage) -- to make sure the json is readable
 
+
+
+-- classes
 function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update_func, action_func)
 	local obj = {}
 
@@ -274,6 +278,8 @@ function setup()
 	return
 end
 
+
+-- update
 function playdate.update()
 
 	if DEBUG_FLAG and DEBUG_STEP_FRAME then
@@ -324,18 +330,30 @@ function playdate.update()
 	elseif CURRENT_STATE == GAME_STATE.goal then
 		level_clear()
 		update_orb()
+		update_items()
 		offset_background()
 		update_level_offset()
 		draw_interface()
 		lib_spr.update() -- update all sprites
 
 	elseif CURRENT_STATE == GAME_STATE.dead then
+		update_orb()
+		update_items()
+		offset_background()
+		update_level_offset()
+		draw_interface()
+		lib_spr.update() -- update all sprites
 		if game_over_check() then
 			CURRENT_STATE = GAME_STATE.gameover
 		end
 
 	elseif CURRENT_STATE == GAME_STATE.gameover then
-		-- nothing
+		update_orb()
+		update_items()
+		offset_background()
+		update_level_offset()
+		draw_interface()
+		lib_spr.update() -- update all sprites
 
 	elseif CURRENT_STATE == GAME_STATE.paused then
 		paused()
@@ -442,6 +460,9 @@ function game_over_check()
 	return false
 end
 
+
+
+-- interface
 function draw_interface()
 	local s = ""
 	local px = 0
@@ -450,13 +471,14 @@ function draw_interface()
 	local oy = 0 -- offset all y
 	lib_gfx.lockFocus(INTERFACE_SPRITE:getImage())
 	-- crank circle
-		px = 8 + ox
-		py = 92 + oy
+		px = 17 + ox
+		py = 83 + oy
 		lib_gfx.setColor(lib_gfx.kColorWhite)
-		lib_gfx.fillCircleAtPoint(px, py, 4.5)
+		lib_gfx.fillCircleAtPoint(px, py, 11)
 		lib_gfx.setColor(lib_gfx.kColorBlack)
-		lib_gfx.drawPixel( px, py )
-		lib_gfx.drawLine( px, py, px+(CRANK_VECTOR.x*5), py+(CRANK_VECTOR.y*5))
+		lib_gfx.setLineWidth(2)
+		lib_gfx.setLineCapStyle(lib_gfx.kLineCapStyleRound)
+		lib_gfx.drawLine( px, py, px + (CRANK_VECTOR.x * 12), py + (CRANK_VECTOR.y * 12))
 	-- game timer
 		px = 32 + ox
 		py = 35 + oy
@@ -495,6 +517,7 @@ function draw_interface()
 end
 
 function end_level_check()
+	-- goal check
 	if ( get_tile_at( math.floor(ORB.pos.x+0.5), math.floor(ORB.pos.y+0.5) ).type == "goal" ) then 
 		-- do an altitude check (to see if we are really standing on the goal plate)
 		if ( ORB.altitude == get_altitude_at_pos(ORB.pos.x, ORB.pos.y) ) then
@@ -502,12 +525,17 @@ function end_level_check()
 			ORB.accelerate_flag = false
 			print("goal!")
 		end
-	end
-	if ORB.altitude <= ALTITUDE_LIMIT then
-		CURRENT_STATE = GAME_STATE.dead
-		print("dead!")
 		return
 	end
+
+	-- if ORB.altitude <= ALTITUDE_LIMIT then
+	-- 	ORB.x_velocity = 0
+	-- 	ORB.y_velocity = 0
+	-- 	ORB.accelerate_flag = false
+	-- 	print("game over, altitude limit reached!")
+	-- 	CURRENT_STATE = GAME_STATE.dead
+	-- 	return
+	-- end
 end
 
 function add_friction(f)
@@ -519,7 +547,9 @@ function add_friction(f)
 	end
 end
 
+-- update orb
 function update_orb()
+	
 	local vectorx, vectory, vectorz
 	if playdate.accelerometerIsRunning() then
 		-- ACCELEROMETER controls direction
@@ -538,69 +568,79 @@ function update_orb()
 		vectory = vectory * 1.5
 	end
 	
-	if ORB.accelerate_flag then
-		ORB.x_velocity = ORB.x_velocity + (vectorx * ORB.acceleration)
-		ORB.y_velocity = ORB.y_velocity + (vectory * ORB.acceleration)
-	end
-
-	add_friction(ORB.friction)
-
-	check_special_tiles(ORB)
-
-	-- set next pos
-	local next_pos = {}
-	next_pos.x = ORB.pos.x + ORB.x_velocity
-	next_pos.y = ORB.pos.y + ORB.y_velocity
-
-	local collision_detected = false
-	collision_detected = wall_collision_check(ORB, next_pos.x, next_pos.y)
-	collision_detected = collision_detected or item_collision_check(ORB, next_pos.x, next_pos.y)
-
-	-- if we did not collide with anything move orb
-	if collision_detected == false then
-		ORB.pos.x = next_pos.x
-		ORB.pos.y = next_pos.y
-	end
-
-	-- calculate altitude
-	-- get tile grid position
-
-	-- don't set altitude, instead increase fall velocity if orb is above floor...
-	-- ORB.altitude = get_altitude_at_pos(ORB.pos.x, ORB.pos.y)
-
-	local alt = get_altitude_at_pos(math.floor(ORB.pos.x+0.5), math.floor(ORB.pos.y+0.5))
-	
-	if alt < ORB.altitude - ORB.fall_velocity then
-		ORB.fall_velocity = ORB.fall_velocity + GRAVITY
-		ORB.altitude = math.max(alt, ORB.altitude - ORB.fall_velocity)
-		if ORB.fall_velocity > GRAVITY * 3 then -- are we falling fast?
-			ORB.falling = true
+	if CURRENT_STATE == GAME_STATE.playing then
+		if ORB.accelerate_flag then
+			ORB.x_velocity = ORB.x_velocity + (vectorx * ORB.acceleration)
+			ORB.y_velocity = ORB.y_velocity + (vectory * ORB.acceleration)
 		end
-	else
-		ORB.altitude = alt
-		ORB.fall_velocity = 0
-		if ORB.falling then
-			ORB.falling = false
-			AUDIO_FX.play_fall(alt)
+
+		add_friction(ORB.friction)
+
+		check_special_tiles(ORB)
+
+		-- set next pos
+		local next_pos = {}
+		next_pos.x = ORB.pos.x + ORB.x_velocity
+		next_pos.y = ORB.pos.y + ORB.y_velocity
+
+		local collision_detected = false
+		collision_detected = wall_collision_check(ORB, next_pos.x, next_pos.y)
+		collision_detected = collision_detected or item_collision_check(ORB, next_pos.x, next_pos.y)
+
+		-- if we did not collide with anything move orb
+		if collision_detected == false then
+			ORB.pos.x = next_pos.x
+			ORB.pos.y = next_pos.y
 		end
+
+		-- calculate altitude
+		-- get tile grid position
+
+		-- don't set altitude, instead increase fall velocity if orb is above floor...
+		-- ORB.altitude = get_altitude_at_pos(ORB.pos.x, ORB.pos.y)
+
+		local alt = get_altitude_at_pos(math.floor(ORB.pos.x+0.5), math.floor(ORB.pos.y+0.5))
+		
+		if alt < ORB.altitude - ORB.fall_velocity then
+			ORB.fall_velocity = ORB.fall_velocity + GRAVITY
+			print(ORB.fall_velocity)
+			ORB.altitude = math.max(alt, ORB.altitude - ORB.fall_velocity)
+			if ORB.fall_velocity > GRAVITY * 3 then -- are we falling or just rolling?
+				ORB.falling = true
+			end
+		else
+			if ORB.falling then
+				-- did we fall too hard?
+				if ORB.fall_velocity > GRAVITY * 5 then
+					AUDIO_FX.play_crash()
+					CURRENT_STATE = GAME_STATE.dead
+					print("dead!!")
+				else
+					-- we survived the fall
+					ORB.falling = false
+					AUDIO_FX.play_fall(alt)
+				end
+			end
+			ORB.altitude = alt
+			ORB.fall_velocity = 0
+		end
+		
+		-- add slope velocity
+		local slope_vx, slope_vy = get_slope_vector(ORB.pos.x, ORB.pos.y, ORB.altitude)
+		ORB.x_velocity = ORB.x_velocity - slope_vx
+		ORB.y_velocity = ORB.y_velocity - slope_vy
+
 	end
-	
-	-- add slope velocity
-	local slope_vx, slope_vy = get_slope_vector(ORB.pos.x, ORB.pos.y, ORB.altitude)
-	ORB.x_velocity = ORB.x_velocity - slope_vx
-	ORB.y_velocity = ORB.y_velocity - slope_vy
+
+
 
 	-- move sprite
 	local isox, isoy = grid_to_iso(ORB.pos.x, ORB.pos.y, 0, 0)
 	-- offset orb half image height
-	isoy = isoy - select(1,ORB.sprite:getImage():getSize())/2
+	isoy = isoy - HALF_GRID_SIZE -- select(1,ORB.sprite:getImage():getSize())/2
 
 	-- set z index before adding offsets
-	ORB.set_z_index(isoy) 
-	-- TODO: get rid of magic number 3 above
-	-- 3 is for the three sprites in total used for a game
-	-- sprite object. one sprite, one effects and one mask
-	-- therefore the z-index has to be multiplied with three
+	ORB.set_z_index(isoy)
 
 	-- floor value to sync with background movement
 	isox = math.floor( isox + LEVEL_OFFSET.x + 0.5 )
@@ -608,12 +648,14 @@ function update_orb()
 
 	ORB.sprite:moveTo(isox, isoy)
 
-	local image_frame = get_orb_frame()
-	ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
 
-	z_mask_update(ORB)
 
-	DEBUG_VAL = ORB.altitude
+	if CURRENT_STATE == GAME_STATE.playing then
+		local image_frame = get_orb_frame()
+		ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
+
+		z_mask_update(ORB)
+	end
 
 end
 
@@ -644,6 +686,8 @@ function offset_background()
 	BACKGROUND_SPRITE:moveTo(LEVEL_OFFSET.x, y)
 end
 
+
+-- draw level
 function draw_level(level)
 	if not level then level = CURRENT_LEVEL end
 
@@ -709,13 +753,12 @@ function draw_level(level)
 	BACKGROUND_SPRITE:markDirty()
 end
 
-function z_mask_update(obj, level)
-	if not level then level = CURRENT_LEVEL end
+function z_mask_update(obj)	
 	
 	z_mask_reset(obj)
 
-	local w = LEVEL_DATA.levels[level].w
-	local h = LEVEL_DATA.levels[level].h
+	local w = LEVEL_DATA.levels[CURRENT_LEVEL].w
+	local h = LEVEL_DATA.levels[CURRENT_LEVEL].h
 
 	local index, tile, tile_altitude = 0
 	local tile_isox, tile_isoy
@@ -723,17 +766,18 @@ function z_mask_update(obj, level)
 	local obj_col = math.floor(obj.pos.x / GRID_SIZE) + 1
 	local obj_row = math.floor(obj.pos.y / GRID_SIZE) + 1
 	
-	-- TODO: going through all tiles every frame, 
-	-- try to limit this loop to maybe 8 by 8?
+	-- if outside return - outside on zero-side (top and left) should be covered though
+	if obj_col > w or obj_row > h then return end	
 
+	-- checking 16 tiles; from standing tile and 4 tiles down and right
 	lib_gfx.lockFocus(obj.sprite_cover:getImage())
 		for row = math.max(1,obj_row), math.min(h,obj_row+3) do
 			for col = math.max(1,obj_col), math.min(w,obj_col+3) do
 				repeat
 					index = w * (row-1) + col
 
-					tile = LEVEL_DATA.levels[level].tiles[index]
-					tile_altitude = LEVEL_DATA.levels[level].altitude[index]
+					tile = LEVEL_DATA.levels[CURRENT_LEVEL].tiles[index]
+					tile_altitude = LEVEL_DATA.levels[CURRENT_LEVEL].altitude[index]
 
 					tile_isox, tile_isoy = grid_to_iso( (col-1) * GRID_SIZE, (row-1) * GRID_SIZE)					
 					tile_isox = tile_isox + TILE_DATA.tiles[tile].xoffset + LEVEL_OFFSET.x
@@ -745,7 +789,7 @@ function z_mask_update(obj, level)
 					
 					-- check 1: are we standing on this tile?
 					if obj_col == col and obj_row == row then
-						do break end -- dont mask if orb is standing on tile!
+						do break end -- do not mask if orb is standing on tile!
 					end
 					
 					-- check 2: is tile to the left or the north of the orb? then return
@@ -788,16 +832,18 @@ end
 
 function item_collision_check(obj, nextx, nexty)
 	if not LEVEL_ITEMS or #LEVEL_ITEMS == 0 then return false end
-	for i = 1,#LEVEL_ITEMS do
-		if LEVEL_ITEMS[i].collision_check(nextx, nexty) then
-			-- found collision
-			obj.x_velocity = -obj.x_velocity*0.5
-			obj.y_velocity = -obj.y_velocity*0.5
-			LEVEL_ITEMS[i].do_action()
-			
-			AUDIO_FX.play_switch()
-			
-			return true
+	for _, item in ipairs(LEVEL_ITEMS) do
+		if item.collision_check(nextx,nexty) then
+			-- also do an altitude chack, are we below the item?
+			local alt = get_altitude_at_pos(math.floor(obj.pos.x+0.5), math.floor(obj.pos.y+0.5))
+			if alt > item.altitude - GRID_SIZE/2 then
+				-- we have a collision!
+				obj.x_velocity = -obj.x_velocity*0.5
+				obj.y_velocity = -obj.y_velocity*0.5
+				item.do_action()
+				AUDIO_FX.play_switch()
+				return true
+			end
 		end
 	end
 	return false
@@ -1141,7 +1187,6 @@ end
 -- buttons
 
 function playdate.BButtonDown()
-	if CURRENT_STATE == GAME_STATE.paused then return end
 	if CURRENT_STATE == GAME_STATE.playing then 
 		ORB.accelerate_flag = true 
 	end

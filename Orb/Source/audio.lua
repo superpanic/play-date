@@ -6,7 +6,7 @@ function new_audio_fx_player()
 	obj.note_long_table = {first_a}
 	for i = 2, 84 do
 		obj.note_long_table[i] = obj.note_long_table[i-1] * trot
-		print(obj.note_long_table[i])
+		--print(obj.note_long_table[i])
 	end
 
 	obj.note_table = {
@@ -56,14 +56,14 @@ function new_audio_fx_player()
 	-- EFFECTS
 
 -- wall collide
-	obj.sfx_collide = playdate.sound.synth.new(playdate.sound.kWaveSine)
+	obj.sfx_collide = playdate.sound.synth.new(playdate.sound.kWaveTriangle)
 	--                       A    D    S    R
-	obj.sfx_collide:setADSR( 0.0, 0.5, 0.3, 0.001 )
+	obj.sfx_collide:setADSR( 0.0, 0.5, 0.3, 0.1 )
 	--obj.sfx_collide:setFrequencyMod(lfo_sin2)
 
 	obj.play_collide = function()
 		--playNote(pitch, volume, length)
-		obj.sfx_collide:playNote(160, 0.5, 0.2)
+		obj.sfx_collide:playNote(160, 0.5, 0.05)
 	end
 	obj.end_collide = function() obj.sfx_collide:noteOff() end
 
@@ -104,6 +104,8 @@ function new_audio_fx_player()
 
 	obj.play_fall = function(p)
 		p = math.floor( (p/8) + #obj.note_long_table / 2)
+		if p < 1 then p = 1 end
+		if p > #obj.note_long_table then p = #obj.note_long_table end
 		obj.sfx_fall:playNote(obj.note_long_table[p], 0.5, 0.05)
 	end
 	obj.end_fall = function() obj.sfx_fall:noteOff() end
@@ -113,13 +115,12 @@ function new_audio_fx_player()
 -- crash
 	obj.sfx_crash = playdate.sound.synth.new(playdate.sound.kWaveNoise)
 	--                    A  D  S    R
-	obj.sfx_crash:setADSR( 0, 0, 0.25, 0.1)
+	obj.sfx_crash:setADSR( 0, 0, 0.25, 0.2)
 	obj.sfx_crash:setFrequencyMod(lfo_sin12)
 
-	obj.play_crash = function(p)
-		if not p then p = 65.41 end
+	obj.play_crash = function()
 		--playNote(pitch, volume, length)
-		obj.sfx_crash:playNote(p, 0.5, 0.2)
+		obj.sfx_crash:playNote(obj.note_table.C, 0.5, 0.2)
 	end
 	obj.end_crash = function() obj.sfx_crash:noteOff() end
 
