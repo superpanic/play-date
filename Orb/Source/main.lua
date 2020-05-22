@@ -24,6 +24,8 @@ local DEBUG_STEP_FRAME = false
 local DEBUG_FRAME_STEP = false
 local DEBUG_FRAME_COUNTER = 0
 
+-- GLOBALS
+
 -- full screen size
 local SCREEN_WIDTH  = playdate.display.getWidth()
 local SCREEN_HEIGHT = playdate.display.getHeight()
@@ -65,13 +67,13 @@ local GAME_STATE = {
 local CURRENT_STATE = GAME_STATE.initial
 
 local MENU_SELECT_COUNTER = 1
-local MENU_DATA = playdate.datastore.read("menu")
+local MENU_DATA = playdate.datastore.read("Json/menu")
 	print(MENU_DATA.loadmessage) -- to make sure the json is readable
 
 -- ORB vars
 local ORB = {}
 local ORB_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/orb')
-local ORB_IMAGE_FX = lib_gfx.imagetable.new('Artwork/orb_fx')
+local ORB_FX_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/orb_fx')
 
 --[[ NUMBER_OF_SPRITE_LAYERS is the number 
 	of layers used for game sprite objects. 
@@ -103,17 +105,21 @@ local BACKGROUND_SPRITE = {}
 local LEVEL_IMAGE_WIDTH = 1024
 local LEVEL_IMAGE_HEIGHT = 512
 local TILE_IMAGES = lib_gfx.imagetable.new('Artwork/level_tiles')
-local LEVEL_DATA = playdate.datastore.read("Levels/levels")
+local LEVEL_DATA = playdate.datastore.read("Json/levels")
 	print(LEVEL_DATA.loadmessage) -- to make sure the json is readable
-local TILE_DATA = playdate.datastore.read("Levels/tiles")
+local TILE_DATA = playdate.datastore.read("Json/tiles")
 	print(TILE_DATA.loadmessage) -- to make sure the json is readable
 
 local LEVEL_OFFSET = { floatx=60.0, floaty=20.0, x=60, y=20, velx=0, vely=0, drawy=0 }
 
 local LEVEL_ITEMS = {}
 local LEVEL_ITEMS_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/items')
-local ITEM_DATA = playdate.datastore.read("Levels/items")
+local ITEM_DATA = playdate.datastore.read("Json/items")
 	print(ITEM_DATA.loadmessage) -- to make sure the json is readable
+
+
+local SMALL_ART_DATA = playdate.datastore.read("Json/small_art")
+	print(SMALL_ART_DATA.loadmessage) -- to make sure the json is readable
 
 
 
@@ -192,7 +198,6 @@ function new_game_sprite(name, sprite, pos)
 	obj.name = name
 	obj.sprite = sprite
 	
-	-- TODO: use the sprite_effect layer for collisions, fall and goal effects ... 
 	obj.sprite_effect = lib_spr.new()
 	local img = lib_gfx.image.new(GRID_SIZE*2, GRID_SIZE*2) -- might be too small for larger objects
 	obj.sprite_effect:setImage(img)
@@ -614,7 +619,10 @@ function update_orb()
 				if ORB.fall_velocity > GRAVITY * 5 then
 					AUDIO_FX.play_crash()
 					CURRENT_STATE = GAME_STATE.dead
-					print("dead!!")
+					-- play death animation
+					-- TODO: temporary solution:
+					ORB.sprite:setImage(ORB_FX_IMAGE_TABLE:getImage(3))
+					print("dead!")
 				else
 					-- we survived the fall
 					ORB.falling = false
@@ -653,39 +661,24 @@ function update_orb()
 	if CURRENT_STATE == GAME_STATE.playing then
 		local image_frame = get_orb_frame()
 		ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
-
-		z_mask_update(ORB)
 	end
+	z_mask_update(ORB)
 
 end
 
-function check_special_tiles(obj)
-	local t = get_tile_at( obj.pos.x, obj.pos.y )
-	if t.type == "boost" then
-		-- boost tiles with arrows increases velocity
-		obj.x_velocity = obj.x_velocity + t.value[1];
-		obj.y_velocity = obj.y_velocity + t.value[2];
-	end 
+function get_orb_frame()
+	local imap_size = 5 -- the image map is 5 x 5 tiles
+	--local spx,spy = ORB.sprite:getPosition()
+	local spx, spy = grid_to_iso(ORB.pos.x, ORB.pos.y)
+	local x = (math.floor(spx) % imap_size)+1
+	local y = (math.floor(spy) % imap_size)
+	return y*imap_size+x
 end
 
-function update_level_offset()
-	LEVEL_OFFSET.velx = LEVEL_OFFSET.velx * FRICTION
-	LEVEL_OFFSET.vely = LEVEL_OFFSET.vely * FRICTION
-
-	local orb_x, orb_y = ORB.sprite:getPosition()
-	if orb_x < GRID_SIZE * 3 then LEVEL_OFFSET.velx = LEVEL_OFFSET.velx + 0.5 end
-	if orb_x > GAME_AREA_WIDTH - GRID_SIZE * 3 then LEVEL_OFFSET.velx = LEVEL_OFFSET.velx - 0.5 end
-	if orb_y < GRID_SIZE * 2 then LEVEL_OFFSET.vely = LEVEL_OFFSET.vely + 0.5 end
-	if orb_y > GAME_AREA_HEIGHT - GRID_SIZE * 2 then LEVEL_OFFSET.vely = LEVEL_OFFSET.vely - 0.5 end
-
-	offset_level(LEVEL_OFFSET.velx, LEVEL_OFFSET.vely)
+function move_orb_to_start_position()
+	ORB.pos.x = HALF_GRID_SIZE
+	ORB.pos.y = HALF_GRID_SIZE
 end
-
-function offset_background()
-	local y = math.floor(LEVEL_IMAGE_HEIGHT/2+LEVEL_OFFSET.y-LEVEL_OFFSET.drawy+0.5)
-	BACKGROUND_SPRITE:moveTo(LEVEL_OFFSET.x, y)
-end
-
 
 -- draw level
 function draw_level(level)
@@ -753,6 +746,25 @@ function draw_level(level)
 	BACKGROUND_SPRITE:markDirty()
 end
 
+function update_level_offset()
+	LEVEL_OFFSET.velx = LEVEL_OFFSET.velx * FRICTION
+	LEVEL_OFFSET.vely = LEVEL_OFFSET.vely * FRICTION
+
+	local orb_x, orb_y = ORB.sprite:getPosition()
+	if orb_x < GRID_SIZE * 3 then LEVEL_OFFSET.velx = LEVEL_OFFSET.velx + 0.5 end
+	if orb_x > GAME_AREA_WIDTH - GRID_SIZE * 3 then LEVEL_OFFSET.velx = LEVEL_OFFSET.velx - 0.5 end
+	if orb_y < GRID_SIZE * 2 then LEVEL_OFFSET.vely = LEVEL_OFFSET.vely + 0.5 end
+	if orb_y > GAME_AREA_HEIGHT - GRID_SIZE * 2 then LEVEL_OFFSET.vely = LEVEL_OFFSET.vely - 0.5 end
+
+	offset_level(LEVEL_OFFSET.velx, LEVEL_OFFSET.vely)
+end
+
+function offset_background()
+	local y = math.floor(LEVEL_IMAGE_HEIGHT/2+LEVEL_OFFSET.y-LEVEL_OFFSET.drawy+0.5)
+	BACKGROUND_SPRITE:moveTo(LEVEL_OFFSET.x, y)
+end
+
+-- z mask
 function z_mask_update(obj)	
 	
 	z_mask_reset(obj)
@@ -830,6 +842,8 @@ function z_mask_reset(obj)
 	obj.sprite_cover:moveTo( obj.sprite:getPosition() )
 end
 
+
+-- collision
 function item_collision_check(obj, nextx, nexty)
 	if not LEVEL_ITEMS or #LEVEL_ITEMS == 0 then return false end
 	for _, item in ipairs(LEVEL_ITEMS) do
@@ -892,6 +906,16 @@ function wall_collision_check(obj, nextx, nexty)
 	AUDIO_FX.play_collide()
 
 	return true
+end
+
+
+function check_special_tiles(obj)
+	local t = get_tile_at( obj.pos.x, obj.pos.y )
+	if t.type == "boost" then
+		-- boost tiles with arrows increases velocity
+		obj.x_velocity = obj.x_velocity + t.value[1];
+		obj.y_velocity = obj.y_velocity + t.value[2];
+	end 
 end
 
 function get_slope_vector( x, y, current_altitude )
@@ -989,20 +1013,6 @@ function get_altitude_at_pos( x, y )
 	return altitude
 end
 
-function get_orb_frame()
-	local imap_size = 5 -- the image map is 5 x 5 tiles
-	--local spx,spy = ORB.sprite:getPosition()
-	local spx, spy = grid_to_iso(ORB.pos.x, ORB.pos.y)
-	local x = (math.floor(spx) % imap_size)+1
-	local y = (math.floor(spy) % imap_size)
-	return y*imap_size+x
-end
-
-function move_orb_to_start_position()
-	ORB.pos.x = HALF_GRID_SIZE
-	ORB.pos.y = HALF_GRID_SIZE
-end
-
 function offset_level(x,y)
 	-- mutate
 	LEVEL_OFFSET.floatx = LEVEL_OFFSET.floatx + x
@@ -1091,6 +1101,8 @@ function item_switch_update(obj)
 	-- update for switch items
 	-- print("update switch")
 end
+
+
 
 
 -- algorithms / math
