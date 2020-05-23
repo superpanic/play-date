@@ -58,12 +58,12 @@ function new_audio_fx_player()
 -- wall collide
 	obj.sfx_collide = playdate.sound.synth.new(playdate.sound.kWaveTriangle)
 	--                       A    D    S    R
-	obj.sfx_collide:setADSR( 0.0, 0.5, 0.3, 0.1 )
+	obj.sfx_collide:setADSR( 0.0, 0.5, 0.2, 0.1 )
 	--obj.sfx_collide:setFrequencyMod(lfo_sin2)
 
 	obj.play_collide = function()
 		--playNote(pitch, volume, length)
-		obj.sfx_collide:playNote(160, 0.5, 0.05)
+		obj.sfx_collide:playNote(120, 0.5, 0.05)
 	end
 	obj.end_collide = function() obj.sfx_collide:noteOff() end
 
@@ -115,12 +115,12 @@ function new_audio_fx_player()
 -- crash
 	obj.sfx_crash = playdate.sound.synth.new(playdate.sound.kWaveNoise)
 	--                    A  D  S    R
-	obj.sfx_crash:setADSR( 0, 0, 0.25, 0.2)
+	obj.sfx_crash:setADSR( 0, 0, 0.2, 0.2)
 	obj.sfx_crash:setFrequencyMod(lfo_sin12)
 
 	obj.play_crash = function()
 		--playNote(pitch, volume, length)
-		obj.sfx_crash:playNote(obj.note_table.C, 0.5, 0.2)
+		obj.sfx_crash:playNote(75, 0.2, 0.2)
 	end
 	obj.end_crash = function() obj.sfx_crash:noteOff() end
 

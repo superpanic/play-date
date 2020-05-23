@@ -16,8 +16,8 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-local DEBUG_FLAG = false
-local DEBUG_STRING = ""
+local DEBUG_FLAG = true
+local DEBUG_STRING = "debug mode"
 local DEBUG_VAL = 0.0
 
 local DEBUG_STEP_FRAME = false
@@ -330,7 +330,7 @@ function playdate.update()
 		end_level_check()
 		update_game_timer()
 		lib_spr.update() -- update all sprites
-		playdate.drawFPS(10, 10)
+		playdate.drawFPS(10, SCREEN_HEIGHT-20)
 
 	elseif CURRENT_STATE == GAME_STATE.goal then
 		level_clear()
@@ -374,7 +374,6 @@ function playdate.update()
 		DEBUG_FRAME_STEP = false
 		DEBUG_FRAME_COUNTER = DEBUG_FRAME_COUNTER + 1
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
-		if DEBUG_STRING == "" then DEBUG_STRING = "debug mode" end
 		lib_gfx.drawText(DEBUG_STRING, 5, 5)
 		lib_gfx.drawText(tostring(DEBUG_VAL), 5, 20)
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeCopy)
@@ -775,11 +774,16 @@ function z_mask_update(obj)
 	local index, tile, tile_altitude = 0
 	local tile_isox, tile_isoy
 
-	local obj_col = math.floor(obj.pos.x / GRID_SIZE) + 1
-	local obj_row = math.floor(obj.pos.y / GRID_SIZE) + 1
+	local px = math.floor(obj.pos.x + 0.5)
+	local py = math.floor(obj.pos.y + 0.5)
+
+	local obj_col = math.floor(px / GRID_SIZE) + 1
+	local obj_row = math.floor(py / GRID_SIZE) + 1
 	
 	-- if outside return - outside on zero-side (top and left) should be covered though
 	if obj_col > w or obj_row > h then return end	
+
+	DEBUG_STRING = string.format( "%02d/%02d  (%03d/%03d)", obj_col, obj_row, math.floor(obj.pos.x+1+0.5), math.floor(obj.pos.y+1+0.5) )
 
 	-- checking 16 tiles; from standing tile and 4 tiles down and right
 	lib_gfx.lockFocus(obj.sprite_cover:getImage())
@@ -804,7 +808,7 @@ function z_mask_update(obj)
 						do break end -- do not mask if orb is standing on tile!
 					end
 					
-					-- check 2: is tile to the left or the north of the orb? then return
+					-- check 2: is tile to the left or above (up) the orb? then return
 					if col < obj_col or row < obj_row then 
 						do break end
 					end
