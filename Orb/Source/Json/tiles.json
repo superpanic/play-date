@@ -315,8 +315,9 @@
 		{ "id": 19, "name": "goal tile 1 - GO", 	"type": "goal", 	"xoffset": -40, "yoffset": -12, "heightmap": [0] },
 		{ "id": 20, "name": "goal tile 2 - AL", 	"type": "goal", 	"xoffset": -8,  "yoffset": -20, "heightmap": [0] },
 		{ "id": 21, "name": "twentyone", 		"type": "elevator", 	"xoffset": -24, "yoffset": -17, "heightmap": [0] },
-		{ "id": 22, "name": "twentytwo", 		"type": "break", 	"xoffset": -24, "yoffset": -17, "heightmap": [0] },
-		{ "id": 23, "name": "twentythree", 		"type": "unspec", 	"xoffset": -24, "yoffset": -17, "heightmap": [0] },
-		{ "id": 24, "name": "twentyfour", 		"type": "unspec", 	"xoffset": -24, "yoffset": -17, "heightmap": [0] }
+		{ "id": 22, "name": "note single off", 		"type": "note", 	"xoffset": -24, "yoffset": -17, "heightmap": [0] },
+		{ "id": 23, "name": "note single on", 		"type": "note", 	"xoffset": -24, "yoffset": -17, "heightmap": [0] },
+		{ "id": 24, "name": "note double off", 		"type": "note", 	"xoffset": -24, "yoffset": -17, "heightmap": [0] },
+		{ "id": 25, "name": "note double on", 		"type": "note", 	"xoffset": -24, "yoffset": -17, "heightmap": [0] }
 	]
 }

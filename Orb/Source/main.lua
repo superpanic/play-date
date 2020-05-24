@@ -1,6 +1,7 @@
 import "CoreLibs/graphics"
 import "CoreLibs/sprites"
 import "CoreLibs/timer"
+import "CoreLibs/animation"
 import "Utils/fps"
 print("using outdated CoreLibs/utilities/fps library")
 --playdate.setCollectsGarbage(false)
@@ -16,7 +17,7 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-local DEBUG_FLAG = true
+local DEBUG_FLAG = false
 local DEBUG_STRING = "debug mode"
 local DEBUG_VAL = 0.0
 
@@ -53,15 +54,16 @@ local GRAVITY = 0.75
 
 -- state vars
 local GAME_STATE = {
-	initial  = 1, 
-	setup    = 2,
-	menu     = 3,
-	ready    = 4, 
-	playing  = 5, 
-	paused   = 6, 
-	goal     = 7,
-	gameover = 8,
-	cleanup  = 9
+	initial       = 1, 
+	game_setup    = 2,
+	level_setup   = 3,
+	menu          = 4,
+	ready         = 5, 
+	playing       = 6, 
+	paused        = 7, 
+	goal          = 8,
+	gameover      = 9,
+	cleanup       = 10
 }
 
 local CURRENT_STATE = GAME_STATE.initial
@@ -73,7 +75,11 @@ local MENU_DATA = playdate.datastore.read("Json/menu")
 -- ORB vars
 local ORB = {}
 local ORB_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/orb')
-local ORB_FX_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/orb_fx')
+local ORB_LIVES = 3
+
+local ANIMATION_DATA = playdate.datastore.read("Json/anim_data")
+	print(ANIMATION_DATA.loadmessage) -- to make sure the json is readable
+local ORB_FX_IMAGE_TABLE = lib_gfx.imagetable.new(ANIMATION_DATA.objects.orb.artwork)
 
 --[[ NUMBER_OF_SPRITE_LAYERS is the number 
 	of layers used for game sprite objects. 
@@ -118,12 +124,8 @@ local ITEM_DATA = playdate.datastore.read("Json/items")
 	print(ITEM_DATA.loadmessage) -- to make sure the json is readable
 
 
-local SMALL_ART_DATA = playdate.datastore.read("Json/small_art")
-	print(SMALL_ART_DATA.loadmessage) -- to make sure the json is readable
 
-
-
--- classes
+-- creators
 function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update_func, action_func)
 	local obj = {}
 
@@ -143,16 +145,12 @@ function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update
 	obj.x_off = x_off
 	obj.y_off = y_off
 	obj.altitude = get_altitude_at_pos(math.floor(obj.x+0.5), math.floor(obj.y+0.5))
-	print("item altitude: "..obj.altitude)
 
 	local isox, isoy = grid_to_iso(obj.x, obj.y, 0, 0)
 	obj.isox = isox
 	obj.isoy = isoy
-	
-	print(obj.isox, obj.isoy)
 
 	obj.sprite:setZIndex(isoy * NUMBER_OF_SPRITE_LAYERS) 
-	print(obj.sprite:getZIndex())
 	
 	obj.sprite:add()
 	--obj.sprite:setVisible(false)
@@ -198,10 +196,28 @@ function new_game_sprite(name, sprite, pos)
 	obj.name = name
 	obj.sprite = sprite
 	
-	obj.sprite_effect = lib_spr.new()
+	obj.sprite_fx = lib_spr.new()
 	local img = lib_gfx.image.new(GRID_SIZE*2, GRID_SIZE*2) -- might be too small for larger objects
-	obj.sprite_effect:setImage(img)
-	obj.sprite_effect:add()
+	obj.sprite_fx:setImage(img)
+	obj.sprite_fx:add()
+	obj.sprite_fx:setVisible(false)
+	-- playdate.graphics.animation.loop.new([delay, [imageTable, [shouldLoop]]])
+	
+	-- animation
+	obj.animation_running = false
+	obj.current_animation = {}
+	obj.hide_animation = true
+
+	-- setup death animation
+--	obj.death_animation = lib_gfx.animation.loop.new(100, anim_data.img_table, false)
+--	obj.death_animation.startFrame = anim_data.death.startFrame
+--	obj.death_animation.endFrame = anim_data.death.endFrame
+	
+	-- setup collision animation
+--	obj.collision_animation = lib_gfx.animation.loop.new(100, anim_data.img_table, false)
+--	obj.collision_animation.startFrame = anim_data.collision.startFrame
+--	obj.collision_animation.endFrame = anim_data.collision.endFrame
+
 
 	-- use sprite cover to draw on top of object
 	obj.sprite_cover = lib_spr.new()
@@ -230,18 +246,51 @@ function new_game_sprite(name, sprite, pos)
 	obj.set_z_index = function(z)
 		z = z * NUMBER_OF_SPRITE_LAYERS
 		obj.sprite:setZIndex(z)
-		obj.sprite_effect:setZIndex(z+1)
+		obj.sprite_fx:setZIndex(z+1)
 		obj.sprite_cover:setZIndex(z+2)
 	end
 
 	obj.get_z_index = function()
 		return obj.sprite:getZIndex()
 	end
-	
+
+	obj.start_animation = function(anim_data, anim_art)
+		obj.animation_running = true
+		obj.sprite_fx:setVisible(true)
+		obj.current_animation = lib_gfx.animation.loop.new(anim_data.speed, anim_art, false)
+		obj.current_animation.startFrame = anim_data.start_frame
+		if anim_data.hide_host then obj.sprite:setVisible(false) end
+		obj.hide_animation = anim_data.hide_after
+		print("start_frame = "..anim_data.start_frame)
+		obj.current_animation.endFrame = anim_data.end_frame
+	end
+
+	obj.run_animation = function()
+		if not obj.animation_running then return end
+		obj.sprite_fx:setImage(obj.current_animation:image())
+		if obj.current_animation.frame >= obj.current_animation.endFrame then
+			if obj.hide_animation then obj.sprite_fx:setVisible(false) end
+			obj.animation_running = false
+		end
+	end
+
+	obj.set_visible = function(b)
+		obj.sprite:setVisible(b)
+		obj.sprite_fx:setVisible(b)
+		obj.sprite_cover:setVisible(b)
+	end
+
 	return obj
 end
 
-function setup()
+function level_setup()
+	reset_orb_to_start_position()
+	draw_level()
+	add_items()
+	offset_background()
+end
+
+function game_setup()
 
 	generate_vector_LUT()
 
@@ -249,13 +298,12 @@ function setup()
 	local orb_img = ORB_IMAGE_TABLE:getImage(13)
 	local orb_sprite = lib_spr.new()
 	orb_sprite:setImage(orb_img)
+
 	local orb_pos = {}
 	orb_pos.x = 0.0
 	orb_pos.y = 0.0
 	ORB = new_game_sprite("ORB", orb_sprite, orb_pos)
-	ORB.print_name()
-	move_orb_to_start_position()
-	--ORB.sprite:moveTo(ORB.pos.x, ORB.pos.y)
+
 	ORB.set_z_index(0)
 	ORB.sprite:add()
 
@@ -280,7 +328,7 @@ function setup()
 	
 -- reset crank
 	playdate.getCrankChange()
-	return
+	
 end
 
 
@@ -302,31 +350,28 @@ function playdate.update()
 		menu()
 
 
-	elseif CURRENT_STATE == GAME_STATE.setup then
+	elseif CURRENT_STATE == GAME_STATE.game_setup then
 		-- is a game already running? then return to it
 		-- no game running, setup a new game
-		print("setup")
-		print("fps:", playdate.display.getRefreshRate())
+		print("game setup")
+		print("game fps:", playdate.display.getRefreshRate())
 		--MUSIC_PLAYER.stop_title()
-		setup()
+		game_setup()
+		CURRENT_STATE = GAME_STATE.level_setup
+
+	elseif CURRENT_STATE == GAME_STATE.level_setup then
+		print("level setup")
+		level_setup()
 		CURRENT_STATE = GAME_STATE.ready
 
 	elseif CURRENT_STATE == GAME_STATE.ready then
 		print("start")
-		draw_level()
-		add_items()
-		offset_background()
 		GAME_TIME_STAMP = playdate.getCurrentTimeMilliseconds()
 		CURRENT_STATE = GAME_STATE.playing
 		
-
 	-- main game loop
 	elseif CURRENT_STATE == GAME_STATE.playing then
-		update_orb()
-		update_items()
-		offset_background()
-		update_level_offset()
-		draw_interface()
+		run_game()
 		end_level_check()
 		update_game_timer()
 		lib_spr.update() -- update all sprites
@@ -334,30 +379,19 @@ function playdate.update()
 
 	elseif CURRENT_STATE == GAME_STATE.goal then
 		level_clear()
-		update_orb()
-		update_items()
-		offset_background()
-		update_level_offset()
-		draw_interface()
+		run_game()
 		lib_spr.update() -- update all sprites
 
 	elseif CURRENT_STATE == GAME_STATE.dead then
-		update_orb()
-		update_items()
-		offset_background()
-		update_level_offset()
-		draw_interface()
+		run_game()
 		lib_spr.update() -- update all sprites
+
 		if game_over_check() then
 			CURRENT_STATE = GAME_STATE.gameover
 		end
 
 	elseif CURRENT_STATE == GAME_STATE.gameover then
-		update_orb()
-		update_items()
-		offset_background()
-		update_level_offset()
-		draw_interface()
+		run_game()
 		lib_spr.update() -- update all sprites
 
 	elseif CURRENT_STATE == GAME_STATE.paused then
@@ -365,7 +399,7 @@ function playdate.update()
 
 	elseif CURRENT_STATE == GAME_STATE.cleanup then
 		cleanup()
-		CURRENT_STATE = GAME_STATE.setup
+		CURRENT_STATE = GAME_STATE.level_setup
 	end
 
 	lib_tim.updateTimers()
@@ -381,28 +415,40 @@ function playdate.update()
 	
 end
 
+function run_game()
+	update_orb()
+	update_items()
+	offset_background()
+	update_level_offset()
+	draw_interface()
+end
+
 function cleanup()
 	-- sprites
-	print(" cleaning up, active sprites: ".. lib_spr.spriteCount())
-	if not ORB.sprite then return end
-	ORB.sprite:remove()
-	ORB.sprite_cover:remove()
-	ORB = {}
-	if not BACKGROUND_SPRITE then return end
-	BACKGROUND_SPRITE:remove()
-	BACKGROUND_SPRITE = {}
-	INTERFACE_SPRITE:remove()
-	INTERFACE_SPRITE = {}
+	print("cleaning up, active sprites: ".. lib_spr.spriteCount())
+
+	print("   hiding ORB sprite")
+	ORB.set_visible(true)
+	
+	print("   removing all level items")
 	if LEVEL_ITEMS and #LEVEL_ITEMS > 0 then
 		for i = 1,#LEVEL_ITEMS do
 			LEVEL_ITEMS[i].sprite:remove()
 			LEVEL_ITEMS[i].sprite = nil
 		end
-		LEVEL_ITEMS = nil 
+		LEVEL_ITEMS = {} 
 	end
-	print("   all clear, active sprites: ".. lib_spr.spriteCount())
+
+	print("   clear background image, draw all black")
+	clear_background()
+	
+	print("   reset timer and altitude, and update interface")
+	-- TODO: reset timer and alt, redraw interface
+
 	-- vars
 	LEVEL_OFFSET = { floatx=60.0, floaty=20.0, x=60, y=20, velx=0, vely=0, drawy=0 }
+	
+	print("finished cleanup, active sprites: ".. lib_spr.spriteCount())
 end
 
 function add_items()
@@ -414,12 +460,10 @@ function add_items()
 	if not items then return end
 	if #items == 0 then return end
 	
-	--print("item name: "..items[1].name)
 	for i = 1,#items do
 		local item = items[i]
 		local item_data = ITEM_DATA.items[item.id]
 		LEVEL_ITEMS[i] = new_level_item(item.id, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.frames, item_data.update_func, item_data.action_func)
-		print("type:"..item.type)
 	end
 end
 
@@ -447,7 +491,7 @@ end
 
 function new_game()
 	print("new game")
-	CURRENT_STATE = GAME_STATE.setup
+	CURRENT_STATE = GAME_STATE.game_setup
 end
 
 function continue()
@@ -460,6 +504,8 @@ function level_clear()
 end
 
 function game_over_check()
+	-- if no lives left, then return true
+	-- else remove one life and return false
 	-- nothing (yet)
 	return false
 end
@@ -607,7 +653,6 @@ function update_orb()
 		
 		if alt < ORB.altitude - ORB.fall_velocity then
 			ORB.fall_velocity = ORB.fall_velocity + GRAVITY
-			print(ORB.fall_velocity)
 			ORB.altitude = math.max(alt, ORB.altitude - ORB.fall_velocity)
 			if ORB.fall_velocity > GRAVITY * 3 then -- are we falling or just rolling?
 				ORB.falling = true
@@ -618,13 +663,12 @@ function update_orb()
 				if ORB.fall_velocity > GRAVITY * 5 then
 					AUDIO_FX.play_crash()
 					CURRENT_STATE = GAME_STATE.dead
-					-- play death animation
-					-- TODO: temporary solution:
-					ORB.sprite:setImage(ORB_FX_IMAGE_TABLE:getImage(3))
+					ORB.start_animation(ANIMATION_DATA.objects.orb.death, ORB_FX_IMAGE_TABLE)
 					print("dead!")
 				else
 					-- we survived the fall
 					ORB.falling = false
+					ORB.start_animation(ANIMATION_DATA.objects.orb.fall, ORB_FX_IMAGE_TABLE)
 					AUDIO_FX.play_fall(alt)
 				end
 			end
@@ -654,13 +698,15 @@ function update_orb()
 	isoy = math.floor( isoy - ORB.altitude + LEVEL_OFFSET.y + 0.5 )
 
 	ORB.sprite:moveTo(isox, isoy)
-
-
+	ORB.sprite_fx:moveTo(isox, isoy)
 
 	if CURRENT_STATE == GAME_STATE.playing then
 		local image_frame = get_orb_frame()
 		ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
 	end
+
+	ORB.run_animation()
+
 	z_mask_update(ORB)
 
 end
@@ -674,19 +720,28 @@ function get_orb_frame()
 	return y*imap_size+x
 end
 
-function move_orb_to_start_position()
+function reset_orb_to_start_position()
+	print("reset orb to start position at level "..CURRENT_LEVEL)
+	-- move to position
+	-- TODO: a level might have a different start tile than 1/1
 	ORB.pos.x = HALF_GRID_SIZE
 	ORB.pos.y = HALF_GRID_SIZE
+	ORB.x_velocity = 0
+	ORB.y_velocity = 0
+	ORB.fall_velocity = 0
+	ORB.altitude = LEVEL_DATA.levels[CURRENT_LEVEL].altitude[1]
+	-- show orb
+	ORB.set_visible(true)
 end
 
 -- draw level
 function draw_level(level)
 	if not level then level = CURRENT_LEVEL end
+	print("drawing level: ".. level)
 
 	local w = LEVEL_DATA.levels[level].w 
 	local h = LEVEL_DATA.levels[level].h
 
-	print("loading "..LEVEL_DATA.levels[level].name)
 	if not (w*h == #LEVEL_DATA.levels[level].tiles) and not (w*h == #LEVEL_DATA.levels[level].altitude) then 
 		print("defined level length wrong!") 
 		return 
@@ -906,7 +961,8 @@ function wall_collision_check(obj, nextx, nexty)
 		obj.x_velocity = 0
 		obj.y_velocity = 0
 	end
-	
+
+	ORB.start_animation(ANIMATION_DATA.objects.orb.collision, ORB_FX_IMAGE_TABLE)
 	AUDIO_FX.play_collide()
 
 	return true
@@ -1029,10 +1085,7 @@ end
 function clear_background()
 	lib_gfx.lockFocus(BACKGROUND_SPRITE:getImage())
 		lib_gfx.setColor(lib_gfx.kColorBlack)
-		lib_gfx.fillRect(0,0,SCREEN_WIDTH, SCREEN_HEIGHT)
-
-		--lib_gfx.setColor(lib_gfx.kColorWhite)
-		--lib_gfx.drawRect(0,0,LEVEL_IMAGE_WIDTH-1,LEVEL_IMAGE_HEIGHT-1)
+		lib_gfx.fillRect( 0, 0, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT)
 	lib_gfx.unlockFocus()
 end
 
@@ -1087,7 +1140,7 @@ function item_switch_action(obj)
 	-- go through all tiles and switch all tiles that are of type "boost"
 	local switch_list_from = { 14, 15, 16, 17 }
 	local switch_list_to   = { 16, 17, 14, 15 }
-	print("switching all directional tiles")
+	-- switching all directional tiles
 	local level_tiles = LEVEL_DATA.levels[CURRENT_LEVEL].tiles
 	for i = 1, #level_tiles do
 		local switch_to = nil
@@ -1162,7 +1215,6 @@ function generate_sine_LUT()
 	SINE_LUT[1] = 0
 	for r = 2, 360 do
 		SINE_LUT[r] = math.sin(delta * r)
-		--print(r, SINE_LUT[r])
 	end
 end
 
@@ -1172,7 +1224,6 @@ function generate_cosine_LUT()
 	COSINE_LUT[1] = 1
 	for r = 2, 360 do
 		COSINE_LUT[r] = math.cos(delta * r)
-		--print(r, COSINE_LUT[r])
 	end
 end
 
@@ -1243,7 +1294,6 @@ function playdate.rightButtonDown()
 	else
 		CURRENT_LEVEL = 1
 	end
-	print("current level: "..CURRENT_LEVEL)
 end
 
 

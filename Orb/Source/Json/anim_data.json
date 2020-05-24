@@ -1,0 +1,33 @@
+{
+	"loadmessage": "# loaded anim_data.json",
+	"description": "# anim_data.json \n   contains animation data for player and in-game items",
+	"objects": {
+		"orb": {
+			"artwork":"Artwork/orb_fx",
+			"death": {
+				"start_frame": 4,
+				"end_frame": 5,
+				"speed": 100,
+				"loop": false,
+				"hide_host": true,
+				"hide_after": false
+			},
+			"collision": {
+				"start_frame": 1,
+				"end_frame": 3,
+				"speed": 100,
+				"loop": false,
+				"hide_host": false,
+				"hide_after": true
+			},
+			"fall": {
+				"start_frame": 7,
+				"end_frame": 9,
+				"speed": 100,
+				"loop": false,
+				"hide_host": false,
+				"hide_after": true
+			}
+		}
+	}
+}
