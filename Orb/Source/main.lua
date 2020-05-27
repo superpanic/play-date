@@ -127,25 +127,26 @@ local ITEM_DATA = playdate.datastore.read("Json/items")
 
 -- creators
 function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update_func, action_func)
+	-- a static unmovable game object
 	local obj = {}
 
 	obj.id = id -- type of item
-	
 	obj.frame_list = frames
 	obj.current_frame = 1
-
 	obj.collidable = collidable
 	obj.size = size
 
 	obj.sprite = lib_spr.new()
 	obj.sprite:setImage(LEVEL_ITEMS_IMAGE_TABLE:getImage(obj.frame_list[obj.current_frame]))
 	
+	-- grid position
 	obj.x = ((x-1) * GRID_SIZE)+GRID_SIZE/2
 	obj.y = ((y-1) * GRID_SIZE)+GRID_SIZE/2
 	obj.x_off = x_off
 	obj.y_off = y_off
 	obj.altitude = get_altitude_at_pos(math.floor(obj.x+0.5), math.floor(obj.y+0.5))
 
+	-- screen position
 	local isox, isoy = grid_to_iso(obj.x, obj.y, 0, 0)
 	obj.isox = isox
 	obj.isoy = isoy
@@ -192,33 +193,11 @@ function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update
 end
 
 function new_game_sprite(name, sprite, pos)
+	-- a moving game object
 	local obj ={}
 	obj.name = name
 	obj.sprite = sprite
-	
-	obj.sprite_fx = lib_spr.new()
-	local img = lib_gfx.image.new(GRID_SIZE*2, GRID_SIZE*2) -- might be too small for larger objects
-	obj.sprite_fx:setImage(img)
-	obj.sprite_fx:add()
-	obj.sprite_fx:setVisible(false)
-	-- playdate.graphics.animation.loop.new([delay, [imageTable, [shouldLoop]]])
-	
-	-- animation
-	obj.animation_running = false
-	obj.current_animation = {}
-	obj.hide_animation = true
-
-	-- setup death animation
---	obj.death_animation = lib_gfx.animation.loop.new(100, anim_data.img_table, false)
---	obj.death_animation.startFrame = anim_data.death.startFrame
---	obj.death_animation.endFrame = anim_data.death.endFrame
-	
-	-- setup collision animation
---	obj.collision_animation = lib_gfx.animation.loop.new(100, anim_data.img_table, false)
---	obj.collision_animation.startFrame = anim_data.collision.startFrame
---	obj.collision_animation.endFrame = anim_data.collision.endFrame
-
-
+		
 	-- use sprite cover to draw on top of object
 	obj.sprite_cover = lib_spr.new()
 	local img = lib_gfx.image.new(GRID_SIZE*2, GRID_SIZE*2)
@@ -254,9 +233,33 @@ function new_game_sprite(name, sprite, pos)
 		return obj.sprite:getZIndex()
 	end
 
+	obj.set_visible = function(b)
+		obj.sprite:setVisible(b)
+		obj.sprite_fx:setVisible(b)
+		obj.sprite_cover:setVisible(b)
+	end
+
+	return obj
+end
+
+function new_game_sprite_animated(name, sprite, pos)
+	
+	local obj = new_game_sprite(name, sprite, pos)
+
+	obj.animation_running = false
+	obj.current_animation = {}
+	obj.hide_animation = true
+
+	obj.sprite_fx = lib_spr.new()
+	local img = lib_gfx.image.new(GRID_SIZE*2, GRID_SIZE*2) -- might be too small for larger objects
+	obj.sprite_fx:setImage(img)
+	obj.sprite_fx:add()
+	obj.sprite_fx:setVisible(false)
+
 	obj.start_animation = function(anim_data, anim_art)
 		obj.animation_running = true
 		obj.sprite_fx:setVisible(true)
+		-- playdate.graphics.animation.loop.new([delay, [imageTable, [shouldLoop]]])
 		obj.current_animation = lib_gfx.animation.loop.new(anim_data.speed, anim_art, false)
 		obj.current_animation.startFrame = anim_data.start_frame
 		if anim_data.hide_host then obj.sprite:setVisible(false) end
@@ -272,12 +275,6 @@ function new_game_sprite(name, sprite, pos)
 			if obj.hide_animation then obj.sprite_fx:setVisible(false) end
 			obj.animation_running = false
 		end
-	end
-
-	obj.set_visible = function(b)
-		obj.sprite:setVisible(b)
-		obj.sprite_fx:setVisible(b)
-		obj.sprite_cover:setVisible(b)
 	end
 
 	return obj
@@ -302,7 +299,7 @@ function game_setup()
 	local orb_pos = {}
 	orb_pos.x = 0.0
 	orb_pos.y = 0.0
-	ORB = new_game_sprite("ORB", orb_sprite, orb_pos)
+	ORB = new_game_sprite_animated("ORB", orb_sprite, orb_pos)
 
 	ORB.set_z_index(0)
 	ORB.sprite:add()
@@ -339,15 +336,18 @@ function playdate.update()
 		if not DEBUG_FRAME_STEP then return end
 	end
 
+
 	if CURRENT_STATE == GAME_STATE.initial then
 		CURRENT_STATE = GAME_STATE.menu
 		--MUSIC_PLAYER.play_title(true)
+
 
 
 	-- menu loop
 	elseif CURRENT_STATE == GAME_STATE.menu then
 		-- draw menu
 		menu()
+
 
 
 	elseif CURRENT_STATE == GAME_STATE.game_setup then
@@ -364,11 +364,15 @@ function playdate.update()
 		level_setup()
 		CURRENT_STATE = GAME_STATE.ready
 
+
+
 	elseif CURRENT_STATE == GAME_STATE.ready then
 		print("start")
 		GAME_TIME_STAMP = playdate.getCurrentTimeMilliseconds()
 		CURRENT_STATE = GAME_STATE.playing
 		
+
+
 	-- main game loop
 	elseif CURRENT_STATE == GAME_STATE.playing then
 		run_game()
@@ -376,6 +380,8 @@ function playdate.update()
 		update_game_timer()
 		lib_spr.update() -- update all sprites
 		playdate.drawFPS(10, SCREEN_HEIGHT-20)
+
+
 
 	elseif CURRENT_STATE == GAME_STATE.goal then
 		level_clear()
@@ -386,24 +392,33 @@ function playdate.update()
 		run_game()
 		lib_spr.update() -- update all sprites
 
-		if game_over_check() then
+		if game_over_check() then -- any lives left?
 			CURRENT_STATE = GAME_STATE.gameover
 		end
+
 
 	elseif CURRENT_STATE == GAME_STATE.gameover then
 		run_game()
 		lib_spr.update() -- update all sprites
 
+
+
 	elseif CURRENT_STATE == GAME_STATE.paused then
 		paused()
+
+
 
 	elseif CURRENT_STATE == GAME_STATE.cleanup then
 		cleanup()
 		CURRENT_STATE = GAME_STATE.level_setup
 	end
 
+
+
 	lib_tim.updateTimers()
 
+
+	
 	if DEBUG_FLAG then
 		DEBUG_FRAME_STEP = false
 		DEBUG_FRAME_COUNTER = DEBUG_FRAME_COUNTER + 1
@@ -1159,6 +1174,13 @@ function item_switch_update(obj)
 	-- print("update switch")
 end
 
+function item_box_action(obj)
+
+end
+
+function item_box_update(obj)
+
+end
 
 
 
@@ -1298,7 +1320,7 @@ end
 
 
 function playdate.leftButtonDown()
-	play_sound()
+	--
 end
 
 function playdate.upButtonDown() -- up button

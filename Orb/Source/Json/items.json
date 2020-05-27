@@ -12,6 +12,17 @@
 			"collidable": true,
 			"update_func":"item_switch_update",
 			"action_func":"item_switch_action"
+		},
+		{
+			"id": 2,
+			"type": "box",
+			"frames": [3, 4, 5, 6, 7, 8],
+			"xoffset": 1,
+			"yoffset": -4,
+			"size": 8,
+			"collidable": true,
+			"update_func": "item_box_update",
+			"action_func": "item_box_action"
 		}
 	]
 }
