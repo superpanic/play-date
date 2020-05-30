@@ -126,7 +126,7 @@ local ITEM_DATA = playdate.datastore.read("Json/items")
 
 
 -- creators
-function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update_func, action_func)
+function new_level_item(id, x, y, x_off, y_off, size, collidable, moveable, frames, update_func, action_func)
 	-- a static unmovable game object
 	local obj = {}
 
@@ -134,6 +134,7 @@ function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update
 	obj.frame_list = frames
 	obj.current_frame = 1
 	obj.collidable = collidable
+	obj.moveable = moveable
 	obj.size = size
 
 	obj.sprite = lib_spr.new()
@@ -150,6 +151,10 @@ function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update
 	local isox, isoy = grid_to_iso(obj.x, obj.y, 0, 0)
 	obj.isox = isox
 	obj.isoy = isoy
+
+	obj.moving = false
+	obj.x_velocity = 0
+	obj.y_velocity = 0
 
 	obj.sprite:setZIndex(isoy * NUMBER_OF_SPRITE_LAYERS) 
 	
@@ -176,9 +181,13 @@ function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update
 		-- run updates
 		if obj.update then _G[obj.update](obj) end
 		-- update position
-		local isox = math.floor(obj.isox + LEVEL_OFFSET.x + 0.5) + obj.x_off
-		local isoy = math.floor(obj.isoy + LEVEL_OFFSET.y + 0.5) + obj.y_off
-		obj.sprite:moveTo(isox, isoy - obj.altitude)
+		if obj.moveable then
+			-- update iso position
+			obj.isox, obj.isoy = grid_to_iso(obj.x, obj.y, 0, 0)
+		end
+		local px = math.floor(obj.isox + LEVEL_OFFSET.x + 0.5) + obj.x_off
+		local py = math.floor(obj.isoy + LEVEL_OFFSET.y + 0.5) + obj.y_off
+		obj.sprite:moveTo(px, py - obj.altitude)
 	end
 
 	obj.do_action = function()
@@ -195,6 +204,7 @@ end
 function new_game_sprite(name, sprite, pos)
 	-- a moving game object
 	local obj ={}
+	obj.type = "game sprite"
 	obj.name = name
 	obj.sprite = sprite
 		
@@ -478,7 +488,7 @@ function add_items()
 	for i = 1,#items do
 		local item = items[i]
 		local item_data = ITEM_DATA.items[item.id]
-		LEVEL_ITEMS[i] = new_level_item(item.id, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.frames, item_data.update_func, item_data.action_func)
+		LEVEL_ITEMS[i] = new_level_item(item.id, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.moveable, item_data.frames, item_data.update_func, item_data.action_func)
 	end
 end
 
@@ -834,8 +844,7 @@ function offset_background()
 end
 
 -- z mask
-function z_mask_update(obj)	
-	
+function z_mask_update(obj)		
 	z_mask_reset(obj)
 
 	local w = LEVEL_DATA.levels[CURRENT_LEVEL].w
@@ -926,9 +935,10 @@ function item_collision_check(obj, nextx, nexty)
 			local alt = get_altitude_at_pos(math.floor(obj.pos.x+0.5), math.floor(obj.pos.y+0.5))
 			if alt > item.altitude - GRID_SIZE/2 then
 				-- we have a collision!
+				item.do_action()
 				obj.x_velocity = -obj.x_velocity*0.5
 				obj.y_velocity = -obj.y_velocity*0.5
-				item.do_action()
+				
 				AUDIO_FX.play_switch()
 				return true
 			end
@@ -1175,11 +1185,30 @@ function item_switch_update(obj)
 end
 
 function item_box_action(obj)
-
+	if not obj.moving then
+		obj.moving = true
+		if math.abs(obj.x - ORB.pos.x) > math.abs(obj.y - ORB.pos.y) then
+			obj.x_velocity = ORB.x_velocity
+		else
+			obj.y_velocity = ORB.y_velocity
+		end
+	end
 end
 
 function item_box_update(obj)
-
+	-- move
+	if obj.moving then
+		print(obj.x_velocity, obj.y_velocity)		
+		obj.x = obj.x + obj.x_velocity
+		obj.y = obj.y + obj.y_velocity
+		obj.x_velocity = obj.x_velocity * FRICTION
+		obj.y_velocity = obj.y_velocity * FRICTION
+		if math.abs(obj.x_velocity + obj.y_velocity) < 0.05 then
+			obj.x_velocity = 0
+			obj.y_velocity = 0
+			obj.moving = false
+		end
+	end
 end
 
 

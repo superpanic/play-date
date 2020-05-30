@@ -6,21 +6,25 @@
 			"id":1,
 			"type":"switch",
 			"frames":[1,2],
+			"poses":["black", "white"],
 			"xoffset": 1,
 			"yoffset": -20,
 			"size": 8,
 			"collidable": true,
+			"moveable": false,
 			"update_func":"item_switch_update",
 			"action_func":"item_switch_action"
 		},
 		{
 			"id": 2,
 			"type": "box",
-			"frames": [3, 4, 5, 6, 7, 8],
+			"frames": [3, 4, 5, 6, 7],
+			"poses": ["flat", "right", "down", "up", "left"],
 			"xoffset": 1,
 			"yoffset": -4,
 			"size": 8,
 			"collidable": true,
+			"moveable": true,
 			"update_func": "item_box_update",
 			"action_func": "item_box_action"
 		}
