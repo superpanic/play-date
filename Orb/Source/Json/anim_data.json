@@ -5,14 +5,16 @@
 		"orb": {
 			"artwork":"Artwork/orb_fx",
 			"death": {
+				"name": "death",
 				"start_frame": 4,
-				"end_frame": 5,
+				"end_frame": 6,
 				"speed": 100,
 				"loop": false,
 				"hide_host": true,
 				"hide_after": false
 			},
 			"collision": {
+				"name": "collision",
 				"start_frame": 1,
 				"end_frame": 3,
 				"speed": 100,
@@ -21,6 +23,7 @@
 				"hide_after": true
 			},
 			"fall": {
+				"name": "fall",
 				"start_frame": 7,
 				"end_frame": 9,
 				"speed": 100,

@@ -17,7 +17,7 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-local DEBUG_FLAG = false
+local DEBUG_FLAG = true
 local DEBUG_STRING = "debug mode"
 local DEBUG_VAL = 0.0
 
@@ -125,8 +125,8 @@ local ITEM_DATA = playdate.datastore.read("Json/items")
 
 
 
--- creators
-function new_level_item(id, x, y, x_off, y_off, size, collidable, moveable, frames, update_func, action_func)
+-- new_level_item
+function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update_func, action_func)
 	-- a static unmovable game object
 	local obj = {}
 
@@ -134,7 +134,6 @@ function new_level_item(id, x, y, x_off, y_off, size, collidable, moveable, fram
 	obj.frame_list = frames
 	obj.current_frame = 1
 	obj.collidable = collidable
-	obj.moveable = moveable
 	obj.size = size
 
 	obj.sprite = lib_spr.new()
@@ -151,10 +150,6 @@ function new_level_item(id, x, y, x_off, y_off, size, collidable, moveable, fram
 	local isox, isoy = grid_to_iso(obj.x, obj.y, 0, 0)
 	obj.isox = isox
 	obj.isoy = isoy
-
-	obj.moving = false
-	obj.x_velocity = 0
-	obj.y_velocity = 0
 
 	obj.sprite:setZIndex(isoy * NUMBER_OF_SPRITE_LAYERS) 
 	
@@ -180,11 +175,7 @@ function new_level_item(id, x, y, x_off, y_off, size, collidable, moveable, fram
 	obj.do_update = function()
 		-- run updates
 		if obj.update then _G[obj.update](obj) end
-		-- update position
-		if obj.moveable then
-			-- update iso position
-			obj.isox, obj.isoy = grid_to_iso(obj.x, obj.y, 0, 0)
-		end
+		-- update position (to adjust for level offset)
 		local px = math.floor(obj.isox + LEVEL_OFFSET.x + 0.5) + obj.x_off
 		local py = math.floor(obj.isoy + LEVEL_OFFSET.y + 0.5) + obj.y_off
 		obj.sprite:moveTo(px, py - obj.altitude)
@@ -201,12 +192,24 @@ function new_level_item(id, x, y, x_off, y_off, size, collidable, moveable, fram
 	return obj
 end
 
-function new_game_sprite(name, sprite, pos)
+-- new_game_sprite
+function new_game_sprite(name, sprite, pos, anim_data, anim_art)
 	-- a moving game object
 	local obj ={}
-	obj.type = "game sprite"
 	obj.name = name
 	obj.sprite = sprite
+
+	-- animation stuff
+	obj.sprite_fx = lib_spr.new()
+	local img = lib_gfx.image.new(GRID_SIZE*2, GRID_SIZE*2) -- might be too small for larger objects
+	obj.sprite_fx:setImage(img)
+	obj.sprite_fx:add()
+	obj.sprite_fx:setVisible(false)
+	obj.animation_running = false
+	obj.current_animation = {}
+	obj.hide_animation = true
+	obj.anim_data = anim_data
+	obj.anim_art = anim_art
 		
 	-- use sprite cover to draw on top of object
 	obj.sprite_cover = lib_spr.new()
@@ -218,6 +221,7 @@ function new_game_sprite(name, sprite, pos)
 	obj.pos.x = pos.x
 	obj.pos.y = pos.y
 	obj.friction = 0.92
+	obj.height_offset = 8 -- TODO: this value should be read from image json data file
 	
 	obj.x_velocity = 0.0
 	obj.y_velocity = 0.0
@@ -249,33 +253,17 @@ function new_game_sprite(name, sprite, pos)
 		obj.sprite_cover:setVisible(b)
 	end
 
-	return obj
-end
-
-function new_game_sprite_animated(name, sprite, pos)
-	
-	local obj = new_game_sprite(name, sprite, pos)
-
-	obj.animation_running = false
-	obj.current_animation = {}
-	obj.hide_animation = true
-
-	obj.sprite_fx = lib_spr.new()
-	local img = lib_gfx.image.new(GRID_SIZE*2, GRID_SIZE*2) -- might be too small for larger objects
-	obj.sprite_fx:setImage(img)
-	obj.sprite_fx:add()
-	obj.sprite_fx:setVisible(false)
-
-	obj.start_animation = function(anim_data, anim_art)
+	obj.start_animation = function(data, art) -- TODO: anim_data and anim_art should be included in the object
 		obj.animation_running = true
 		obj.sprite_fx:setVisible(true)
 		-- playdate.graphics.animation.loop.new([delay, [imageTable, [shouldLoop]]])
-		obj.current_animation = lib_gfx.animation.loop.new(anim_data.speed, anim_art, false)
-		obj.current_animation.startFrame = anim_data.start_frame
-		if anim_data.hide_host then obj.sprite:setVisible(false) end
-		obj.hide_animation = anim_data.hide_after
-		print("start_frame = "..anim_data.start_frame)
-		obj.current_animation.endFrame = anim_data.end_frame
+		obj.current_animation = lib_gfx.animation.loop.new(data.speed, art, false)
+		obj.current_animation.startFrame = data.start_frame
+		if data.hide_host then obj.sprite:setVisible(false) end
+		obj.hide_animation = data.hide_after
+		print("start animation "..data.name)
+		print("start_frame = "..data.start_frame)
+		obj.current_animation.endFrame = data.end_frame
 	end
 
 	obj.run_animation = function()
@@ -287,8 +275,97 @@ function new_game_sprite_animated(name, sprite, pos)
 		end
 	end
 
+	obj.update_position = function()
+
+		-- add friction
+		if math.abs(obj.x_velocity) < 0.001 then obj.x_velocity = 0 else
+			obj.x_velocity = obj.x_velocity * FRICTION
+		end
+		if math.abs(obj.y_velocity) < 0.001 then obj.y_velocity = 0 else
+			obj.y_velocity = obj.y_velocity * FRICTION
+		end
+
+		-- check boost-tiles (arrows) and other special tiles 
+		check_special_tiles(obj)
+
+		-- set next pos
+		local next_pos = {}
+		next_pos.x = obj.pos.x + obj.x_velocity
+		next_pos.y = obj.pos.y + obj.y_velocity
+
+		-- check collision with walls and other objects
+		local collision_detected = false
+		collision_detected = wall_collision_check(obj, next_pos.x, next_pos.y)
+		collision_detected = collision_detected or item_collision_check(obj, next_pos.x, next_pos.y)
+
+		-- if we did not collide with anything move obj
+		if collision_detected == false then
+			obj.pos.x = next_pos.x
+			obj.pos.y = next_pos.y
+		end
+
+		-- handle altitude and falling
+		local alt = get_altitude_at_pos(math.floor(obj.pos.x+0.5), math.floor(obj.pos.y+0.5))
+
+		if alt < obj.altitude - obj.fall_velocity then
+			obj.fall_velocity = obj.fall_velocity + GRAVITY
+			obj.altitude = math.max(alt, obj.altitude - obj.fall_velocity)
+			if obj.fall_velocity > GRAVITY * 3 then -- are we falling or just sliding?
+				print("   "..obj.name.." fall velocity: "..obj.fall_velocity)
+				print("   ".."gravity: "..GRAVITY*3)
+				obj.falling = true
+			end
+		else -- not falling
+			if obj.falling then -- we were falling but just hit ground
+				-- did we fall too hard?
+				if obj.fall_velocity > GRAVITY * 5 then
+					CURRENT_STATE = GAME_STATE.dead
+					-- TODO: ORB_FX_IMAGE_TABLE should be dynamic
+					obj.start_animation(obj.anim_data.death, obj.anim_art)
+					AUDIO_FX.play_crash()
+					print("dead!")
+				else
+					-- we survived the fall
+					-- TODO: ORB_FX_IMAGE_TABLE should be dynamic
+					obj.start_animation(obj.anim_data.fall, obj.anim_art)
+					AUDIO_FX.play_fall(alt)
+				end
+				obj.falling = false
+			end
+			obj.altitude = alt
+			obj.fall_velocity = 0
+		end
+
+		-- add slope velocity
+		local slope_vx, slope_vy = get_slope_vector(obj.pos.x, obj.pos.y, obj.altitude)
+		obj.x_velocity = obj.x_velocity - slope_vx
+		obj.y_velocity = obj.y_velocity - slope_vy
+
+		-- move sprite
+		local isox, isoy = grid_to_iso(obj.pos.x, obj.pos.y, 0, 0)
+		isoy = isoy - obj.height_offset -- select(1,ORB.sprite:getImage():getSize())/2
+
+		-- set z index before adding background and level draw offsets
+		obj.set_z_index(isoy)
+
+		-- floor value to sync with background movement
+		isox = math.floor( isox + LEVEL_OFFSET.x + 0.5 )
+		isoy = math.floor( isoy - obj.altitude + LEVEL_OFFSET.y + 0.5 )
+
+		-- move the actual sprite (and mask)
+		obj.sprite:moveTo(isox, isoy)
+		obj.sprite_fx:moveTo(isox, isoy)
+
+	end
+
 	return obj
+
 end
+
+
+
+
+
 
 function level_setup()
 	reset_orb_to_start_position()
@@ -309,7 +386,7 @@ function game_setup()
 	local orb_pos = {}
 	orb_pos.x = 0.0
 	orb_pos.y = 0.0
-	ORB = new_game_sprite_animated("ORB", orb_sprite, orb_pos)
+	ORB = new_game_sprite("ORB", orb_sprite, orb_pos, ANIMATION_DATA.objects.orb, ORB_FX_IMAGE_TABLE)
 
 	ORB.set_z_index(0)
 	ORB.sprite:add()
@@ -488,7 +565,7 @@ function add_items()
 	for i = 1,#items do
 		local item = items[i]
 		local item_data = ITEM_DATA.items[item.id]
-		LEVEL_ITEMS[i] = new_level_item(item.id, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.moveable, item_data.frames, item_data.update_func, item_data.action_func)
+		LEVEL_ITEMS[i] = new_level_item(item.id, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.frames, item_data.update_func, item_data.action_func)
 	end
 end
 
@@ -625,111 +702,32 @@ end
 -- update orb
 function update_orb()
 	
-	local vectorx, vectory, vectorz
-	if playdate.accelerometerIsRunning() then
-		-- ACCELEROMETER controls direction
-		vectorx, vectory, vectorz = playdate.readAccelerometer()
-		vectory = vectory - 0.5
-		vectorx, vectory = rotate_vector(vectorx, vectory) -- rotate 45 degrees
-		vectorx = vectorx * 4
-		vectory = vectory * 4
-		if DEBUG_FLAG then DEBUG_STRING = string.format("x:%.2f, y:%.2f", vectorx, vectory) end
-	else
-		-- CRANK controls direction
-		local crank_pos = playdate.getCrankPosition()
-		CRANK_VECTOR.x, CRANK_VECTOR.y = degrees_to_vector_lut( crank_pos )
-		vectorx, vectory = degrees_to_vector_lut( crank_pos - 45 )
-		vectorx = vectorx * 1.5
-		vectory = vectory * 1.5
-	end
+	local vectorx, vectory
+
+	-- CRANK controls direction
+	local crank_pos = playdate.getCrankPosition()
+	CRANK_VECTOR.x, CRANK_VECTOR.y = degrees_to_vector_lut( crank_pos )
+	vectorx, vectory = degrees_to_vector_lut( crank_pos - 45 )
+	vectorx = vectorx * 1.5
+	vectory = vectory * 1.5
 	
 	if CURRENT_STATE == GAME_STATE.playing then
 		if ORB.accelerate_flag then
 			ORB.x_velocity = ORB.x_velocity + (vectorx * ORB.acceleration)
 			ORB.y_velocity = ORB.y_velocity + (vectory * ORB.acceleration)
 		end
-
-		add_friction(ORB.friction)
-
-		check_special_tiles(ORB)
-
-		-- set next pos
-		local next_pos = {}
-		next_pos.x = ORB.pos.x + ORB.x_velocity
-		next_pos.y = ORB.pos.y + ORB.y_velocity
-
-		local collision_detected = false
-		collision_detected = wall_collision_check(ORB, next_pos.x, next_pos.y)
-		collision_detected = collision_detected or item_collision_check(ORB, next_pos.x, next_pos.y)
-
-		-- if we did not collide with anything move orb
-		if collision_detected == false then
-			ORB.pos.x = next_pos.x
-			ORB.pos.y = next_pos.y
-		end
-
-		-- calculate altitude
-		-- get tile grid position
-
-		-- don't set altitude, instead increase fall velocity if orb is above floor...
-		-- ORB.altitude = get_altitude_at_pos(ORB.pos.x, ORB.pos.y)
-
-		local alt = get_altitude_at_pos(math.floor(ORB.pos.x+0.5), math.floor(ORB.pos.y+0.5))
-		
-		if alt < ORB.altitude - ORB.fall_velocity then
-			ORB.fall_velocity = ORB.fall_velocity + GRAVITY
-			ORB.altitude = math.max(alt, ORB.altitude - ORB.fall_velocity)
-			if ORB.fall_velocity > GRAVITY * 3 then -- are we falling or just rolling?
-				ORB.falling = true
-			end
-		else
-			if ORB.falling then
-				-- did we fall too hard?
-				if ORB.fall_velocity > GRAVITY * 5 then
-					AUDIO_FX.play_crash()
-					CURRENT_STATE = GAME_STATE.dead
-					ORB.start_animation(ANIMATION_DATA.objects.orb.death, ORB_FX_IMAGE_TABLE)
-					print("dead!")
-				else
-					-- we survived the fall
-					ORB.falling = false
-					ORB.start_animation(ANIMATION_DATA.objects.orb.fall, ORB_FX_IMAGE_TABLE)
-					AUDIO_FX.play_fall(alt)
-				end
-			end
-			ORB.altitude = alt
-			ORB.fall_velocity = 0
-		end
-		
-		-- add slope velocity
-		local slope_vx, slope_vy = get_slope_vector(ORB.pos.x, ORB.pos.y, ORB.altitude)
-		ORB.x_velocity = ORB.x_velocity - slope_vx
-		ORB.y_velocity = ORB.y_velocity - slope_vy
-
 	end
 
+	-- update orb position
+	ORB.update_position()
 
-
-	-- move sprite
-	local isox, isoy = grid_to_iso(ORB.pos.x, ORB.pos.y, 0, 0)
-	-- offset orb half image height
-	isoy = isoy - HALF_GRID_SIZE -- select(1,ORB.sprite:getImage():getSize())/2
-
-	-- set z index before adding offsets
-	ORB.set_z_index(isoy)
-
-	-- floor value to sync with background movement
-	isox = math.floor( isox + LEVEL_OFFSET.x + 0.5 )
-	isoy = math.floor( isoy - ORB.altitude + LEVEL_OFFSET.y + 0.5 )
-
-	ORB.sprite:moveTo(isox, isoy)
-	ORB.sprite_fx:moveTo(isox, isoy)
-
+	-- animate orb
 	if CURRENT_STATE == GAME_STATE.playing then
 		local image_frame = get_orb_frame()
 		ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
 	end
 
+	-- add orb special fx
 	ORB.run_animation()
 
 	z_mask_update(ORB)
@@ -844,7 +842,8 @@ function offset_background()
 end
 
 -- z mask
-function z_mask_update(obj)		
+function z_mask_update(obj)	
+	
 	z_mask_reset(obj)
 
 	local w = LEVEL_DATA.levels[CURRENT_LEVEL].w
@@ -935,10 +934,9 @@ function item_collision_check(obj, nextx, nexty)
 			local alt = get_altitude_at_pos(math.floor(obj.pos.x+0.5), math.floor(obj.pos.y+0.5))
 			if alt > item.altitude - GRID_SIZE/2 then
 				-- we have a collision!
-				item.do_action()
 				obj.x_velocity = -obj.x_velocity*0.5
 				obj.y_velocity = -obj.y_velocity*0.5
-				
+				item.do_action()
 				AUDIO_FX.play_switch()
 				return true
 			end
@@ -1185,30 +1183,11 @@ function item_switch_update(obj)
 end
 
 function item_box_action(obj)
-	if not obj.moving then
-		obj.moving = true
-		if math.abs(obj.x - ORB.pos.x) > math.abs(obj.y - ORB.pos.y) then
-			obj.x_velocity = ORB.x_velocity
-		else
-			obj.y_velocity = ORB.y_velocity
-		end
-	end
+
 end
 
 function item_box_update(obj)
-	-- move
-	if obj.moving then
-		print(obj.x_velocity, obj.y_velocity)		
-		obj.x = obj.x + obj.x_velocity
-		obj.y = obj.y + obj.y_velocity
-		obj.x_velocity = obj.x_velocity * FRICTION
-		obj.y_velocity = obj.y_velocity * FRICTION
-		if math.abs(obj.x_velocity + obj.y_velocity) < 0.05 then
-			obj.x_velocity = 0
-			obj.y_velocity = 0
-			obj.moving = false
-		end
-	end
+
 end
 
 
