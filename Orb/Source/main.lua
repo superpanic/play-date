@@ -123,36 +123,31 @@ local LEVEL_ITEMS_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/items')
 local ITEM_DATA = playdate.datastore.read("Json/items")
 	print(ITEM_DATA.loadmessage) -- to make sure the json is readable
 
-
-
 -- new_level_item
-function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update_func, action_func)
-	-- a static unmovable game object
-	local obj = {}
+function new_item(name, x, y, x_off, y_off, size, collidable, artwork, frames, update_func, action_func, is_fixed)
 
-	obj.id = id -- type of item
+	-- prepare sprite
+	local sp = lib_spr.new()
+
+	-- position
+	local po = {} -- position in pixels (not grid)
+	po.x = ((x-1) * GRID_SIZE)+GRID_SIZE/2 -- convert to pixel position
+	po.y = ((y-1) * GRID_SIZE)+GRID_SIZE/2 -- convert to pixel position
+
+	-- create game sprite
+	local obj = new_game_sprite(name, sp, po, x_off, y_off, ANIMATION_DATA.objects[name], artwork, is_fixed)
+
 	obj.frame_list = frames
 	obj.current_frame = 1
+	obj.sprite:setImage(LEVEL_ITEMS_IMAGE_TABLE:getImage(obj.frame_list[obj.current_frame]))
+
 	obj.collidable = collidable
 	obj.size = size
 
-	obj.sprite = lib_spr.new()
-	obj.sprite:setImage(LEVEL_ITEMS_IMAGE_TABLE:getImage(obj.frame_list[obj.current_frame]))
-	
-	-- grid position
-	obj.x = ((x-1) * GRID_SIZE)+GRID_SIZE/2
-	obj.y = ((y-1) * GRID_SIZE)+GRID_SIZE/2
-	obj.x_off = x_off
-	obj.y_off = y_off
-	obj.altitude = get_altitude_at_pos(math.floor(obj.x+0.5), math.floor(obj.y+0.5))
+--	obj.sprite:setZIndex(isoy * NUMBER_OF_SPRITE_LAYERS) 
+	local _, iy = grid_to_iso(obj.pos.x, obj.pos.y, 0, 0)	
+	obj.set_z_index(iy)
 
-	-- screen position
-	local isox, isoy = grid_to_iso(obj.x, obj.y, 0, 0)
-	obj.isox = isox
-	obj.isoy = isoy
-
-	obj.sprite:setZIndex(isoy * NUMBER_OF_SPRITE_LAYERS) 
-	
 	obj.sprite:add()
 	--obj.sprite:setVisible(false)
 	
@@ -163,7 +158,7 @@ function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update
 	obj.collision_check = function(x, y)
 		if not collidable then return false end
 		local cd = obj.size
-		if x > obj.x-cd and x < obj.x+cd and y > obj.y-cd and y < obj.y+cd then
+		if x > obj.pos.x-cd and x < obj.pos.x+cd and y > obj.pos.y-cd and y < obj.pos.y+cd then
 			return true
 		end
 		return false
@@ -176,28 +171,29 @@ function new_level_item(id, x, y, x_off, y_off, size, collidable, frames, update
 		-- run updates
 		if obj.update then _G[obj.update](obj) end
 		-- update position (to adjust for level offset)
-		local px = math.floor(obj.isox + LEVEL_OFFSET.x + 0.5) + obj.x_off
-		local py = math.floor(obj.isoy + LEVEL_OFFSET.y + 0.5) + obj.y_off
-		obj.sprite:moveTo(px, py - obj.altitude)
+		if obj.is_fixed then
+			obj.place()
+		else
+			obj.update_position() -- includes call to obj.place()
+		end
 	end
 
 	obj.do_action = function()
 		if obj.action then _G[obj.action](obj) end
 	end
 
-	obj.set_z_index = function(z)
-		obj.sprite:setZIndex(z)
-	end
-
 	return obj
 end
 
 -- new_game_sprite
-function new_game_sprite(name, sprite, pos, anim_data, anim_art)
+function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, is_fixed)
+
 	-- a moving game object
 	local obj ={}
 	obj.name = name
 	obj.sprite = sprite
+
+	obj.is_fixed = is_fixed
 
 	-- animation stuff
 	obj.sprite_fx = lib_spr.new()
@@ -220,15 +216,16 @@ function new_game_sprite(name, sprite, pos, anim_data, anim_art)
 	obj.pos = {}
 	obj.pos.x = pos.x
 	obj.pos.y = pos.y
-	obj.friction = 0.92
-	obj.height_offset = 8 -- TODO: this value should be read from image json data file
+	
+	obj.x_off = x_off
+	obj.y_off = y_off
 	
 	obj.x_velocity = 0.0
 	obj.y_velocity = 0.0
 
 	obj.acceleration = 0.2
 	obj.accelerate_flag = false
-	obj.altitude = 0
+	obj.altitude = get_altitude_at_pos(math.floor(obj.pos.x+0.5), math.floor(obj.pos.y+0.5))
 	obj.fall_velocity = 0
 	obj.falling = false
 	
@@ -241,6 +238,13 @@ function new_game_sprite(name, sprite, pos, anim_data, anim_art)
 		obj.sprite:setZIndex(z)
 		obj.sprite_fx:setZIndex(z+1)
 		obj.sprite_cover:setZIndex(z+2)
+		print(obj.name, "zindex:", obj.sprite:getZIndex() )
+	end
+
+	obj.remove_all_sprites = function()
+		obj.sprite:remove()
+		obj.sprite_fx:remove()
+		obj.sprite_cover:remove()
 	end
 
 	obj.get_z_index = function()
@@ -276,7 +280,6 @@ function new_game_sprite(name, sprite, pos, anim_data, anim_art)
 	end
 
 	obj.update_position = function()
-
 		-- add friction
 		if math.abs(obj.x_velocity) < 0.001 then obj.x_velocity = 0 else
 			obj.x_velocity = obj.x_velocity * FRICTION
@@ -311,8 +314,6 @@ function new_game_sprite(name, sprite, pos, anim_data, anim_art)
 			obj.fall_velocity = obj.fall_velocity + GRAVITY
 			obj.altitude = math.max(alt, obj.altitude - obj.fall_velocity)
 			if obj.fall_velocity > GRAVITY * 3 then -- are we falling or just sliding?
-				print("   "..obj.name.." fall velocity: "..obj.fall_velocity)
-				print("   ".."gravity: "..GRAVITY*3)
 				obj.falling = true
 			end
 		else -- not falling
@@ -330,7 +331,7 @@ function new_game_sprite(name, sprite, pos, anim_data, anim_art)
 					obj.start_animation(obj.anim_data.fall, obj.anim_art)
 					AUDIO_FX.play_fall(alt)
 				end
-				obj.falling = false
+				obj.falling = false -- ok, fall is solved, reset falling flag
 			end
 			obj.altitude = alt
 			obj.fall_velocity = 0
@@ -341,12 +342,18 @@ function new_game_sprite(name, sprite, pos, anim_data, anim_art)
 		obj.x_velocity = obj.x_velocity - slope_vx
 		obj.y_velocity = obj.y_velocity - slope_vy
 
-		-- move sprite
+		obj.place()
+
+	end
+
+	obj.place = function()
 		local isox, isoy = grid_to_iso(obj.pos.x, obj.pos.y, 0, 0)
-		isoy = isoy - obj.height_offset -- select(1,ORB.sprite:getImage():getSize())/2
 
 		-- set z index before adding background and level draw offsets
 		obj.set_z_index(isoy)
+
+		isox = isox - obj.x_off
+		isoy = isoy - obj.y_off -- select(1,ORB.sprite:getImage():getSize())/2
 
 		-- floor value to sync with background movement
 		isox = math.floor( isox + LEVEL_OFFSET.x + 0.5 )
@@ -355,11 +362,10 @@ function new_game_sprite(name, sprite, pos, anim_data, anim_art)
 		-- move the actual sprite (and mask)
 		obj.sprite:moveTo(isox, isoy)
 		obj.sprite_fx:moveTo(isox, isoy)
-
 	end
 
 	return obj
-
+	
 end
 
 
@@ -386,7 +392,10 @@ function game_setup()
 	local orb_pos = {}
 	orb_pos.x = 0.0
 	orb_pos.y = 0.0
-	ORB = new_game_sprite("ORB", orb_sprite, orb_pos, ANIMATION_DATA.objects.orb, ORB_FX_IMAGE_TABLE)
+
+	local is_fixed = false
+
+	ORB = new_game_sprite("ORB", orb_sprite, orb_pos, 0, 8, ANIMATION_DATA.objects.orb, ORB_FX_IMAGE_TABLE, is_fixed)
 
 	ORB.set_z_index(0)
 	ORB.sprite:add()
@@ -535,8 +544,7 @@ function cleanup()
 	print("   removing all level items")
 	if LEVEL_ITEMS and #LEVEL_ITEMS > 0 then
 		for i = 1,#LEVEL_ITEMS do
-			LEVEL_ITEMS[i].sprite:remove()
-			LEVEL_ITEMS[i].sprite = nil
+			LEVEL_ITEMS[i].remove_all_sprites()
 		end
 		LEVEL_ITEMS = {} 
 	end
@@ -551,6 +559,8 @@ function cleanup()
 	LEVEL_OFFSET = { floatx=60.0, floaty=20.0, x=60, y=20, velx=0, vely=0, drawy=0 }
 	
 	print("finished cleanup, active sprites: ".. lib_spr.spriteCount())
+	-- should be 5 sprites left, player 3, background 1 and interface panel 1
+
 end
 
 function add_items()
@@ -565,7 +575,10 @@ function add_items()
 	for i = 1,#items do
 		local item = items[i]
 		local item_data = ITEM_DATA.items[item.id]
-		LEVEL_ITEMS[i] = new_level_item(item.id, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.frames, item_data.update_func, item_data.action_func)
+		-- LEVEL_ITEMS[i] = new_level_item(item.id, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.frames, item_data.update_func, item_data.action_func)
+		-- function new_item(          name,      x,      y,             x_off,             y_off,           size,           collidable,           artwork,           frames,           update_func,           action_func)
+		LEVEL_ITEMS[i] = new_item(item_data.name, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.artwork, item_data.frames, item_data.update_func, item_data.action_func, item_data.is_fixed)
+		LEVEL_ITEMS[i].place()
 	end
 end
 
@@ -928,26 +941,32 @@ end
 -- collision
 function item_collision_check(obj, nextx, nexty)
 	if not LEVEL_ITEMS or #LEVEL_ITEMS == 0 then return false end
+
 	for _, item in ipairs(LEVEL_ITEMS) do
-		if item.collision_check(nextx,nexty) then
-			-- also do an altitude chack, are we below the item?
-			local alt = get_altitude_at_pos(math.floor(obj.pos.x+0.5), math.floor(obj.pos.y+0.5))
-			if alt > item.altitude - GRID_SIZE/2 then
-				-- we have a collision!
-				obj.x_velocity = -obj.x_velocity*0.5
-				obj.y_velocity = -obj.y_velocity*0.5
-				item.do_action()
-				AUDIO_FX.play_switch()
-				return true
+		repeat
+			if obj == item then -- don't check collision with self
+				do break end
 			end
-		end
+			if item.collision_check(nextx, nexty) then
+				-- also do an altitude check, are we below the item?
+				local alt = get_altitude_at_pos(math.floor(obj.pos.x+0.5), math.floor(obj.pos.y+0.5))
+				if alt > item.altitude - GRID_SIZE/2 then
+					-- we have a collision!
+					obj.x_velocity = -obj.x_velocity*0.5
+					obj.y_velocity = -obj.y_velocity*0.5
+					item.do_action()
+					AUDIO_FX.play_switch()
+					return true
+				end
+			end
+		until true
 	end
 	return false
 end
 
 function wall_collision_check(obj, nextx, nexty)
 	-- collision if altitude is higher than EDGE_COLLISION_HEIGHT pixels
-	
+
 	objx = math.floor(obj.pos.x + 0.5)
 	objy = math.floor(obj.pos.y + 0.5)
 	nextx = math.floor(nextx + 0.5)

@@ -10,6 +10,7 @@
 				"end_frame": 6,
 				"speed": 100,
 				"loop": false,
+				"fx": true,
 				"hide_host": true,
 				"hide_after": false
 			},
@@ -19,6 +20,7 @@
 				"end_frame": 3,
 				"speed": 100,
 				"loop": false,
+				"fx": true,
 				"hide_host": false,
 				"hide_after": true
 			},
@@ -28,9 +30,16 @@
 				"end_frame": 9,
 				"speed": 100,
 				"loop": false,
+				"fx": true,
 				"hide_host": false,
 				"hide_after": true
 			}
+		},
+		"box": {
+			"artwork":"Artwork/items"
+		},
+		"switch": {
+			"artwork": "Artwork/items"
 		}
 	}
 }

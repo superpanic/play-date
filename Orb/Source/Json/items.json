@@ -2,25 +2,29 @@
 	"loadmessage": "# loaded items.json",
 	"description": "# items.json \n   contains data about different item types",
 	"items": [
-		{ 
+		{
+			"artwork": "Artwork/items",
 			"id":1,
-			"type":"switch",
+			"name":"switch",
 			"frames":[1,2],
-			"xoffset": 1,
-			"yoffset": -20,
+			"xoffset": -1,
+			"yoffset": 20,
 			"size": 8,
 			"collidable": true,
+			"is_fixed": true,
 			"update_func":"item_switch_update",
 			"action_func":"item_switch_action"
 		},
 		{
+			"artwork": "Artwork/items",
 			"id": 2,
-			"type": "box",
+			"name": "box",
 			"frames": [3, 4, 5, 6, 7, 8],
-			"xoffset": 1,
-			"yoffset": -4,
+			"xoffset": -1,
+			"yoffset": 4,
 			"size": 8,
 			"collidable": true,
+			"is_fixed": false,
 			"update_func": "item_box_update",
 			"action_func": "item_box_action"
 		}
