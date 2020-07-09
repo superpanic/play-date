@@ -17,7 +17,7 @@ playdate.display.setScale(2)
 lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
 lib_gfx.clear()
 
-local DEBUG_FLAG = true
+local DEBUG_FLAG = false
 local DEBUG_STRING = "debug mode"
 local DEBUG_VAL = 0.0
 
@@ -175,6 +175,7 @@ function new_item(name, x, y, x_off, y_off, size, collidable, artwork, frames, u
 			obj.place()
 		else
 			obj.update_position() -- includes call to obj.place()
+			z_mask_update(obj)
 		end
 	end
 
@@ -238,7 +239,6 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 		obj.sprite:setZIndex(z)
 		obj.sprite_fx:setZIndex(z+1)
 		obj.sprite_cover:setZIndex(z+2)
-		print(obj.name, "zindex:", obj.sprite:getZIndex() )
 	end
 
 	obj.remove_all_sprites = function()
@@ -265,8 +265,6 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 		obj.current_animation.startFrame = data.start_frame
 		if data.hide_host then obj.sprite:setVisible(false) end
 		obj.hide_animation = data.hide_after
-		print("start animation "..data.name)
-		print("start_frame = "..data.start_frame)
 		obj.current_animation.endFrame = data.end_frame
 	end
 
@@ -320,16 +318,20 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 			if obj.falling then -- we were falling but just hit ground
 				-- did we fall too hard?
 				if obj.fall_velocity > GRAVITY * 5 then
-					CURRENT_STATE = GAME_STATE.dead
-					-- TODO: ORB_FX_IMAGE_TABLE should be dynamic
-					obj.start_animation(obj.anim_data.death, obj.anim_art)
-					AUDIO_FX.play_crash()
-					print("dead!")
+					if obj.name == "orb" then 
+						CURRENT_STATE = GAME_STATE.dead 
+					end
+					if obj.anim_data.death then
+						obj.start_animation(obj.anim_data.death, obj.anim_art)
+						AUDIO_FX.play_crash()
+						print("dead!")
+					end
 				else
 					-- we survived the fall
-					-- TODO: ORB_FX_IMAGE_TABLE should be dynamic
-					obj.start_animation(obj.anim_data.fall, obj.anim_art)
-					AUDIO_FX.play_fall(alt)
+					if obj.anim_data.fall then
+						obj.start_animation(obj.anim_data.fall, obj.anim_art)
+						AUDIO_FX.play_fall(alt)
+					end
 				end
 				obj.falling = false -- ok, fall is solved, reset falling flag
 			end
@@ -395,7 +397,7 @@ function game_setup()
 
 	local is_fixed = false
 
-	ORB = new_game_sprite("ORB", orb_sprite, orb_pos, 0, 8, ANIMATION_DATA.objects.orb, ORB_FX_IMAGE_TABLE, is_fixed)
+	ORB = new_game_sprite("orb", orb_sprite, orb_pos, 0, 8, ANIMATION_DATA.objects.orb, ORB_FX_IMAGE_TABLE, is_fixed)
 
 	ORB.set_z_index(0)
 	ORB.sprite:add()
@@ -941,7 +943,7 @@ end
 -- collision
 function item_collision_check(obj, nextx, nexty)
 	if not LEVEL_ITEMS or #LEVEL_ITEMS == 0 then return false end
-
+	
 	for _, item in ipairs(LEVEL_ITEMS) do
 		repeat
 			if obj == item then -- don't check collision with self
@@ -952,9 +954,11 @@ function item_collision_check(obj, nextx, nexty)
 				local alt = get_altitude_at_pos(math.floor(obj.pos.x+0.5), math.floor(obj.pos.y+0.5))
 				if alt > item.altitude - GRID_SIZE/2 then
 					-- we have a collision!
+					item.do_action()
+					
 					obj.x_velocity = -obj.x_velocity*0.5
 					obj.y_velocity = -obj.y_velocity*0.5
-					item.do_action()
+					
 					AUDIO_FX.play_switch()
 					return true
 				end
@@ -1202,7 +1206,18 @@ function item_switch_update(obj)
 end
 
 function item_box_action(obj)
+	-- push the box
+	if DEBUG_FLAG then print(debug.traceback()) end
+	-- continue here!
+	-- maybe the orbs velocity is already inverted when this action is triggered
+	-- it seems like the box is pushed in the wrong direction: 
 
+
+	if math.abs(obj.pos.x - ORB.pos.x) > math.abs(obj.pos.y - ORB.pos.y) then
+		obj.x_velocity = ORB.x_velocity
+	else
+		obj.y_velocity = ORB.y_velocity
+	end
 end
 
 function item_box_update(obj)
