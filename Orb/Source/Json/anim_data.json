@@ -36,7 +36,37 @@
 			}
 		},
 		"box": {
-			"artwork":"Artwork/items"
+			"artwork":"Artwork/items",
+			"death": {
+				"name": "death",
+				"start_frame": 8,
+				"end_frame": 8,
+				"speed": 100,
+				"loop": false,
+				"fx": false,
+				"hide_host": true,
+				"hide_after": false
+			},
+			"collision": {
+				"name": "collision",
+				"start_frame": 9,
+				"end_frame": 9,
+				"speed": 100,
+				"loop": false,
+				"fx": true,
+				"hide_host": false,
+				"hide_after": true
+			},
+			"fall": {
+				"name": "fall",
+				"start_frame": 9,
+				"end_frame": 9,
+				"speed": 100,
+				"loop": false,
+				"fx": false,
+				"hide_host": false,
+				"hide_after": true
+			}
 		},
 		"switch": {
 			"artwork": "Artwork/items"

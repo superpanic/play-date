@@ -3,7 +3,6 @@
 	"description": "# items.json \n   contains data about different item types",
 	"items": [
 		{
-			"artwork": "Artwork/items",
 			"id":1,
 			"name":"switch",
 			"frames":[1,2],
@@ -16,7 +15,6 @@
 			"action_func":"item_switch_action"
 		},
 		{
-			"artwork": "Artwork/items",
 			"id": 2,
 			"name": "box",
 			"frames": [3, 4, 5, 6, 7, 8],

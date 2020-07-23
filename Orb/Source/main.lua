@@ -124,7 +124,7 @@ local ITEM_DATA = playdate.datastore.read("Json/items")
 	print(ITEM_DATA.loadmessage) -- to make sure the json is readable
 
 -- new_level_item
-function new_item(name, x, y, x_off, y_off, size, collidable, artwork, frames, update_func, action_func, is_fixed)
+function new_item(name, x, y, x_off, y_off, size, collidable, frames, update_func, action_func, is_fixed)
 
 	-- prepare sprite
 	local sp = lib_spr.new()
@@ -134,8 +134,9 @@ function new_item(name, x, y, x_off, y_off, size, collidable, artwork, frames, u
 	po.x = ((x-1) * GRID_SIZE)+GRID_SIZE/2 -- convert to pixel position
 	po.y = ((y-1) * GRID_SIZE)+GRID_SIZE/2 -- convert to pixel position
 
+	--local img_tab = lib_gfx.imagetable.new(artwork_path)
 	-- create game sprite
-	local obj = new_game_sprite(name, sp, po, x_off, y_off, ANIMATION_DATA.objects[name], artwork, is_fixed)
+	local obj = new_game_sprite(name, sp, po, x_off, y_off, ANIMATION_DATA.objects[name], LEVEL_ITEMS_IMAGE_TABLE, is_fixed)
 
 	obj.frame_list = frames
 	obj.current_frame = 1
@@ -257,21 +258,24 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 		obj.sprite_cover:setVisible(b)
 	end
 
-	obj.start_animation = function(data, art) -- TODO: anim_data and anim_art should be included in the object
+	obj.start_animation = function(key) -- TODO: anim_data and anim_art should be included in the object
+		print("starting animation:", key, "using artwork", obj.anim_art)
 		obj.animation_running = true
 		obj.sprite_fx:setVisible(true)
 		-- playdate.graphics.animation.loop.new([delay, [imageTable, [shouldLoop]]])
-		obj.current_animation = lib_gfx.animation.loop.new(data.speed, art, false)
-		obj.current_animation.startFrame = data.start_frame
-		if data.hide_host then obj.sprite:setVisible(false) end
-		obj.hide_animation = data.hide_after
-		obj.current_animation.endFrame = data.end_frame
+		obj.current_animation = lib_gfx.animation.loop.new(obj.anim_data[key].speed, obj.anim_art, obj.anim_data[key].loop)
+		obj.current_animation.startFrame = obj.anim_data[key].start_frame
+		if obj.anim_data[key].hide_host then obj.sprite:setVisible(false) end
+		obj.hide_animation = obj.anim_data[key].hide_after
+		obj.current_animation.endFrame = obj.anim_data[key].end_frame
 	end
 
 	obj.run_animation = function()
 		if not obj.animation_running then return end
+print("image size: ", obj.current_animation:image():getSize())
+print("animation frame: ", obj.current_animation.frame)
 		obj.sprite_fx:setImage(obj.current_animation:image())
-		if obj.current_animation.frame >= obj.current_animation.endFrame then
+		if not obj.current_animation:isValid() then
 			if obj.hide_animation then obj.sprite_fx:setVisible(false) end
 			obj.animation_running = false
 		end
@@ -288,7 +292,8 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 
 		-- check boost-tiles (arrows) and other special tiles 
 		check_special_tiles(obj)
-
+		
+		
 		-- set next pos
 		local next_pos = {}
 		next_pos.x = obj.pos.x + obj.x_velocity
@@ -296,9 +301,10 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 
 		-- check collision with walls and other objects
 		local collision_detected = false
+
 		collision_detected = wall_collision_check(obj, next_pos.x, next_pos.y)
 		collision_detected = collision_detected or item_collision_check(obj, next_pos.x, next_pos.y)
-
+		
 		-- if we did not collide with anything move obj
 		if collision_detected == false then
 			obj.pos.x = next_pos.x
@@ -322,14 +328,14 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 						CURRENT_STATE = GAME_STATE.dead 
 					end
 					if obj.anim_data.death then
-						obj.start_animation(obj.anim_data.death, obj.anim_art)
+						obj.start_animation("death")
 						AUDIO_FX.play_crash()
 						print("dead!")
 					end
 				else
 					-- we survived the fall
 					if obj.anim_data.fall then
-						obj.start_animation(obj.anim_data.fall, obj.anim_art)
+						obj.start_animation("fall")
 						AUDIO_FX.play_fall(alt)
 					end
 				end
@@ -346,6 +352,7 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 
 		obj.place()
 
+		obj.run_animation()
 	end
 
 	obj.place = function()
@@ -579,7 +586,7 @@ function add_items()
 		local item_data = ITEM_DATA.items[item.id]
 		-- LEVEL_ITEMS[i] = new_level_item(item.id, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.frames, item_data.update_func, item_data.action_func)
 		-- function new_item(          name,      x,      y,             x_off,             y_off,           size,           collidable,           artwork,           frames,           update_func,           action_func)
-		LEVEL_ITEMS[i] = new_item(item_data.name, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.artwork, item_data.frames, item_data.update_func, item_data.action_func, item_data.is_fixed)
+		LEVEL_ITEMS[i] = new_item(item_data.name, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.frames, item_data.update_func, item_data.action_func, item_data.is_fixed)
 		LEVEL_ITEMS[i].place()
 	end
 end
@@ -741,9 +748,6 @@ function update_orb()
 		local image_frame = get_orb_frame()
 		ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
 	end
-
-	-- add orb special fx
-	ORB.run_animation()
 
 	z_mask_update(ORB)
 
@@ -1008,7 +1012,10 @@ function wall_collision_check(obj, nextx, nexty)
 		obj.y_velocity = 0
 	end
 
-	ORB.start_animation(ANIMATION_DATA.objects.orb.collision, ORB_FX_IMAGE_TABLE)
+	-- TODO: animate collision on objects!
+	obj.start_animation("collision")
+	--ORB.start_animation(ANIMATION_DATA.objects.orb.collision, ORB_FX_IMAGE_TABLE)
+
 	AUDIO_FX.play_collide()
 
 	return true
