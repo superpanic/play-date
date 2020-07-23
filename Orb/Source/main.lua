@@ -136,14 +136,13 @@ function new_item(name, x, y, x_off, y_off, size, collidable, frames, update_fun
 
 	--local img_tab = lib_gfx.imagetable.new(artwork_path)
 	-- create game sprite
-	local obj = new_game_sprite(name, sp, po, x_off, y_off, ANIMATION_DATA.objects[name], LEVEL_ITEMS_IMAGE_TABLE, is_fixed)
+	local obj = new_game_sprite(name, sp, po, x_off, y_off, ANIMATION_DATA.objects[name], LEVEL_ITEMS_IMAGE_TABLE, is_fixed, size)
 
 	obj.frame_list = frames
 	obj.current_frame = 1
 	obj.sprite:setImage(LEVEL_ITEMS_IMAGE_TABLE:getImage(obj.frame_list[obj.current_frame]))
 
 	obj.collidable = collidable
-	obj.size = size
 
 --	obj.sprite:setZIndex(isoy * NUMBER_OF_SPRITE_LAYERS) 
 	local _, iy = grid_to_iso(obj.pos.x, obj.pos.y, 0, 0)	
@@ -157,7 +156,7 @@ function new_item(name, x, y, x_off, y_off, size, collidable, frames, update_fun
 	obj.collision_distance = collision_radius -- not really radius, instead a square
 
 	obj.collision_check = function(x, y)
-		if not collidable then return false end
+		if not obj.collidable then return false end
 		local cd = obj.size
 		if x > obj.pos.x-cd and x < obj.pos.x+cd and y > obj.pos.y-cd and y < obj.pos.y+cd then
 			return true
@@ -188,7 +187,7 @@ function new_item(name, x, y, x_off, y_off, size, collidable, frames, update_fun
 end
 
 -- new_game_sprite
-function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, is_fixed)
+function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, is_fixed, size)
 
 	-- a moving game object
 	local obj ={}
@@ -196,6 +195,7 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 	obj.sprite = sprite
 
 	obj.is_fixed = is_fixed
+	obj.size = size
 
 	-- animation stuff
 	obj.sprite_fx = lib_spr.new()
@@ -258,7 +258,7 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 		obj.sprite_cover:setVisible(b)
 	end
 
-	obj.start_animation = function(key) -- TODO: anim_data and anim_art should be included in the object
+	obj.start_animation = function(key)
 		print("starting animation:", key, "using artwork", obj.anim_art)
 		obj.animation_running = true
 		obj.sprite_fx:setVisible(true)
@@ -272,8 +272,6 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 
 	obj.run_animation = function()
 		if not obj.animation_running then return end
-print("image size: ", obj.current_animation:image():getSize())
-print("animation frame: ", obj.current_animation.frame)
 		obj.sprite_fx:setImage(obj.current_animation:image())
 		if not obj.current_animation:isValid() then
 			if obj.hide_animation then obj.sprite_fx:setVisible(false) end
@@ -403,8 +401,9 @@ function game_setup()
 	orb_pos.y = 0.0
 
 	local is_fixed = false
+	local orb_size = 4
 
-	ORB = new_game_sprite("orb", orb_sprite, orb_pos, 0, 8, ANIMATION_DATA.objects.orb, ORB_FX_IMAGE_TABLE, is_fixed)
+	ORB = new_game_sprite("orb", orb_sprite, orb_pos, 0, 8, ANIMATION_DATA.objects.orb, ORB_FX_IMAGE_TABLE, is_fixed, orb_size)
 
 	ORB.set_z_index(0)
 	ORB.sprite:add()
@@ -983,6 +982,28 @@ function wall_collision_check(obj, nextx, nexty)
 	-- if pos is the same, no collision, return
 	if objx == nextx and objy == nexty then return false end
 	
+	-- TODO: problem is that when falling down we do not check size, 
+	-- so the object can fall into the wall, and then get locked into an
+	-- endless collision...
+	
+	-- modify nextx for obj size
+	if nextx > objx then 
+		-- adjust collision point to the right
+		nextx = nextx + obj.size
+	else 
+		-- adjust collision point to the left
+		nextx = nextx - obj.size
+	end
+
+	-- modify nexty for obj size
+	if nexty > objy then 
+		-- adjust collision point downwards
+		nexty = nexty + obj.size
+	else 
+		-- adjust collision point upwards
+		nexty = nexty - obj.size
+	end
+	
 	local current_altitude = obj.altitude
 	local next_altitude = get_altitude_at_pos(nextx, nexty)
 
@@ -1012,9 +1033,7 @@ function wall_collision_check(obj, nextx, nexty)
 		obj.y_velocity = 0
 	end
 
-	-- TODO: animate collision on objects!
 	obj.start_animation("collision")
-	--ORB.start_animation(ANIMATION_DATA.objects.orb.collision, ORB_FX_IMAGE_TABLE)
 
 	AUDIO_FX.play_collide()
 
