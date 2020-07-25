@@ -153,8 +153,6 @@ function new_item(name, x, y, x_off, y_off, size, collidable, frames, update_fun
 	
 	obj.action = action
 
-	obj.collision_distance = collision_radius -- not really radius, instead a square
-
 	obj.collision_check = function(x, y)
 		if not obj.collidable then return false end
 		local cd = obj.size
@@ -309,16 +307,18 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 			obj.pos.y = next_pos.y
 		end
 
-		-- handle altitude and falling
+		-- handle falling
 		local alt = get_altitude_at_pos(math.floor(obj.pos.x+0.5), math.floor(obj.pos.y+0.5))
 
 		if alt < obj.altitude - obj.fall_velocity then
+			-- falling
 			obj.fall_velocity = obj.fall_velocity + GRAVITY
 			obj.altitude = math.max(alt, obj.altitude - obj.fall_velocity)
 			if obj.fall_velocity > GRAVITY * 3 then -- are we falling or just sliding?
 				obj.falling = true
 			end
-		else -- not falling
+		else 
+			-- NOT falling
 			if obj.falling then -- we were falling but just hit ground
 				-- did we fall too hard?
 				if obj.fall_velocity > GRAVITY * 5 then
@@ -337,6 +337,7 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 						AUDIO_FX.play_fall(alt)
 					end
 				end
+
 				obj.falling = false -- ok, fall is solved, reset falling flag
 			end
 			obj.altitude = alt
@@ -974,10 +975,13 @@ end
 function wall_collision_check(obj, nextx, nexty)
 	-- collision if altitude is higher than EDGE_COLLISION_HEIGHT pixels
 
-	objx = math.floor(obj.pos.x + 0.5)
-	objy = math.floor(obj.pos.y + 0.5)
-	nextx = math.floor(nextx + 0.5)
-	nexty = math.floor(nexty + 0.5)
+	-- don't do wall collision if object is falling
+	if obj.falling then return false end
+
+	local objx = math.floor(obj.pos.x + 0.5)
+	local objy = math.floor(obj.pos.y + 0.5)
+	local nextx = math.floor(nextx + 0.5)
+	local nexty = math.floor(nexty + 0.5)
 
 	-- if pos is the same, no collision, return
 	if objx == nextx and objy == nexty then return false end
@@ -987,7 +991,7 @@ function wall_collision_check(obj, nextx, nexty)
 	-- endless collision...
 	
 	-- modify nextx for obj size
-	if nextx > objx then 
+--[[ 	if nextx > objx then 
 		-- adjust collision point to the right
 		nextx = nextx + obj.size
 	else 
@@ -1002,8 +1006,17 @@ function wall_collision_check(obj, nextx, nexty)
 	else 
 		-- adjust collision point upwards
 		nexty = nexty - obj.size
-	end
+	end ]]
+
+	-- modify nextx and nexty by adding obj size
+	local modx, mody
+	modx, mody = normalize_vector(obj.x_velocity, obj.y_velocity, obj.size)
+	print( modx, mody )
+	nextx = nextx + modx
+	nexty = nexty + mody
 	
+	-- modify collision point with velocity vector * size
+
 	local current_altitude = obj.altitude
 	local next_altitude = get_altitude_at_pos(nextx, nexty)
 
@@ -1011,6 +1024,10 @@ function wall_collision_check(obj, nextx, nexty)
 	if next_altitude <= current_altitude + EDGE_COLLISION_HEIGHT then return false end
 	
 	-- we have a collision!
+
+	-- TODO: fond out if we did we collide last frame? then we might have a collision panic!
+	-- the object is inside a wall?
+	
 
 	-- create reversed velocity coordinates
 	local rx = math.floor(obj.pos.x + (-obj.x_velocity) + 0.5)
@@ -1103,6 +1120,19 @@ function get_tile_at( x, y )
 	local tile_index = w * (tiley-1) + tilex
 	local tile_type = LEVEL_DATA.levels[CURRENT_LEVEL].tiles[tile_index]
 	return TILE_DATA.tiles[tile_type]
+end
+
+function get_altitude_at_area( x, y, size )
+	-- return the highest altitude from four corners around x, y
+	local ar = get_altitude_at_pos(x + size, y)
+	local al = get_altitude_at_pos(x - size, y)
+	local au = get_altitude_at_pos(x, y - size)
+	local ad = get_altitude_at_pos(x, y + size)
+
+	local a1 = math.max(ar, al)
+	local a2 = math.max(au, ad)
+	
+	return math.max(a1, a2)
 end
 
 function get_altitude_at_pos( x, y )
@@ -1253,6 +1283,17 @@ end
 
 
 -- algorithms / math
+
+function normalize_vector( x, y, len ) -- len is optional
+	local d = math.abs(x) + math.abs(y)
+	local vx = x / d
+	local vy = y / d
+	if len then
+		vx = len * vx
+		vy = len * vy
+	end
+	return vx, vy
+end
 
 function rotate_vector( x, y, rad )
 	-- used when controlling accelerometer
