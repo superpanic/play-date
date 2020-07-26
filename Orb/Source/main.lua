@@ -948,6 +948,14 @@ end
 function item_collision_check(obj, nextx, nexty)
 	if not LEVEL_ITEMS or #LEVEL_ITEMS == 0 then return false end
 	
+	if obj.x_velocity + obj.y_velocity == 0 then return false end
+
+	-- modify nextx and nexty by adding obj size
+	local modx, mody
+	modx, mody = normalize_vector(obj.x_velocity, obj.y_velocity, obj.size)
+	nextx = nextx + modx
+	nexty = nexty + mody
+
 	for _, item in ipairs(LEVEL_ITEMS) do
 		repeat
 			if obj == item then -- don't check collision with self
@@ -986,32 +994,10 @@ function wall_collision_check(obj, nextx, nexty)
 	-- if pos is the same, no collision, return
 	if objx == nextx and objy == nexty then return false end
 	
-	-- TODO: problem is that when falling down we do not check size, 
-	-- so the object can fall into the wall, and then get locked into an
-	-- endless collision...
-	
-	-- modify nextx for obj size
---[[ 	if nextx > objx then 
-		-- adjust collision point to the right
-		nextx = nextx + obj.size
-	else 
-		-- adjust collision point to the left
-		nextx = nextx - obj.size
-	end
-
-	-- modify nexty for obj size
-	if nexty > objy then 
-		-- adjust collision point downwards
-		nexty = nexty + obj.size
-	else 
-		-- adjust collision point upwards
-		nexty = nexty - obj.size
-	end ]]
-
 	-- modify nextx and nexty by adding obj size
 	local modx, mody
 	modx, mody = normalize_vector(obj.x_velocity, obj.y_velocity, obj.size)
-	print( modx, mody )
+
 	nextx = nextx + modx
 	nexty = nexty + mody
 	
@@ -1023,11 +1009,8 @@ function wall_collision_check(obj, nextx, nexty)
 	-- if altitude difference is same or low, no collision, roll on, return
 	if next_altitude <= current_altitude + EDGE_COLLISION_HEIGHT then return false end
 	
-	-- we have a collision!
 
-	-- TODO: fond out if we did we collide last frame? then we might have a collision panic!
-	-- the object is inside a wall?
-	
+	-- ### we have a collision! ### --
 
 	-- create reversed velocity coordinates
 	local rx = math.floor(obj.pos.x + (-obj.x_velocity) + 0.5)
