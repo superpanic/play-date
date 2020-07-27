@@ -257,7 +257,6 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 	end
 
 	obj.start_animation = function(key)
-		print("starting animation:", key, "using artwork", obj.anim_art)
 		obj.animation_running = true
 		obj.sprite_fx:setVisible(true)
 		-- playdate.graphics.animation.loop.new([delay, [imageTable, [shouldLoop]]])
@@ -984,7 +983,7 @@ function wall_collision_check(obj, nextx, nexty)
 	-- collision if altitude is higher than EDGE_COLLISION_HEIGHT pixels
 
 	-- don't do wall collision if object is falling
-	if obj.falling then return false end
+--	if obj.falling then return false end
 
 	local objx = math.floor(obj.pos.x + 0.5)
 	local objy = math.floor(obj.pos.y + 0.5)
