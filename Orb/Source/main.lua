@@ -1278,6 +1278,36 @@ function no_action(obj)
 	-- do nothing
 end
 
+-- item updates
+
+function item_box_update(obj)
+	-- if object is standing still, no need to check tile
+	if math.abs(obj.x_velocity) + math.abs(obj.y_velocity) == 0 then 
+		return
+	end
+
+	### continue here! ###
+
+	-- check tile type, and change sprite image
+	local id = get_tile_at( math.floor(obj.pos.x+0.5), math.floor(obj.pos.y+0.5) ).id
+	if id == 2 then
+		-- slope right
+
+	else if id == 3 then
+		-- slope down
+
+	else if id == 4 then
+		-- slope up
+
+	else if id == 5 then
+		-- slope left
+
+	else
+		-- flat
+
+	end
+end
+
 function no_update(obj)
 	-- do nothing
 end

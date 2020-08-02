@@ -23,7 +23,7 @@
 			"size": 7,
 			"collidable": true,
 			"is_fixed": false,
-			"update_func": "no_update",
+			"update_func": "item_box_update",
 			"action_func": "item_box_action"
 		},
 		{
@@ -32,7 +32,7 @@
 			"frames": [10],
 			"xoffset": 0,
 			"yoffset": 3,
-			"size": 3,
+			"size": 4,
 			"score": 100,
 			"collidable": false,
 			"is_fixed": true,
