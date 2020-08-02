@@ -124,7 +124,7 @@ local ITEM_DATA = playdate.datastore.read("Json/items")
 	print(ITEM_DATA.loadmessage) -- to make sure the json is readable
 
 -- new_level_item
-function new_item(name, x, y, x_off, y_off, size, collidable, frames, update_func, action_func, is_fixed)
+function new_item(name, x, y, x_off, y_off, size, collidable, frames, update_func, action_func, is_fixed, score)
 
 	-- prepare sprite
 	local sp = lib_spr.new()
@@ -136,7 +136,7 @@ function new_item(name, x, y, x_off, y_off, size, collidable, frames, update_fun
 
 	--local img_tab = lib_gfx.imagetable.new(artwork_path)
 	-- create game sprite
-	local obj = new_game_sprite(name, sp, po, x_off, y_off, ANIMATION_DATA.objects[name], LEVEL_ITEMS_IMAGE_TABLE, is_fixed, size)
+	local obj = new_game_sprite(name, sp, po, x_off, y_off, ANIMATION_DATA.objects[name], LEVEL_ITEMS_IMAGE_TABLE, is_fixed, size, score)
 
 	obj.frame_list = frames
 	obj.current_frame = 1
@@ -154,9 +154,8 @@ function new_item(name, x, y, x_off, y_off, size, collidable, frames, update_fun
 	obj.action = action
 
 	obj.collision_check = function(x, y)
-		if not obj.collidable then return false end
-		local cd = obj.size
-		if x > obj.pos.x-cd and x < obj.pos.x+cd and y > obj.pos.y-cd and y < obj.pos.y+cd then
+		--if not obj.collidable then return false end
+		if x > obj.pos.x-obj.size and x < obj.pos.x+obj.size and y > obj.pos.y-obj.size and y < obj.pos.y+obj.size then
 			return true
 		end
 		return false
@@ -185,7 +184,7 @@ function new_item(name, x, y, x_off, y_off, size, collidable, frames, update_fun
 end
 
 -- new_game_sprite
-function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, is_fixed, size)
+function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, is_fixed, size, score)
 
 	-- a moving game object
 	local obj ={}
@@ -194,6 +193,9 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 
 	obj.is_fixed = is_fixed
 	obj.size = size
+
+	if score then obj.score = score 
+	else obj.score = 0 end
 
 	-- animation stuff
 	obj.sprite_fx = lib_spr.new()
@@ -585,7 +587,7 @@ function add_items()
 		local item_data = ITEM_DATA.items[item.id]
 		-- LEVEL_ITEMS[i] = new_level_item(item.id, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.frames, item_data.update_func, item_data.action_func)
 		-- function new_item(          name,      x,      y,             x_off,             y_off,           size,           collidable,           artwork,           frames,           update_func,           action_func)
-		LEVEL_ITEMS[i] = new_item(item_data.name, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.frames, item_data.update_func, item_data.action_func, item_data.is_fixed)
+		LEVEL_ITEMS[i] = new_item(item_data.name, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.frames, item_data.update_func, item_data.action_func, item_data.is_fixed, item_data.score)
 		LEVEL_ITEMS[i].place()
 	end
 end
@@ -666,7 +668,7 @@ function draw_interface()
 		lib_gfx.setColor(lib_gfx.kColorBlack)
 		lib_gfx.fillRect(px-30, py, px-2, 5)
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
-		s = string.format("%06d", 55)
+		s = string.format("%06d", ORB.score)
 		lib_gfx.drawTextAligned(s, px, py, kTextAlignment.right)
 	-- speed meter
 		-- px = 3 + ox
@@ -966,11 +968,10 @@ function item_collision_check(obj, nextx, nexty)
 				if alt > item.altitude - GRID_SIZE/2 then
 					-- we have a collision!
 					item.do_action()
-					
-					obj.x_velocity = -obj.x_velocity*0.5
-					obj.y_velocity = -obj.y_velocity*0.5
-					
-					AUDIO_FX.play_switch()
+					if item.collidable then
+						obj.x_velocity = -obj.x_velocity * 0.5
+						obj.y_velocity = -obj.y_velocity * 0.5
+					end
 					return true
 				end
 			end
@@ -1214,6 +1215,7 @@ end
 
 -- item actions
 function item_switch_action(obj)
+	AUDIO_FX.play_switch()
 	-- switch frame
 	if obj.current_frame < #obj.frame_list then
 		obj.current_frame = obj.current_frame+1
@@ -1238,19 +1240,12 @@ function item_switch_action(obj)
 	draw_level()
 end
 
-function item_switch_update(obj)
-	-- update for switch items
-	-- print("update switch")
-end
-
 function item_box_action(obj)
+	AUDIO_FX.play_switch()
 	-- push the box
-	if DEBUG_FLAG then print(debug.traceback()) end
-	-- continue here!
-	-- maybe the orbs velocity is already inverted when this action is triggered
-	-- it seems like the box is pushed in the wrong direction: 
-
-
+	-- TODO: is this right? 
+	-- should it not pick up the velocity of the 
+	-- object colliding not the velocity of the ORB?
 	if math.abs(obj.pos.x - ORB.pos.x) > math.abs(obj.pos.y - ORB.pos.y) then
 		obj.x_velocity = ORB.x_velocity
 	else
@@ -1258,10 +1253,34 @@ function item_box_action(obj)
 	end
 end
 
-function item_box_update(obj)
-
+function item_pearl_action(obj)
+	AUDIO_FX.play_roll()
+	if obj.score then
+		ORB.score = ORB.score + obj.score
+	end
+	-- collided with a pearl
+	-- pick it up and collect score
+	obj.set_visible(false)
+	obj.remove_all_sprites()
+	local rm = 0
+	for i = 1, #LEVEL_ITEMS do
+		if LEVEL_ITEMS[i] == obj then
+			rm = i
+		end
+	end
+	if rm > 0 then	
+		local p = table.remove(LEVEL_ITEMS, rm)
+		print("removed", p.name)
+	end
 end
 
+function no_action(obj)
+	-- do nothing
+end
+
+function no_update(obj)
+	-- do nothing
+end
 
 
 -- algorithms / math
@@ -1411,7 +1430,7 @@ end
 
 
 function playdate.leftButtonDown()
-	--
+	if DEBUG_FLAG then print(debug.traceback()) end
 end
 
 function playdate.upButtonDown() -- up button

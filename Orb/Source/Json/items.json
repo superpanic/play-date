@@ -11,7 +11,7 @@
 			"size": 8,
 			"collidable": true,
 			"is_fixed": true,
-			"update_func":"item_switch_update",
+			"update_func":"no_update",
 			"action_func":"item_switch_action"
 		},
 		{
@@ -23,8 +23,21 @@
 			"size": 7,
 			"collidable": true,
 			"is_fixed": false,
-			"update_func": "item_box_update",
+			"update_func": "no_update",
 			"action_func": "item_box_action"
+		},
+		{
+			"id": 3,
+			"name": "pearl",
+			"frames": [10],
+			"xoffset": 0,
+			"yoffset": 3,
+			"size": 3,
+			"score": 100,
+			"collidable": false,
+			"is_fixed": true,
+			"update_func": "no_update",
+			"action_func": "item_pearl_action"
 		}
 	]
 }
