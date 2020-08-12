@@ -1274,6 +1274,25 @@ function item_pearl_action(obj)
 	end
 end
 
+function item_flag_action(obj)
+	AUDIO_FX.play_roll()
+	if obj.score then
+		ORB.score = ORB.score + obj.score
+	end
+	obj.set_visible(false)
+	obj.remove_all_sprites()
+	local rm = 0
+	for i = 1, #LEVEL_ITEMS do
+		if LEVEL_ITEMS[i] == obj then
+			rm = i
+		end
+	end
+	if rm > 0 then	
+		local p = table.remove(LEVEL_ITEMS, rm)
+		print("removed", p.name)
+	end
+end
+
 function no_action(obj)
 	-- do nothing
 end
@@ -1281,31 +1300,34 @@ end
 -- item updates
 
 function item_box_update(obj)
+	
+--[[ 	
 	-- if object is standing still, no need to check tile
 	if math.abs(obj.x_velocity) + math.abs(obj.y_velocity) == 0 then 
 		return
 	end
-
-	### continue here! ###
-
+	
 	-- check tile type, and change sprite image
 	local id = get_tile_at( math.floor(obj.pos.x+0.5), math.floor(obj.pos.y+0.5) ).id
 	if id == 2 then
 		-- slope right
-
-	else if id == 3 then
+		obj.current_frame = 2
+	elseif id == 3 then
 		-- slope down
-
-	else if id == 4 then
+		obj.current_frame = 3
+	elseif id == 4 then
 		-- slope up
-
-	else if id == 5 then
+		obj.current_frame = 4
+	elseif id == 5 then
 		-- slope left
-
+		obj.current_frame = 5
 	else
 		-- flat
-
+		obj.current_frame = 1
 	end
+	obj.sprite:setImage(LEVEL_ITEMS_IMAGE_TABLE:getImage(obj.frame_list[obj.current_frame])) 
+]]
+	
 end
 
 function no_update(obj)
