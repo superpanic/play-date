@@ -124,7 +124,8 @@ local ITEM_DATA = playdate.datastore.read("Json/items")
 	print(ITEM_DATA.loadmessage) -- to make sure the json is readable
 
 -- new_level_item
-function new_item(name, x, y, x_off, y_off, size, collidable, frames, update_func, action_func, is_fixed, score)
+--function new_item(name, x, y, x_off, y_off, size, collidable, frames, update_func, action_func, is_fixed, score)
+function new_item(x, y, item_data)
 
 	-- prepare sprite
 	local sp = lib_spr.new()
@@ -136,13 +137,13 @@ function new_item(name, x, y, x_off, y_off, size, collidable, frames, update_fun
 
 	--local img_tab = lib_gfx.imagetable.new(artwork_path)
 	-- create game sprite
-	local obj = new_game_sprite(name, sp, po, x_off, y_off, ANIMATION_DATA.objects[name], LEVEL_ITEMS_IMAGE_TABLE, is_fixed, size, score)
+	local obj = new_game_sprite(item_data.name, sp, po, item_data.xoffset, item_data.yoffset, ANIMATION_DATA.objects[name], LEVEL_ITEMS_IMAGE_TABLE, item_data.is_fixed, item_data.size, item_data.score)
 
-	obj.frame_list = frames
+	obj.frame_list = item_data.frames
 	obj.current_frame = 1
 	obj.sprite:setImage(LEVEL_ITEMS_IMAGE_TABLE:getImage(obj.frame_list[obj.current_frame]))
 
-	obj.collidable = collidable
+	obj.collidable = item_data.collidable
 
 --	obj.sprite:setZIndex(isoy * NUMBER_OF_SPRITE_LAYERS) 
 	local _, iy = grid_to_iso(obj.pos.x, obj.pos.y, 0, 0)	
@@ -161,8 +162,8 @@ function new_item(name, x, y, x_off, y_off, size, collidable, frames, update_fun
 		return false
 	end
 
-	obj.update = update_func -- call function using: _G[obj.update](obj)
-	obj.action = action_func -- call function using: _G[obj.action](obj)
+	obj.update = item_data.update_func -- call function using: _G[obj.update](obj)
+	obj.action = item_data.action_func -- call function using: _G[obj.action](obj)
 
 	obj.do_update = function()
 		-- run updates
@@ -256,6 +257,10 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 		obj.sprite:setVisible(b)
 		obj.sprite_fx:setVisible(b)
 		obj.sprite_cover:setVisible(b)
+	end
+
+	obj.hide_fx_sprite = function()
+		obj.sprite_fx:setVisible(false)
 	end
 
 	obj.start_animation = function(key)
@@ -377,13 +382,8 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 	
 end
 
-
-
-
-
-
 function level_setup()
-	reset_orb_to_start_position()
+	reset_orb_at_start_position()
 	draw_level()
 	add_items()
 	offset_background()
@@ -549,7 +549,7 @@ function cleanup()
 	print("cleaning up, active sprites: ".. lib_spr.spriteCount())
 
 	print("   hiding ORB sprite")
-	ORB.set_visible(true)
+	ORB.set_visible(false)
 	
 	print("   removing all level items")
 	if LEVEL_ITEMS and #LEVEL_ITEMS > 0 then
@@ -585,9 +585,7 @@ function add_items()
 	for i = 1,#items do
 		local item = items[i]
 		local item_data = ITEM_DATA.items[item.id]
-		-- LEVEL_ITEMS[i] = new_level_item(item.id, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.frames, item_data.update_func, item_data.action_func)
-		-- function new_item(          name,      x,      y,             x_off,             y_off,           size,           collidable,           artwork,           frames,           update_func,           action_func)
-		LEVEL_ITEMS[i] = new_item(item_data.name, item.x, item.y, item_data.xoffset, item_data.yoffset, item_data.size, item_data.collidable, item_data.frames, item_data.update_func, item_data.action_func, item_data.is_fixed, item_data.score)
+		LEVEL_ITEMS[i] = new_item(item.x, item.y, item_data)
 		LEVEL_ITEMS[i].place()
 	end
 end
@@ -763,7 +761,7 @@ function get_orb_frame()
 	return y*imap_size+x
 end
 
-function reset_orb_to_start_position()
+function reset_orb_at_start_position()
 	print("reset orb to start position at level "..CURRENT_LEVEL)
 	-- move to position
 	-- TODO: a level might have a different start tile than 1/1
@@ -773,8 +771,8 @@ function reset_orb_to_start_position()
 	ORB.y_velocity = 0
 	ORB.fall_velocity = 0
 	ORB.altitude = LEVEL_DATA.levels[CURRENT_LEVEL].altitude[1]
-	-- show orb
 	ORB.set_visible(true)
+	ORB.hide_fx_sprite()
 end
 
 -- draw level
