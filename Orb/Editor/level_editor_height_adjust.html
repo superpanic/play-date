@@ -8,6 +8,9 @@
 		let image = new Image();
 		image.src = '../Source/Artwork/level_tiles-table-48-48.png';
 
+		let image_grey = new Image();
+		image_grey.src = './level_tiles-table-48-48_grey.png';
+
 		let image_red = new Image();
 		image_red.src = './level_tiles-table-48-48_red.png';
 
@@ -361,9 +364,18 @@
 					let gridxy = grid_to_iso(x, y);
 					let tarx = gridxy[0] * GRID_SIZE + LEVEL_IMAGE_WIDTH/2 + X_OFFSET + tile_offset_xy[0];
 					let tary = gridxy[1] * GRID_SIZE + Y_OFFSET + tile_offset_xy[1] - altitude_array[i] - current_edit_level;
-	
-					context.drawImage(image, soux, souy, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT, tarx, tary, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT);
+					let im = get_focus_image(altitude_array[i] + current_edit_level);
+
+					context.drawImage(im, soux, souy, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT, tarx, tary, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT);
 				}
+			}
+		}
+
+		function get_focus_image(alt) {
+			if (alt == 0) {
+				return image;
+			} else {
+				return image_grey;
 			}
 		}
 
@@ -492,7 +504,6 @@
 			return crop_array;
 		}
 
-		
 	</script>
 </body>
 </html>
