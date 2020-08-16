@@ -17,6 +17,7 @@
 		const LEVEL_IMAGE_HEIGHT = MAP_COLS * 16;
 
 		const GRID_SIZE = 16;
+		const ALTITUDE_STEP = 8;
 
 		const SOURCE_TILE_WIDTH  = 48;
 		const SOURCE_TILE_HEIGHT = 48;
@@ -41,6 +42,8 @@
 		let selected_target = [0,0];
 		let selected_target_pos = [0,0];
 		let target_area_flag = true;
+
+		let current_edit_level = 0;
 		
 		let canvas = document.getElementById('editor_canvas');
 		let context = canvas.getContext('2d');
@@ -95,7 +98,7 @@
 			// source
 			context.clearRect(SOURCE_IMAGE_XPOS, SOURCE_IMAGE_YPOS, SOURCE_IMAGE_WIDTH, SOURCE_IMAGE_HEIGHT);
 			redraw_source_image();			
-			if ( x > SOURCE_IMAGE_XPOS && x < SOURCE_IMAGE_XPOS + SOURCE_IMAGE_WIDTH && y > SOURCE_IMAGE_YPOS && y < SOURCE_IMAGE_YPOS + SOURCE_IMAGE_HEIGHT ) {
+			if ( is_inside_source_area(x, y) ) {
 				let gridx = SOURCE_IMAGE_XPOS + Math.floor( (x - SOURCE_IMAGE_XPOS) / SOURCE_TILE_WIDTH) * SOURCE_TILE_WIDTH;
  				let gridy = SOURCE_IMAGE_YPOS + Math.floor( (y - SOURCE_IMAGE_YPOS) / SOURCE_TILE_HEIGHT) * SOURCE_TILE_HEIGHT;
 				context.beginPath();
@@ -110,7 +113,7 @@
 			draw_selected_box();
 			redraw_all_target_tiles();
 
-			if ( x > X_OFFSET && x < X_OFFSET + LEVEL_IMAGE_WIDTH && y > Y_OFFSET && y < Y_OFFSET + LEVEL_IMAGE_HEIGHT )  {
+			if ( is_inside_drawing_area(x, y) )  {
 				// offset screen space pixel coordinates
 				let gx = x - X_OFFSET - LEVEL_IMAGE_WIDTH/2;
 				let gy = y - Y_OFFSET;
@@ -121,7 +124,6 @@
 				let iy = Math.floor(isoxy[1]/(GRID_SIZE*2));
 				debug_label.innerHTML = ix.toString() + " : " + iy.toString();
 
-// -------------------------------------- ok to here! ------------------------------------------------
 				// do boundary check
 				if( is_inside_target_area(ix, iy) ) {
 					target_area_flag = true;
@@ -158,35 +160,13 @@
 				return;
 			}
 
-			// source
-			if (
-				x > SOURCE_IMAGE_XPOS &&
-				x < SOURCE_IMAGE_XPOS + SOURCE_IMAGE_WIDTH &&
-				y > SOURCE_IMAGE_YPOS &&
-				y < SOURCE_IMAGE_YPOS + SOURCE_IMAGE_HEIGHT
-			) {
-				let cols = SOURCE_IMAGE_HEIGHT / SOURCE_TILE_HEIGHT;
-				let rows = SOURCE_IMAGE_WIDTH / SOURCE_TILE_WIDTH;
-				let gridx = Math.floor((x - SOURCE_IMAGE_XPOS) / SOURCE_TILE_WIDTH);
-				let gridy = Math.floor((y - SOURCE_IMAGE_YPOS) / SOURCE_TILE_HEIGHT);
-				selected_source_tile = ((gridy * cols) + gridx) + 1; // adding 1 as lua counts arrays from 1
-				draw_selected_box();
+			if ( is_inside_source_area( x, y ) ) {
+				select_source_tile_at( x, y );
+				return;
 			}
 
-			// return if mouse is not in target area
-			if(!target_area_flag) {return;}
-
-			// target
-			if ( is_inside_drawing_area(x, y) ) {
-				let i = selected_target[1] * MAP_COLS + selected_target[0];
-				tile_array[i] = selected_source_tile;
-				// reset altitude for new tile
-				altitude_array[i] = 0;
-				text_field.value = tile_array;
-				context.clearRect(X_OFFSET, Y_OFFSET, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT);
-				draw_iso_grid();
-				redraw_all_target_tiles();
-				draw_red_tile(tile_array[i], selected_target_pos[0], selected_target_pos[1]);
+			if ( is_inside_drawing_area( x, y ) ) {
+				draw_selected_tile_at( x, y );
 			}
 		}
 
@@ -194,21 +174,51 @@
 			switch (e.key) {
 				case 'w':
 					console.log('up');
-					lift_current_tile();
+					let up = 1;
+					move_current_tile(up);
 					break;
 				case 's':
 					console.log('down');
-					lower_current_tile();
+					let down = -1;
+					move_current_tile(down);
 					break;
 				case 'x':
 					console.log('delete');
 					delete_tile();
 					break;
 				case 'f':
-					console.log('save level')
+					console.log('save level');
 					export_level_to_txt();
 					break;
+				case 'g':
+					console.log('move edit height down');
+					move_edit_level_down();
+					break;
+				case 't':
+					console.log('move edit height up');
+					move_edit_level_up();
+					break;
 			}
+		}
+
+		function select_source_tile_at( x, y ) {
+			let cols = SOURCE_IMAGE_HEIGHT / SOURCE_TILE_HEIGHT;
+			let rows = SOURCE_IMAGE_WIDTH / SOURCE_TILE_WIDTH;
+			let gridx = Math.floor((x - SOURCE_IMAGE_XPOS) / SOURCE_TILE_WIDTH);
+			let gridy = Math.floor((y - SOURCE_IMAGE_YPOS) / SOURCE_TILE_HEIGHT);
+			selected_source_tile = ((gridy * cols) + gridx) + 1; // adding 1 as lua counts arrays from 1
+			draw_selected_box();
+		}
+
+		function draw_selected_tile_at( x, y ) {
+			let i = selected_target[1] * MAP_COLS + selected_target[0];
+			tile_array[i] = selected_source_tile;
+			altitude_array[i] = -current_edit_level;
+			text_field.value = tile_array;
+			context.clearRect(X_OFFSET, Y_OFFSET, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT);
+			draw_iso_grid();
+			redraw_all_target_tiles();
+			draw_red_tile(tile_array[i], selected_target_pos[0], selected_target_pos[1]);
 		}
 
 		function delete_tile() {
@@ -223,18 +233,16 @@
 			text_field.value = tile_array;
 		}
 
-		function lift_current_tile() {
-			if (!target_area_flag) {return;}
-			let i = selected_target[1] * MAP_COLS + selected_target[0];
-			if (tile_array[i] == NONE) { return; }
-			altitude_array[i] = altitude_array[i] + 8;
-			//console.log("lift tile: " + i + " to: " + altitude_array[i]);
-			context.clearRect(X_OFFSET, Y_OFFSET, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT);
-			draw_iso_grid();
-			redraw_all_target_tiles();
-			//console.log("selected source tile: " + selected_source_tile);
-			//alert("bug: selected source tile is the currently selected tile not the current mouse over tile!")
-			draw_red_tile(tile_array[i], selected_target_pos[0], selected_target_pos[1]);
+		function move_edit_level_down() {
+			current_edit_level = current_edit_level - ALTITUDE_STEP;
+			clear_and_redraw_all_tiles();
+			console.log(current_edit_level);
+		}
+
+		function move_edit_level_up() {
+			current_edit_level = current_edit_level + ALTITUDE_STEP;
+			clear_and_redraw_all_tiles();
+			console.log(current_edit_level);
 		}
 
 		function get_current_level_dimensions() {
@@ -251,30 +259,25 @@
 			return [max_x+1, max_y+1];
 		}
 
+		function is_inside_source_area(x,y) {
+			if (x > SOURCE_IMAGE_XPOS && x < SOURCE_IMAGE_XPOS + SOURCE_IMAGE_WIDTH && y > SOURCE_IMAGE_YPOS && y < SOURCE_IMAGE_YPOS + SOURCE_IMAGE_HEIGHT) { 
+				return true 
+			}
+			return false
+		}
+
 		function is_inside_target_area(ix,iy) {
-			if(ix >= 0 && ix < MAP_COLS && iy >= 0 && iy < MAP_ROWS) { return true }
+			if(ix >= 0 && ix < MAP_COLS && iy >= 0 && iy < MAP_ROWS) { 
+				return true 
+			}
 			return false
 		}
 
 		function is_inside_drawing_area(x,y) {
-			if (x > X_OFFSET && x < X_OFFSET + LEVEL_IMAGE_WIDTH && y > Y_OFFSET && y < Y_OFFSET + LEVEL_IMAGE_HEIGHT) { return true }
+			if (x > X_OFFSET && x < X_OFFSET + LEVEL_IMAGE_WIDTH && y > Y_OFFSET && y < Y_OFFSET + LEVEL_IMAGE_HEIGHT) { 
+				return true 
+			}
 			return false
-		}
-
-		function get_cropped_array(crop_x, crop_y, arr) {
-			if(arr.length != MAP_ROWS*MAP_COLS) {
-				console.log("array to crop needs to be exact full level size");
-				return;
-			}
-			crop_array = [];
-			for (let y = 0; y < crop_y; y++) {
-				for (let x = 0; x < crop_x; x++) {
-					full_index = (y * MAP_ROWS) + x;
-					cropped_index = (y * crop_x) + x;
-					crop_array[cropped_index] = arr[full_index];
-				}
-			}
-			return crop_array;
 		}
 
 		function clean_tiles(arr) {
@@ -284,17 +287,14 @@
 			return arr;
 		}
 
-		function lower_current_tile() {
-			if (!target_area_flag) {return;}
+		function move_current_tile( up_or_down ) {
+			if (!target_area_flag) { return; }
 			let i = selected_target[1] * MAP_COLS + selected_target[0];
-			if(tile_array[i] == NONE) {return;}
-			altitude_array[i] = altitude_array[i] - 8;
-			//console.log("lower tile: " + i + " to: " + altitude_array[i]);
+			if (tile_array[i] == NONE) { return; }
+			altitude_array[i] = altitude_array[i] + (ALTITUDE_STEP * up_or_down);
 			context.clearRect(X_OFFSET, Y_OFFSET, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT);
 			draw_iso_grid();
 			redraw_all_target_tiles();
-			//console.log("selected source tile: " + selected_source_tile);
-			//alert("bug: selected source tile is the currently selected tile not the current mouse over tile!")
 			draw_red_tile(tile_array[i], selected_target_pos[0], selected_target_pos[1]);
 		}
 
@@ -304,10 +304,10 @@
 		}
 
 		function draw_selected_box() {
-			if(selected_source_tile == NONE) {return;}
+			if(selected_source_tile == NONE) { return; }
 			let rows = SOURCE_IMAGE_WIDTH / SOURCE_TILE_WIDTH;
 			let cols = SOURCE_IMAGE_HEIGHT / SOURCE_TILE_HEIGHT;
-			if(selected_source_tile > rows*cols) {return;}
+			if(selected_source_tile > rows*cols) { return; }
 			
 			let st = selected_source_tile-1; // adjusting for lua array being 1-based.
 			let x = (st % cols) * SOURCE_TILE_WIDTH + SOURCE_IMAGE_XPOS;
@@ -331,6 +331,13 @@
 			}
 		}
 
+		function clear_and_redraw_all_tiles() {
+			context.clearRect(X_OFFSET,Y_OFFSET,LEVEL_IMAGE_WIDTH,LEVEL_IMAGE_HEIGHT);
+			draw_iso_grid();
+			draw_selected_box();
+			redraw_all_target_tiles();
+		}
+
 		function redraw_all_target_tiles() {
 			if (tile_array.length != MAP_ROWS * MAP_COLS) {
 				console.log("tile array length does not match map size (rows*columns)");
@@ -341,7 +348,7 @@
 			let cols = SOURCE_IMAGE_HEIGHT / SOURCE_TILE_HEIGHT;
 
 			for (let y=0; y<MAP_ROWS; y++) {
-				for (let x=0; x<MAP_COLS; x++) {
+				for (let x=0; x < MAP_COLS; x++) {
 					let i = y * MAP_COLS + x;
 					if(tile_array[i] == 0) { continue; }
 
@@ -353,7 +360,7 @@
 
 					let gridxy = grid_to_iso(x, y);
 					let tarx = gridxy[0] * GRID_SIZE + LEVEL_IMAGE_WIDTH/2 + X_OFFSET + tile_offset_xy[0];
-					let tary = gridxy[1] * GRID_SIZE + Y_OFFSET + tile_offset_xy[1] - altitude_array[i];
+					let tary = gridxy[1] * GRID_SIZE + Y_OFFSET + tile_offset_xy[1] - altitude_array[i] - current_edit_level;
 	
 					context.drawImage(image, soux, souy, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT, tarx, tary, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT);
 				}
@@ -383,13 +390,12 @@
 			let cols = SOURCE_IMAGE_HEIGHT / SOURCE_TILE_HEIGHT;
 			t = t-1;
 
-		//	let st = selected_source_tile - 1; // adjusting for lua array being 1-based.
 			let sx = (t % cols) * SOURCE_TILE_WIDTH;
 			let sy = Math.floor(t / cols) * SOURCE_TILE_HEIGHT;
 			
 			let tile_offset_xy = get_tile_offset(t);
 			x = x + LEVEL_IMAGE_WIDTH/2 + X_OFFSET + tile_offset_xy[0];
-			y = y + Y_OFFSET + tile_offset_xy[1] - altitude_array[index];
+			y = y + Y_OFFSET + tile_offset_xy[1] - altitude_array[index] - current_edit_level;
 
 			context.drawImage(image_red, sx, sy, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT, x, y, SOURCE_TILE_WIDTH, SOURCE_TILE_HEIGHT);
 		}
@@ -469,6 +475,23 @@
 			a.click();
 			document.body.removeChild(a);
 		}
+
+		function get_cropped_array(crop_x, crop_y, arr) {
+			if(arr.length != MAP_ROWS*MAP_COLS) {
+				console.log("array to crop needs to be exact full level size");
+				return;
+			}
+			crop_array = [];
+			for (let y = 0; y < crop_y; y++) {
+				for (let x = 0; x < crop_x; x++) {
+					full_index = (y * MAP_ROWS) + x;
+					cropped_index = (y * crop_x) + x;
+					crop_array[cropped_index] = arr[full_index];
+				}
+			}
+			return crop_array;
+		}
+
 		
 	</script>
 </body>
