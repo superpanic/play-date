@@ -137,7 +137,7 @@ function new_item(x, y, item_data)
 
 	--local img_tab = lib_gfx.imagetable.new(artwork_path)
 	-- create game sprite
-	local obj = new_game_sprite(item_data.name, sp, po, item_data.xoffset, item_data.yoffset, ANIMATION_DATA.objects[name], LEVEL_ITEMS_IMAGE_TABLE, item_data.is_fixed, item_data.size, item_data.score)
+	local obj = new_game_sprite(item_data.name, sp, po, item_data.xoffset, item_data.yoffset, ANIMATION_DATA.objects[item_data.name], LEVEL_ITEMS_IMAGE_TABLE, item_data.is_fixed, item_data.size, item_data.score)
 
 	obj.frame_list = item_data.frames
 	obj.current_frame = 1
