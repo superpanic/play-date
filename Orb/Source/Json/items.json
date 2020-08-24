@@ -17,10 +17,10 @@
 		{
 			"id": 2,
 			"name": "box",
-			"frames": [3, 4, 5, 6, 7, 8],
+			"frames": [3],
 			"xoffset": -1,
 			"yoffset": 4,
-			"size": 7,
+			"size": 8,
 			"collidable": true,
 			"is_fixed": false,
 			"update_func": "item_box_update",
@@ -51,6 +51,19 @@
 			"is_fixed": true,
 			"update_func": "no_update",
 			"action_func": "item_flag_action"
+		},
+		{
+			"id": 5,
+			"name": "key",
+			"frames": [11],
+			"xoffset": 0,
+			"yoffset": 3,
+			"size": 4,
+			"score": 500,
+			"collidable": false,
+			"is_fixed": true,
+			"update_func": "no_update",
+			"action_func": "item_key_action"
 		}
 	]
 }

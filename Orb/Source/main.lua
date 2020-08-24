@@ -14,7 +14,8 @@ local lib_tim = playdate.timer
 
 playdate.display.setRefreshRate(30)
 playdate.display.setScale(2)
-lib_gfx.setBackgroundColor(lib_gfx.kColorBlack)
+local BACKGROUND_COLOR = lib_gfx.kColorBlack
+lib_gfx.setBackgroundColor(BACKGROUND_COLOR)
 lib_gfx.clear()
 
 local DEBUG_FLAG = false
@@ -1096,11 +1097,17 @@ function get_tile_at( x, y )
 	local h = LEVEL_DATA.levels[CURRENT_LEVEL].h
 	if x >= w * GRID_SIZE or y >= h * GRID_SIZE then return "oob" end -- out of bounds
 
-	local tilex = math.floor((x / GRID_SIZE))+1
-	local tiley = math.floor((y / GRID_SIZE))+1
-	local tile_index = w * (tiley-1) + tilex
+	local tile_x = math.floor((x / GRID_SIZE))+1
+	local tile_y = math.floor((y / GRID_SIZE))+1
+	local tile_index = w * (tile_y-1) + tile_x
 	local tile_type = LEVEL_DATA.levels[CURRENT_LEVEL].tiles[tile_index]
 	return TILE_DATA.tiles[tile_type]
+end
+
+function get_tile_grid_pos(x,y)
+	local tile_x = math.floor((x / GRID_SIZE))+1
+	local tile_y = math.floor((y / GRID_SIZE))+1
+	return tile_x, tile_y
 end
 
 function get_altitude_at_area( x, y, size )
@@ -1167,7 +1174,7 @@ end
 
 function clear_background()
 	lib_gfx.lockFocus(BACKGROUND_SPRITE:getImage())
-		lib_gfx.setColor(lib_gfx.kColorBlack)
+		lib_gfx.setColor(BACKGROUND_COLOR)
 		lib_gfx.fillRect( 0, 0, LEVEL_IMAGE_WIDTH, LEVEL_IMAGE_HEIGHT)
 	lib_gfx.unlockFocus()
 end
@@ -1238,7 +1245,7 @@ function item_switch_action(obj)
 	draw_level()
 end
 
-function item_box_action(obj)
+function item_box_action_old(obj)
 	AUDIO_FX.play_switch()
 	-- push the box
 	-- TODO: is this right? 
@@ -1249,6 +1256,43 @@ function item_box_action(obj)
 	else
 		obj.y_velocity = ORB.y_velocity
 	end
+end
+
+function item_box_action(obj)
+	local step_x,step_y = 0,0
+	
+	if math.abs(obj.pos.x - ORB.pos.x) > math.abs(obj.pos.y - ORB.pos.y) then
+		if ORB.x_velocity > 0 then
+			-- right
+			step_x = GRID_SIZE
+		else
+			-- left
+			step_x = -GRID_SIZE
+		end
+	else
+		if ORB.y_velocity > 0 then
+			-- down
+			step_y = GRID_SIZE
+		else
+			-- up
+			step_y = -GRID_SIZE
+		end
+	end
+
+	--local x, y = get_tile_grid(obj.pos.x+step_x, obj.pos.y+step_y)
+	local next_x, next_y = obj.pos.x + step_x, obj.pos.y + step_y
+	if get_tile_type(next_x, next_y) == "flat" then
+		if obj.altitude == get_altitude_at_pos(next_x,next_y) then
+			if ORB.altitude == obj.altitude then
+				obj.pos.x = next_x
+				obj.pos.y = next_y
+				obj.start_animation("move")
+				AUDIO_FX.play_switch()
+				return
+			end
+		end
+	end
+	AUDIO_FX.play_collide()
 end
 
 function item_pearl_action(obj)

@@ -66,10 +66,33 @@
 				"fx": false,
 				"hide_host": false,
 				"hide_after": true
-			}
+			},
+			"move": {
+				"name": "move",
+				"start_frame": 4,
+				"end_frame": 6,
+				"speed": 100,
+				"loop": false,
+				"fx": false,
+				"hide_host": false,
+				"hide_after": true
+			}			
 		},
 		"switch": {
 			"artwork": "Artwork/items"
+		},
+		"flag": {
+			"artwork": "Artwork/items",
+			"idle": {
+				"name": "idle",
+				"start_frame": 12,
+				"end_frame": 13,
+				"speed": 100,
+				"loop": true,
+				"fx": false,
+				"hide_host": false,
+				"hide_after": false
+			}
 		}
 	}
 }

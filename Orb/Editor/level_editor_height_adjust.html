@@ -51,6 +51,10 @@
 		let canvas = document.getElementById('editor_canvas');
 		let context = canvas.getContext('2d');
 
+		let drawing_area = new Path2D();
+		drawing_area.rect(X_OFFSET, Y_OFFSET, X_OFFSET + LEVEL_IMAGE_WIDTH + X_OFFSET + SOURCE_IMAGE_WIDTH, Y_OFFSET + LEVEL_IMAGE_HEIGHT);
+		context.clip(drawing_area);
+
 		// debug string
 		let debug_label = document.getElementById('debug_out');
 		debug_label.innerHTML = "debug string";
@@ -121,11 +125,12 @@
 				let gx = x - X_OFFSET - LEVEL_IMAGE_WIDTH/2;
 				let gy = y - Y_OFFSET;
 				// pixel conversion from screen space to top down grid
-				let isoxy = iso_to_grid(gx,gy);
+				let iso_xy = iso_to_grid(gx,gy);
 				// divide and round pixel iso coordinates
-				let ix = Math.floor(isoxy[0]/(GRID_SIZE*2));
-				let iy = Math.floor(isoxy[1]/(GRID_SIZE*2));
-				debug_label.innerHTML = ix.toString() + " : " + iy.toString();
+				let ix = Math.floor(iso_xy[0] / (GRID_SIZE * 2));
+				let iy = Math.floor(iso_xy[1] / (GRID_SIZE * 2));
+
+				ui_print_coordinates(ix, iy);
 
 				// do boundary check
 				if( is_inside_target_area(ix, iy) ) {
@@ -152,6 +157,13 @@
 			}
 			
 
+		}
+
+		function ui_print_coordinates(ix, iy) {
+			debug_label.innerHTML = 
+				"x:" + ix.toString() + "<br>" +
+				"y:" + iy.toString() + "<br>" +
+				"z:" + current_edit_level.toString();
 		}
 
 		function on_mouse_click(e) {
