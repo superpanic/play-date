@@ -10,18 +10,18 @@ function new_audio_fx_player()
 	end
 
 	obj.note_table = {
-		C = 261.63,
-		Cb= 277.18,
-		D = 293.66,
-		Db= 311.13,
-		E = 329.63,
-		Eb= 349.23,
-		Fb= 369.99,
-		G = 392.00,
-		Gb= 415.30,
-		A = 440.00,
-		Ab= 466.16,
-		B = 493.88
+		C_flat  = 261.63,
+		C_sharp = 277.18,
+		D_flat  = 293.66,
+		D_sharp = 311.13,
+		E_flat  = 329.63,
+		F_flat  = 349.23,
+		F_sharp = 369.99,
+		G_flat  = 392.00,
+		G_sharp = 415.30,
+		A_flat  = 440.00,
+		A_sharp = 466.16,
+		B_flat  = 493.88
 	}
 
 	obj.note_array = {
@@ -76,7 +76,7 @@ function new_audio_fx_player()
 	obj.sfx_switch:setFrequencyMod(lfo_sin20)
 
 	obj.play_switch = function()
-		obj.sfx_switch:playNote(obj.note_table.B, 0.5, 0.12)
+		obj.sfx_switch:playNote(obj.note_table.B_flat, 0.5, 0.12)
 	end
 	obj.end_switch = function() obj.sfx_switch:noteOff() end
 
@@ -90,7 +90,7 @@ function new_audio_fx_player()
 
 	obj.play_roll = function()
 		--playNote(pitch, volume, length)
-		obj.sfx_roll:playNote(obj.note_table.D, 0.5, 0.75)
+		obj.sfx_roll:playNote(obj.note_table.D_flat, 0.5, 0.75)
 	end
 	obj.end_roll = function() obj.sfx_roll:noteOff() end
 
@@ -189,55 +189,71 @@ function load_midi_track(file_name, instrument)
 	return track_copy
 end
 
-function new_music_player()
+function music_player()
 	local obj = {}
-
-	obj.is_looping = false
-
-	-- create a synth
+	obj.is_looping = true
+	obj.timer = {}
+	obj.delay = 250
+	
 	obj.synth = playdate.sound.synth.new(playdate.sound.kWaveSine)
-	obj.synth:setADSR(   0, 0, 0.5, 0.05) -- ADSR
+	obj.synth:setADSR( 0.2, 0.5, 0.1, 0.1)
+	--local lfo = playdate.sound.lfo.new(playdate.sound.kLFOSine)
+	--lfo:setRate(5000)
+	--lfo:setDepth(0.2)
+	--obj.synth:setFrequencyMod(lfo)
 
-	-- create an instument using the sine wave synth
-	obj.instr_sine_synth = playdate.sound.instrument.new()
-	obj.instr_sine_synth:addVoice(obj.synth)
+	obj.note_table = {
+		C_flat  = 261.63,
+		C_sharp = 277.18,
+		D_flat  = 293.66,
+		D_sharp = 311.13,
+		E_flat  = 329.63,
+		F_flat  = 349.23,
+		F_sharp = 369.99,
+		G_flat  = 392.00,
+		G_sharp = 415.30,
+		A_flat  = 440.00,
+		A_sharp = 466.16,
+		B_flat  = 493.88
+	}
 
-	-- load title midi sequence
-	obj.title_track = load_midi_track('Audio/test.mid', obj.instr_sine_synth)
-	if not obj.title_track then print("title_track is nil") end
-	print("notes: " .. #obj.title_track:getNotes())
-	obj.title_sequence = playdate.sound.sequence.new()
-	obj.title_sequence:setTrackAtIndex(1, obj.title_track)
-	print(obj.title_sequence:getTrackCount())
+	obj.arabic_scale = {
+		"C_flat",
+		"D_flat",
+		"E_flat",
+		"F_flat",
+		"F_sharp",
+		"G_sharp",
+		"A_flat",
+		"B_flat",
+		"pause"
+	}
 
-	--obj.title_sequence = playdate.sound.sequence.new('Audio/title.mid')
-	--obj.title_sequence_length = add_instrument_to_all_tracks_in_sequence(obj.title_sequence, obj.instr_sine_synth)
+	obj.pentatonic_scale = {
+		"C_flat",
+		"D_flat",
+		"G_flat",
+		"A_flat",
+		"pause"
+	}
 
-	obj.play_title = function(loop)
-		print("playing title music")
-		--obj.title_sequence:play()
-		if loop then
-			-- TODO: callback timer
-			--playdate.timer.performAfterDelay(4000, obj.loop_title)
-			obj.is_looping = true
-		end
+	obj.play = function()
+		obj.next_note()
 	end
 
-	obj.loop_title = function()
-		if obj.is_looping then
-			obj.title_sequence:play()
-			playdate.timer.performAfterDelay(4000, obj.loop_title)
+	obj.next_note = function()
+		local note = obj.pentatonic_scale[math.random(4)]
+		if note == "pause" then
+			-- silence
+		else
+			obj.synth:playNote(obj.note_table[note]/2, 1.0, 1.0)
 		end
+		local d = math.random(2)
+		obj.timer = playdate.timer.performAfterDelay(obj.delay*d, obj.next_note)
 	end
 
-	obj.stop_title = function()
-		--print("stop playing title song")
---		obj.title_sequence:setTempo(1)
---		obj.title_sequence:stop() -- FIXME: this stop() command causes hard crash on emulator and hardware
---		obj.title_sequence:goToStep(3721)
---		obj.title_sequence:setTempo(0)
-
-		obj.is_looping = false
+	obj.stop = function()
+		obj.timer:remove()
 	end
 
 	return obj

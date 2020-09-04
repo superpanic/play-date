@@ -98,7 +98,8 @@ local GAME_TIME_STAMP = 0
 
 -- audio
 local AUDIO_FX = new_audio_fx_player()
---local MUSIC_PLAYER = new_music_player()
+local MUSIC_PLAYER = music_player()
+MUSIC_PLAYER.play()
 
 -- interface
 local INTERFACE_IMAGE = lib_gfx.image.new("Artwork/interface.png")
