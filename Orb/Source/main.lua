@@ -289,7 +289,6 @@ function new_game_sprite(
 		-- check boost-tiles (arrows) and other special tiles 
 		check_special_tiles(obj)
 		
-		
 		-- set next pos
 		local next_pos = {}
 		next_pos.x = obj.pos.x + obj.x_velocity
@@ -622,7 +621,7 @@ function level_clear()
 end
 
 function game_over_check()
-	-- if no lives left, then return true
+	-- TODO: if no lives left, then return true
 	-- else remove one life and return false
 	-- nothing (yet)
 	return false
@@ -662,13 +661,6 @@ function draw_interface()
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
 		s = string.format("%06d", ORB.score)
 		lib_gfx.drawTextAligned(s, px, py, kTextAlignment.right)
-	-- speed meter
-		-- px = 3 + ox
-		-- py = 71 + oy
-		-- lib_gfx.setColor(lib_gfx.kColorBlack)
-		-- lib_gfx.fillRect(px,py,27,5)
-		-- lib_gfx.setColor(lib_gfx.kColorWhite)
-		-- lib_gfx.fillRect( px, py, math.min( 27, (math.abs(ORB.x_velocity)+math.abs(ORB.y_velocity)+ORB.fall_velocity)*6 ), 5 )
 	-- alt meter
 		px = 32 + ox
 		py = 109 + oy
@@ -739,7 +731,7 @@ function update_orb()
 	vectory = vectory * 1.5
 	
 	if CURRENT_STATE == GAME_STATE.playing then
-		if ORB.accelerate_flag then
+		if ORB.accelerate_flag and not ORB.falling then
 			ORB.x_velocity = ORB.x_velocity + (vectorx * ORB.acceleration)
 			ORB.y_velocity = ORB.y_velocity + (vectory * ORB.acceleration)
 		end
@@ -983,9 +975,6 @@ end
 
 function wall_collision_check(obj, nextx, nexty)
 	-- collision if altitude is higher than EDGE_COLLISION_HEIGHT pixels
-
-	-- don't do wall collision if object is falling
---	if obj.falling then return false end
 
 	local objx = math.floor(obj.pos.x + 0.5)
 	local objy = math.floor(obj.pos.y + 0.5)
@@ -1455,19 +1444,6 @@ function generate_cosine_LUT()
 	end
 end
 
-
---[[ 
-	function iso_to_grid(x, y, offsetx, offsety)
-		if not offsetx then offsetx = 0 end
-		if not offsety then offsety = 0 end
-		x = x - LEVEL_OFFSET.x
-		y = y - LEVEL_OFFSET.y
-		local gx = x + y * 2 - offsetx --+ GRID_SIZE
-		local gy = y * 2 - (x - offsetx) --+ GRID_SIZE
-		return gx, gy
-	end 
-]]
-
 function grid_to_iso(x, y, offsetx, offsety)
 	if not offsetx then offsetx = 0 end
 	if not offsety then offsety = 0 end
@@ -1477,6 +1453,15 @@ function grid_to_iso(x, y, offsetx, offsety)
 end
 
 
+-- explanatory functions
+
+function this_is_a_function(the_function)
+	return _G[the_function]
+end
+
+function call_function(the_function)
+	_G[the_function]()
+end
 
 
 -- buttons
@@ -1487,31 +1472,27 @@ function playdate.BButtonDown()
 	end
 end
 
-
 function playdate.BButtonUp()
 	ORB.accelerate_flag = false
 end
 
 function playdate.AButtonDown()
 	if CURRENT_STATE == GAME_STATE.playing then 
-		ORB.accelerate_flag = true 
-		playdate.startAccelerometer()
+		ORB.accelerate_flag = true
 	end
 end
 
 function playdate.AButtonUp()
+	ORB.accelerate_flag = false
+
 	if CURRENT_STATE == GAME_STATE.menu then
 		if not MENU_DATA.menu[MENU_SELECT_COUNTER].funct then
 			print("no function")
 		else
 			local f = MENU_DATA.menu[MENU_SELECT_COUNTER].funct
-			-- TODO: check if function exists
-			_G[f]()
+			if this_is_a_function(f) then call_function(f) 
+			else print(f.." is not a function.") end
 		end
-	end
-	if CURRENT_STATE == GAME_STATE.playing then
-		ORB.accelerate_flag = false
-		playdate.stopAccelerometer()
 	end
 end
 
@@ -1519,7 +1500,6 @@ function playdate.rightButtonDown()
 	CURRENT_STATE = GAME_STATE.cleanup
 	next_level()
 end
-
 
 function playdate.leftButtonDown()
 	if DEBUG_FLAG then print(debug.traceback()) end
