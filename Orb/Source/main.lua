@@ -1,17 +1,20 @@
 import "CoreLibs/graphics"
+local lib_gfx = playdate.graphics
+
 import "CoreLibs/sprites"
+local lib_spr = playdate.graphics.sprite
+
 import "CoreLibs/timer"
+local lib_tim = playdate.timer
+
 import "CoreLibs/animation"
 import "Utils/fps"
 print("using outdated CoreLibs/utilities/fps library")
---playdate.setCollectsGarbage(false)
+
 import "audio"
 
--- local vars:
-local lib_gfx = playdate.graphics
-local lib_spr = playdate.graphics.sprite
-local lib_tim = playdate.timer
 
+-- local vars:
 playdate.display.setRefreshRate(30)
 playdate.display.setScale(2)
 local BACKGROUND_COLOR = lib_gfx.kColorBlack
@@ -64,7 +67,9 @@ local GAME_STATE = {
 	paused        = 7, 
 	goal          = 8,
 	gameover      = 9,
-	cleanup       = 10
+	cleanup       = 10,
+	present_level = 11,
+	idle          = 12
 }
 
 local CURRENT_STATE = GAME_STATE.initial
@@ -386,6 +391,7 @@ end
 
 function level_setup()
 	reset_orb_at_start_position()
+	clear_background()
 	draw_level()
 	add_items()
 	offset_background()
@@ -411,6 +417,7 @@ function game_setup()
 
 	ORB.set_z_index(0)
 	ORB.sprite:add()
+	ORB.set_visible(false)
 
 -- background as a sprite
 	BACKGROUND_SPRITE = lib_spr.new()
@@ -444,43 +451,39 @@ function playdate.update()
 		if not DEBUG_FRAME_STEP then return end
 	end
 
-
 	if CURRENT_STATE == GAME_STATE.initial then
 		CURRENT_STATE = GAME_STATE.menu
 		--MUSIC_PLAYER.play_title(true)
-
-
 
 	-- menu loop
 	elseif CURRENT_STATE == GAME_STATE.menu then
 		-- draw menu
 		menu()
 
-
-
 	elseif CURRENT_STATE == GAME_STATE.game_setup then
 		-- is a game already running? then return to it
-		-- no game running, setup a new game
-		print("game setup")
-		print("game fps:", playdate.display.getRefreshRate())
-		--MUSIC_PLAYER.stop_title()
+		-- no game running, setup a new game		
+		MUSIC_PLAYER.stop()
 		game_setup()
-		CURRENT_STATE = GAME_STATE.level_setup
+		CURRENT_STATE = GAME_STATE.present_level
+
+	elseif CURRENT_STATE == GAME_STATE.present_level then
+		present_level()
+		lib_spr.update() -- update all sprites
+
+	elseif CURRENT_STATE == GAME_STATE.idle then
+		-- nothing, just wait
 
 	elseif CURRENT_STATE == GAME_STATE.level_setup then
 		print("level setup")
 		level_setup()
 		CURRENT_STATE = GAME_STATE.ready
 
-
-
 	elseif CURRENT_STATE == GAME_STATE.ready then
 		print("start")
 		GAME_TIME_STAMP = playdate.getCurrentTimeMilliseconds()
 		CURRENT_STATE = GAME_STATE.playing
 		
-
-
 	-- main game loop
 	elseif CURRENT_STATE == GAME_STATE.playing then
 		run_game()
@@ -489,11 +492,10 @@ function playdate.update()
 		lib_spr.update() -- update all sprites
 		playdate.drawFPS(10, SCREEN_HEIGHT-20)
 
-
-
 	elseif CURRENT_STATE == GAME_STATE.goal then
 		level_clear()
 		run_game()
+		collect_level_score()
 		lib_spr.update() -- update all sprites
 
 	elseif CURRENT_STATE == GAME_STATE.dead then
@@ -504,28 +506,19 @@ function playdate.update()
 			CURRENT_STATE = GAME_STATE.gameover
 		end
 
-
 	elseif CURRENT_STATE == GAME_STATE.gameover then
 		run_game()
 		lib_spr.update() -- update all sprites
 
-
-
 	elseif CURRENT_STATE == GAME_STATE.paused then
 		paused()
 
-
-
 	elseif CURRENT_STATE == GAME_STATE.cleanup then
 		cleanup()
-		CURRENT_STATE = GAME_STATE.level_setup
+		CURRENT_STATE = GAME_STATE.present_level
 	end
 
-
-
 	lib_tim.updateTimers()
-
-
 	
 	if DEBUG_FLAG then
 		DEBUG_FRAME_STEP = false
@@ -534,8 +527,12 @@ function playdate.update()
 		lib_gfx.drawText(DEBUG_STRING, 5, 5)
 		lib_gfx.drawText(tostring(DEBUG_VAL), 5, 20)
 		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeCopy)
-	end
-	
+	end	
+end
+
+-- used by timer callbacks
+function set_game_state(the_game_state)
+	CURRENT_STATE = the_game_state
 end
 
 function run_game()
@@ -563,16 +560,29 @@ function cleanup()
 
 	print("   clear background image, draw all black")
 	clear_background()
-	
-	print("   reset timer and altitude, and update interface")
-	-- TODO: reset timer and alt, redraw interface
-
+	BACKGROUND_SPRITE:markDirty()
 	-- vars
 	LEVEL_OFFSET = { floatx=60.0, floaty=20.0, x=60, y=20, velx=0, vely=0, drawy=0 }
 	
 	print("finished cleanup, active sprites: ".. lib_spr.spriteCount())
 	-- should be 5 sprites left, player 3, background 1 and interface panel 1
 
+end
+
+function present_level()
+	BACKGROUND_SPRITE:moveTo(SCREEN_WIDTH/2,SCREEN_HEIGHT/2)
+	--BACKGROUND_SPRITE:setVisible(true)
+	INTERFACE_SPRITE:setVisible(false)
+	lib_gfx.lockFocus(BACKGROUND_SPRITE:getImage())
+		--lib_gfx.setColor(lib_gfx.kColorWhite)
+		--lib_gfx.fillRect(0,0,1024,512)
+		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite)
+		lib_gfx.drawTextAligned(LEVEL_DATA.levels[CURRENT_LEVEL].name, LEVEL_IMAGE_WIDTH/2, LEVEL_IMAGE_HEIGHT/2, kTextAlignment.center)
+		lib_gfx.setImageDrawMode(lib_gfx.kDrawModeCopy)
+	lib_gfx.unlockFocus()
+	BACKGROUND_SPRITE:markDirty()
+	CURRENT_STATE = GAME_STATE.idle
+	lib_tim.performAfterDelay(2000, set_game_state, GAME_STATE.level_setup)
 end
 
 function add_items()
@@ -621,7 +631,6 @@ end
 
 function continue()
 	print("continue")
-	-- TODO:
 end
 
 function level_clear()
@@ -639,6 +648,7 @@ end
 
 -- interface
 function draw_interface()
+	INTERFACE_SPRITE:setVisible(true)
 	local s = ""
 	local px = 0
 	local py = 0
@@ -702,15 +712,25 @@ function end_level_check()
 		end
 		return
 	end
+end
 
-	-- if ORB.altitude <= ALTITUDE_LIMIT then
-	-- 	ORB.x_velocity = 0
-	-- 	ORB.y_velocity = 0
-	-- 	ORB.accelerate_flag = false
-	-- 	print("game over, altitude limit reached!")
-	-- 	CURRENT_STATE = GAME_STATE.dead
-	-- 	return
-	-- end
+function collect_level_score()
+	-- time bonus
+	if GAME_TIMER-1000 > 0 then
+		GAME_TIMER = math.max(math.floor(GAME_TIMER - 1000),0)
+		ORB.score = ORB.score + 100
+	else
+		next_level()
+	end
+end
+
+function next_level()
+	if CURRENT_LEVEL < #LEVEL_DATA.levels then
+		CURRENT_LEVEL = CURRENT_LEVEL+1
+	else
+		CURRENT_LEVEL = 1
+	end
+	CURRENT_STATE = GAME_STATE.cleanup
 end
 
 function add_friction(f)
@@ -756,7 +776,6 @@ end
 
 function get_orb_frame()
 	local imap_size = 5 -- the image map is 5 x 5 tiles
-	--local spx,spy = ORB.sprite:getPosition()
 	local spx, spy = grid_to_iso(ORB.pos.x, ORB.pos.y)
 	local x = (math.floor(spx) % imap_size)+1
 	local y = (math.floor(spy) % imap_size)
@@ -765,8 +784,6 @@ end
 
 function reset_orb_at_start_position()
 	print("reset orb to start position at level "..CURRENT_LEVEL)
-	-- move to position
-	-- TODO: a level might have a different start tile than 1/1
 	ORB.pos.x = HALF_GRID_SIZE
 	ORB.pos.y = HALF_GRID_SIZE
 	ORB.x_velocity = 0
@@ -1516,11 +1533,7 @@ end
 
 function playdate.rightButtonDown()
 	CURRENT_STATE = GAME_STATE.cleanup
-	if CURRENT_LEVEL < #LEVEL_DATA.levels then
-		CURRENT_LEVEL = CURRENT_LEVEL+1
-	else
-		CURRENT_LEVEL = 1
-	end
+	next_level()
 end
 
 

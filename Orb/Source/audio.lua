@@ -1,3 +1,5 @@
+local lib_tim = playdate.timer
+
 function new_audio_fx_player()
 	local obj = {}
 	
@@ -192,7 +194,7 @@ end
 function music_player()
 	local obj = {}
 	obj.is_looping = true
-	obj.timer = {}
+	obj.playing = false
 	obj.delay = 250
 	
 	obj.synth = playdate.sound.synth.new(playdate.sound.kWaveSine)
@@ -238,10 +240,12 @@ function music_player()
 	}
 
 	obj.play = function()
-		obj.next_note()
+		obj.playing = true
+		obj.play_next_note()
 	end
 
-	obj.next_note = function()
+	obj.play_next_note = function()
+		if not obj.playing then return end
 		local note = obj.pentatonic_scale[math.random(4)]
 		if note == "pause" then
 			-- silence
@@ -249,11 +253,11 @@ function music_player()
 			obj.synth:playNote(obj.note_table[note]/2, 1.0, 1.0)
 		end
 		local d = math.random(2)
-		obj.timer = playdate.timer.performAfterDelay(obj.delay*d, obj.next_note)
+		lib_tim.performAfterDelay(obj.delay*d, obj.play_next_note)
 	end
 
 	obj.stop = function()
-		obj.timer:remove()
+		obj.playing = false;
 	end
 
 	return obj
