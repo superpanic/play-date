@@ -1,22 +1,17 @@
 import "CoreLibs/graphics"
 local lib_gfx = playdate.graphics
-
 import "CoreLibs/sprites"
 local lib_spr = playdate.graphics.sprite
-
 import "CoreLibs/timer"
 local lib_tim = playdate.timer
-
 import "CoreLibs/animation"
 import "Utils/fps"
 print("using outdated CoreLibs/utilities/fps library")
-
 import "audio"
 
-
--- local vars:
 playdate.display.setRefreshRate(30)
 playdate.display.setScale(2)
+
 local BACKGROUND_COLOR = lib_gfx.kColorBlack
 lib_gfx.setBackgroundColor(BACKGROUND_COLOR)
 lib_gfx.clear()
@@ -29,13 +24,9 @@ local DEBUG_STEP_FRAME = false
 local DEBUG_FRAME_STEP = false
 local DEBUG_FRAME_COUNTER = 0
 
--- GLOBALS
-
--- full screen size
 local SCREEN_WIDTH  = playdate.display.getWidth()
 local SCREEN_HEIGHT = playdate.display.getHeight()
 
--- game world area size
 local GAME_AREA_WIDTH  = SCREEN_WIDTH - 32
 local GAME_AREA_HEIGHT = SCREEN_HEIGHT
 
@@ -56,7 +47,6 @@ local VECTOR_LUT_Y = {}
 local FRICTION = 0.92
 local GRAVITY = 0.75
 
--- state vars
 local GAME_STATE = {
 	initial       = 1, 
 	game_setup    = 2,
@@ -76,7 +66,7 @@ local CURRENT_STATE = GAME_STATE.initial
 
 local MENU_SELECT_COUNTER = 1
 local MENU_DATA = playdate.datastore.read("Json/menu")
-	print(MENU_DATA.loadmessage) -- to make sure the json is readable
+	print(MENU_DATA.loadmessage) -- test, to make sure the json is readable
 
 -- ORB vars
 local ORB = {}
@@ -84,7 +74,7 @@ local ORB_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/orb')
 local ORB_LIVES = 3
 
 local ANIMATION_DATA = playdate.datastore.read("Json/anim_data")
-	print(ANIMATION_DATA.loadmessage) -- to make sure the json is readable
+	print(ANIMATION_DATA.loadmessage) -- test, to make sure the json is readable
 local ORB_FX_IMAGE_TABLE = lib_gfx.imagetable.new(ANIMATION_DATA.objects.orb.artwork)
 
 --[[ NUMBER_OF_SPRITE_LAYERS is the number 
@@ -97,16 +87,13 @@ local ORB_FX_IMAGE_TABLE = lib_gfx.imagetable.new(ANIMATION_DATA.objects.orb.art
 	with NUMBER_OF_SPRITE_LAYERS ]]--
 local NUMBER_OF_SPRITE_LAYERS = 3
 
--- game
 local GAME_TIMER = 0
 local GAME_TIME_STAMP = 0
 
--- audio
 local AUDIO_FX = new_audio_fx_player()
 local MUSIC_PLAYER = music_player()
 MUSIC_PLAYER.play()
 
--- interface
 local INTERFACE_IMAGE = lib_gfx.image.new("Artwork/interface.png")
 local INTERFACE_SPRITE = {}
 local INTERFACE_FONT = playdate.graphics.loadFont("Fonts/orb_font")
@@ -119,31 +106,25 @@ local LEVEL_IMAGE_WIDTH = 1024
 local LEVEL_IMAGE_HEIGHT = 512
 local TILE_IMAGES = lib_gfx.imagetable.new('Artwork/level_tiles')
 local LEVEL_DATA = playdate.datastore.read("Json/levels")
-	print(LEVEL_DATA.loadmessage) -- to make sure the json is readable
+	print(LEVEL_DATA.loadmessage) -- test, to make sure the json is readable
 local TILE_DATA = playdate.datastore.read("Json/tiles")
-	print(TILE_DATA.loadmessage) -- to make sure the json is readable
+	print(TILE_DATA.loadmessage) -- test, to make sure the json is readable
 
 local LEVEL_OFFSET = { floatx=60.0, floaty=20.0, x=60, y=20, velx=0, vely=0, drawy=0 }
 
 local LEVEL_ITEMS = {}
 local LEVEL_ITEMS_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/items')
 local ITEM_DATA = playdate.datastore.read("Json/items")
-	print(ITEM_DATA.loadmessage) -- to make sure the json is readable
+	print(ITEM_DATA.loadmessage) -- test, to make sure the json is readable
 
--- new_level_item
---function new_item(name, x, y, x_off, y_off, size, collidable, frames, update_func, action_func, is_fixed, score)
 function new_item(x, y, item_data)
 
-	-- prepare sprite
 	local sp = lib_spr.new()
 
-	-- position
 	local po = {} -- position in pixels (not grid)
 	po.x = ((x-1) * GRID_SIZE)+GRID_SIZE/2 -- convert to pixel position
 	po.y = ((y-1) * GRID_SIZE)+GRID_SIZE/2 -- convert to pixel position
 
-	--local img_tab = lib_gfx.imagetable.new(artwork_path)
-	-- create game sprite
 	local obj = new_game_sprite(item_data.name, sp, po, item_data.xoffset, item_data.yoffset, ANIMATION_DATA.objects[item_data.name], LEVEL_ITEMS_IMAGE_TABLE, item_data.is_fixed, item_data.size, item_data.score)
 
 	obj.frame_list = item_data.frames
@@ -152,12 +133,10 @@ function new_item(x, y, item_data)
 
 	obj.collidable = item_data.collidable
 
---	obj.sprite:setZIndex(isoy * NUMBER_OF_SPRITE_LAYERS) 
 	local _, iy = grid_to_iso(obj.pos.x, obj.pos.y, 0, 0)	
 	obj.set_z_index(iy)
 
 	obj.sprite:add()
-	--obj.sprite:setVisible(false)
 	
 	obj.action = action
 
@@ -173,13 +152,11 @@ function new_item(x, y, item_data)
 	obj.action = item_data.action_func -- call function using: _G[obj.action](obj)
 
 	obj.do_update = function()
-		-- run updates
 		if obj.update then _G[obj.update](obj) end
-		-- update position (to adjust for level offset)
 		if obj.is_fixed then
 			obj.place()
 		else
-			obj.update_position() -- includes call to obj.place()
+			obj.place_and_update_position()
 			z_mask_update(obj)
 		end
 	end
@@ -192,30 +169,40 @@ function new_item(x, y, item_data)
 end
 
 -- new_game_sprite
-function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, is_fixed, size, score)
+function new_game_sprite(
+	the_name, 
+	the_sprite, 
+	the_pos, 
+	the_x_off, 
+	the_y_off, 
+	the_anim_data, 
+	the_anim_art, 
+	is_fixed, 
+	the_size, 
+	the_score
+)
 
-	-- a moving game object
 	local obj ={}
-	obj.name = name
-	obj.sprite = sprite
+	obj.name = the_name
+	obj.sprite = the_sprite
 
 	obj.is_fixed = is_fixed
-	obj.size = size
+	obj.size = the_size
 
-	if score then obj.score = score 
+	if score then obj.score = the_score 
 	else obj.score = 0 end
 
 	-- animation stuff
 	obj.sprite_fx = lib_spr.new()
-	local img = lib_gfx.image.new(GRID_SIZE*2, GRID_SIZE*2) -- might be too small for larger objects
+	local img = lib_gfx.image.new(GRID_SIZE*2, GRID_SIZE*2) -- might be too small for larger objects?
 	obj.sprite_fx:setImage(img)
 	obj.sprite_fx:add()
 	obj.sprite_fx:setVisible(false)
 	obj.animation_running = false
 	obj.current_animation = {}
 	obj.hide_animation = true
-	obj.anim_data = anim_data
-	obj.anim_art = anim_art
+	obj.anim_data = the_anim_data
+	obj.anim_art = the_anim_art
 		
 	-- use sprite cover to draw on top of object
 	obj.sprite_cover = lib_spr.new()
@@ -224,11 +211,11 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 	obj.sprite_cover:add()
 
 	obj.pos = {}
-	obj.pos.x = pos.x
-	obj.pos.y = pos.y
+	obj.pos.x = the_pos.x
+	obj.pos.y = the_pos.y
 	
-	obj.x_off = x_off
-	obj.y_off = y_off
+	obj.x_off = the_x_off
+	obj.y_off = the_y_off
 	
 	obj.x_velocity = 0.0
 	obj.y_velocity = 0.0
@@ -290,7 +277,7 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 		end
 	end
 
-	obj.update_position = function()
+	obj.place_and_update_position = function()
 		-- add friction
 		if math.abs(obj.x_velocity) < 0.001 then obj.x_velocity = 0 else
 			obj.x_velocity = obj.x_velocity * FRICTION
@@ -389,14 +376,6 @@ function new_game_sprite(name, sprite, pos, x_off, y_off, anim_data, anim_art, i
 	
 end
 
-function level_setup()
-	reset_orb_at_start_position()
-	clear_background()
-	draw_level()
-	add_items()
-	offset_background()
-end
-
 function game_setup()
 
 	generate_vector_LUT()
@@ -440,11 +419,17 @@ function game_setup()
 	
 -- reset crank
 	playdate.getCrankChange()
-	
 end
 
+function level_setup()
+	reset_orb_at_start_position()
+	clear_background()
+	draw_level()
+	add_items()
+	offset_background()
+end
 
--- update
+-- main game loop
 function playdate.update()
 
 	if DEBUG_FLAG and DEBUG_STEP_FRAME then
@@ -561,12 +546,11 @@ function cleanup()
 	print("   clear background image, draw all black")
 	clear_background()
 	BACKGROUND_SPRITE:markDirty()
-	-- vars
+
 	LEVEL_OFFSET = { floatx=60.0, floaty=20.0, x=60, y=20, velx=0, vely=0, drawy=0 }
 	
-	print("finished cleanup, active sprites: ".. lib_spr.spriteCount())
+	print( "finished cleanup, should be 5 active sprites left: ".. lib_spr.spriteCount() )
 	-- should be 5 sprites left, player 3, background 1 and interface panel 1
-
 end
 
 function present_level()
@@ -644,8 +628,6 @@ function game_over_check()
 	return false
 end
 
-
-
 -- interface
 function draw_interface()
 	INTERFACE_SPRITE:setVisible(true)
@@ -716,11 +698,13 @@ end
 
 function collect_level_score()
 	-- time bonus
-	if GAME_TIMER-1000 > 0 then
+	if GAME_TIMER > 0 then
 		GAME_TIMER = math.max(math.floor(GAME_TIMER - 1000),0)
 		ORB.score = ORB.score + 100
 	else
-		next_level()
+		draw_interface()
+		CURRENT_STATE = GAME_STATE.idle
+		lib_tim.performAfterDelay(2000, next_level)
 	end
 end
 
@@ -762,7 +746,7 @@ function update_orb()
 	end
 
 	-- update orb position
-	ORB.update_position()
+	ORB.place_and_update_position()
 
 	-- animate orb
 	if CURRENT_STATE == GAME_STATE.playing then
