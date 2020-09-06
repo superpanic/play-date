@@ -16,7 +16,7 @@ local BACKGROUND_COLOR = lib_gfx.kColorBlack
 lib_gfx.setBackgroundColor(BACKGROUND_COLOR)
 lib_gfx.clear()
 
-local DEBUG_FLAG = false
+local DEBUG_FLAG = true
 local DEBUG_STRING = "debug mode"
 local DEBUG_VAL = 0.0
 
@@ -316,10 +316,9 @@ function new_game_sprite(
 			if obj.fall_velocity > GRAVITY * 3 then -- are we falling or just sliding?
 				obj.falling = true
 			end
-		else 
-			-- NOT falling
-			if obj.falling then -- we were falling but just hit ground
-				-- did we fall too hard?
+		else -- we are on solid ground
+			if obj.falling then -- we were falling but just hit solid ground
+				-- did we fall hard?
 				if obj.fall_velocity > GRAVITY * 5 then
 					if obj.name == "orb" then 
 						CURRENT_STATE = GAME_STATE.dead 
@@ -473,11 +472,11 @@ function playdate.update()
 		end_level_check()
 		update_game_timer()
 		lib_spr.update() -- update all sprites
-		playdate.drawFPS(10, SCREEN_HEIGHT-20)
+		if DEBUG_FLAG then playdate.drawFPS(10, SCREEN_HEIGHT-20) end
 
 	elseif CURRENT_STATE == GAME_STATE.goal then
-		level_clear()
 		run_game()
+		level_clear()
 		collect_level_score()
 		lib_spr.update() -- update all sprites
 
@@ -630,7 +629,6 @@ function menu_step(up_or_down)
 	selected = selected + up_or_down
 	if selected > menu_len then selected = 1 end
 	if selected < 1 then selected = menu_len end
-	print(selected)
 	MENU_DATA.selected[depth] = selected
 end
 
@@ -677,7 +675,7 @@ function continue()
 end
 
 function level_clear()
-	add_friction(0.75)
+	add_friction(0.5)
 end
 
 function game_over_check()
@@ -790,21 +788,21 @@ function update_orb()
 	vectorx = vectorx * 1.5
 	vectory = vectory * 1.5
 	
-	if CURRENT_STATE == GAME_STATE.playing then
+	--if CURRENT_STATE == GAME_STATE.playing then
 		if ORB.accelerate_flag and not ORB.falling then
 			ORB.x_velocity = ORB.x_velocity + (vectorx * ORB.acceleration)
 			ORB.y_velocity = ORB.y_velocity + (vectory * ORB.acceleration)
 		end
-	end
+	--end
 
 	-- update orb position
 	ORB.place_and_update_position()
 
 	-- animate orb
-	if CURRENT_STATE == GAME_STATE.playing then
+	--if CURRENT_STATE == GAME_STATE.playing then
 		local image_frame = get_orb_frame()
 		ORB.sprite:setImage(ORB_IMAGE_TABLE:getImage( image_frame ))
-	end
+	--end
 
 	z_mask_update(ORB)
 
@@ -989,7 +987,7 @@ function z_mask_reset(obj)
 		lib_gfx.fillRect(0,0,GRID_SIZE*2,GRID_SIZE*2)
 
 		if DEBUG_FLAG then
-			lib_gfx.setColor(lib_gfx.kColorWhite)
+			lib_gfx.setColor(lib_gfx.kColorXOR)
 			lib_gfx.drawRect(0,0,GRID_SIZE*2,GRID_SIZE*2)
 		end
 

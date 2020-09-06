@@ -11,7 +11,7 @@
 		},
 
 		{
-			"name":"SETTINGS +",
+			"name":"SETTINGS >",
 			"active":true,
 			"funct":null,
 			"menu": [
@@ -28,7 +28,7 @@
 					"menu":null
 				},
 				{
-					"name":"TEST MENU +",
+					"name":"TEST MENU >",
 					"active":true,
 					"funct":null,
 					"menu": [

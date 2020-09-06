@@ -4,7 +4,7 @@
 	"levels": [
 		{
 			"id":1,
-			"name":"level 1",
+			"name":"stairway",
 			"time":30,
 			"w":12,
 			"h":10,
@@ -19,7 +19,7 @@
 		},
 		{
 			"id":2,
-			"name":"level 2",
+			"name":"black box",
 			"time":30,
 			"w":18,
 			"h":14,
