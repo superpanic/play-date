@@ -1,7 +1,7 @@
 {
 	"loadmessage": "# loaded menu.json",
 	"description": "# menu.json\n   game menu with function calls",
-	"selected": [1,0,0],
+	"selected": [1],
 	"menu": [
 		{
 			"name":"NEW GAME",
@@ -11,23 +11,46 @@
 		},
 
 		{
-			"name":"SETTINGS",
+			"name":"SETTINGS +",
 			"active":true,
 			"funct":null,
 			"menu": [
-
 				{
 					"name":"MUSIC",
 					"active":true,
 					"funct":"music_switch",
 					"menu":null
 				},
-
 				{
 					"name":"MOTION CONTROLS",
 					"active":false,
 					"funct":"motion_control_switch",
 					"menu":null
+				},
+				{
+					"name":"TEST MENU +",
+					"active":true,
+					"funct":null,
+					"menu": [
+						{
+							"name":"ITEM 1",
+							"active":true,
+							"funct":null,
+							"menu":null
+						},
+						{
+							"name": "ITEM 2",
+							"active": true,
+							"funct": null,
+							"menu": null
+						},
+						{
+							"name": "ITEM 3",
+							"active": true,
+							"funct": null,
+							"menu": null
+						}
+					]
 				},
 				{
 					"name":"BACK",

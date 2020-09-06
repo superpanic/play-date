@@ -441,8 +441,7 @@ function playdate.update()
 
 	-- menu loop
 	elseif CURRENT_STATE == GAME_STATE.menu then
-		-- draw menu
-		menu()
+		menu_draw()
 
 	elseif CURRENT_STATE == GAME_STATE.game_setup then
 		-- is a game already running? then return to it
@@ -593,14 +592,75 @@ function update_items()
 	end
 end
 
-function menu()
-	-- loop throught json menu data structure and print to screen
-	for index = 1, #MENU_DATA.menu do
-		if index == MENU_SELECT_COUNTER then lib_gfx.setImageDrawMode(lib_gfx.kDrawModeNXOR)
-		else lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite) end
-		lib_gfx.drawText(MENU_DATA.menu[index].name, 55, 10+20*index)
+-- menu
+
+function menu_draw()
+	local depth = #MENU_DATA.selected
+	local selection = MENU_DATA.selected[depth]
+	local menu = menu_get()
+	for i = 1, #menu do
+		if i == selection then 
+			lib_gfx.setImageDrawMode(lib_gfx.kDrawModeNXOR)
+		else 
+			lib_gfx.setImageDrawMode(lib_gfx.kDrawModeFillWhite) 
+		end
+		lib_gfx.drawText(menu[i].name, 55, 10+20*i)
 	end
 	lib_gfx.setImageDrawMode(lib_gfx.kDrawModeCopy)
+end
+
+function menu_get()
+	local depth = #MENU_DATA.selected
+	local menu = MENU_DATA.menu
+	if(depth > 1) then
+		for i = 1, depth-1 do
+			local selected = MENU_DATA.selected[i]
+			if menu[selected].menu then
+				menu = menu[selected].menu
+			end
+		end
+	end
+	return menu
+end
+
+function menu_step(up_or_down)
+	local depth = #MENU_DATA.selected
+	local selected = MENU_DATA.selected[depth]
+	local menu_len = #menu_get()
+	selected = selected + up_or_down
+	if selected > menu_len then selected = 1 end
+	if selected < 1 then selected = menu_len end
+	print(selected)
+	MENU_DATA.selected[depth] = selected
+end
+
+function menu_select()	
+	local depth = #MENU_DATA.selected
+	local selected = MENU_DATA.selected[depth]
+	local menu = menu_get()
+
+	if not menu[selected].funct then
+		print("no function")
+	else
+		local f = menu[selected].funct
+		if this_is_a_function(f) then call_function(f) 
+		else print(f.." is not a function.") end
+	end
+
+	if not menu[selected].menu then
+		print("not a sub-menu")
+	else
+		table.insert(MENU_DATA.selected, 1)
+		lib_gfx.clear()
+	end
+end
+
+function menu_back()
+	if #MENU_DATA.selected > 1 then
+		MENU_DATA.selected[#MENU_DATA.selected] = nil
+		MENU_DATA.selected[#MENU_DATA.selected] = 1
+		lib_gfx.clear()
+	end
 end
 
 function update_game_timer()
@@ -1484,43 +1544,38 @@ end
 
 function playdate.AButtonUp()
 	ORB.accelerate_flag = false
-
 	if CURRENT_STATE == GAME_STATE.menu then
-		if not MENU_DATA.menu[MENU_SELECT_COUNTER].funct then
-			print("no function")
-		else
-			local f = MENU_DATA.menu[MENU_SELECT_COUNTER].funct
-			if this_is_a_function(f) then call_function(f) 
-			else print(f.." is not a function.") end
-		end
+		menu_select()
 	end
 end
 
 function playdate.rightButtonDown()
-	CURRENT_STATE = GAME_STATE.cleanup
-	next_level()
+	if CURRENT_STATE == GAME_STATE.dead or CURRENT_STATE == GAME_STATE.playing then
+		CURRENT_STATE = GAME_STATE.cleanup
+		next_level()
+	end
+	if CURRENT_STATE == GAME_STATE.menu then
+		menu_select()
+	end
 end
 
 function playdate.leftButtonDown()
 	if DEBUG_FLAG then print(debug.traceback()) end
+	if CURRENT_STATE == GAME_STATE.menu then
+		menu_back()
+	end
 end
 
 function playdate.upButtonDown() -- up button
 	if CURRENT_STATE == GAME_STATE.menu then
-		if MENU_SELECT_COUNTER <= 1 then
-			MENU_SELECT_COUNTER = #MENU_DATA.menu
-		else
-			MENU_SELECT_COUNTER = MENU_SELECT_COUNTER - 1
-		end
+		local up = -1
+		menu_step(up)
 	end
 end
 
 function playdate.downButtonDown() -- down button
 	if CURRENT_STATE == GAME_STATE.menu then
-		if MENU_SELECT_COUNTER < #MENU_DATA.menu then
-			MENU_SELECT_COUNTER = MENU_SELECT_COUNTER + 1
-		else
-			MENU_SELECT_COUNTER = 1
-		end
+		local down = 1
+		menu_step(down)
 	end
 end
