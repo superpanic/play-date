@@ -205,10 +205,10 @@ function new_game_sprite(
 	obj.anim_art = the_anim_art
 		
 	-- use sprite cover to draw on top of object
-	obj.sprite_cover = lib_spr.new()
+	obj.sprite_mask = lib_spr.new()
 	local img = lib_gfx.image.new(GRID_SIZE*2, GRID_SIZE*2)
-	obj.sprite_cover:setImage(img)
-	obj.sprite_cover:add()
+	obj.sprite_mask:setImage(img)
+	obj.sprite_mask:add()
 
 	obj.pos = {}
 	obj.pos.x = the_pos.x
@@ -234,13 +234,13 @@ function new_game_sprite(
 		z = z * NUMBER_OF_SPRITE_LAYERS
 		obj.sprite:setZIndex(z)
 		obj.sprite_fx:setZIndex(z+1)
-		obj.sprite_cover:setZIndex(z+2)
+		obj.sprite_mask:setZIndex(z+2)
 	end
 
 	obj.remove_all_sprites = function()
 		obj.sprite:remove()
 		obj.sprite_fx:remove()
-		obj.sprite_cover:remove()
+		obj.sprite_mask:remove()
 	end
 
 	obj.get_z_index = function()
@@ -250,7 +250,7 @@ function new_game_sprite(
 	obj.set_visible = function(b)
 		obj.sprite:setVisible(b)
 		obj.sprite_fx:setVisible(b)
-		obj.sprite_cover:setVisible(b)
+		obj.sprite_mask:setVisible(b)
 	end
 
 	obj.hide_fx_sprite = function()
@@ -935,7 +935,7 @@ function z_mask_update(obj)
 	DEBUG_STRING = string.format( "%02d/%02d  (%03d/%03d)", obj_col, obj_row, math.floor(obj.pos.x+1+0.5), math.floor(obj.pos.y+1+0.5) )
 
 	-- checking 16 tiles; from standing tile and 4 tiles down and right
-	lib_gfx.lockFocus(obj.sprite_cover:getImage())
+	lib_gfx.lockFocus(obj.sprite_mask:getImage())
 		for row = math.max(1,obj_row), math.min(h,obj_row+3) do
 			for col = math.max(1,obj_col), math.min(w,obj_col+3) do
 				repeat
@@ -982,7 +982,7 @@ function z_mask_update(obj)
 end
 
 function z_mask_reset(obj)
-	lib_gfx.lockFocus(obj.sprite_cover:getImage())
+	lib_gfx.lockFocus(obj.sprite_mask:getImage())
 		lib_gfx.setColor(lib_gfx.kColorClear)
 		lib_gfx.fillRect(0,0,GRID_SIZE*2,GRID_SIZE*2)
 
@@ -992,7 +992,7 @@ function z_mask_reset(obj)
 		end
 
 	lib_gfx.unlockFocus()
-	obj.sprite_cover:moveTo( obj.sprite:getPosition() )
+	obj.sprite_mask:moveTo( obj.sprite:getPosition() )
 end
 
 
