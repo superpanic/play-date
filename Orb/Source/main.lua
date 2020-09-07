@@ -16,7 +16,7 @@ local BACKGROUND_COLOR = lib_gfx.kColorBlack
 lib_gfx.setBackgroundColor(BACKGROUND_COLOR)
 lib_gfx.clear()
 
-local DEBUG_FLAG = true
+local DEBUG_FLAG = false
 local DEBUG_STRING = "debug mode"
 local DEBUG_VAL = 0.0
 
@@ -122,8 +122,8 @@ function new_item(x, y, item_data)
 	local sp = lib_spr.new()
 
 	local po = {} -- position in pixels (not grid)
-	po.x = ((x-1) * GRID_SIZE)+GRID_SIZE/2 -- convert to pixel position
-	po.y = ((y-1) * GRID_SIZE)+GRID_SIZE/2 -- convert to pixel position
+	po.x = ((x-1) * GRID_SIZE) + HALF_GRID_SIZE -- convert to pixel position
+	po.y = ((y-1) * GRID_SIZE) + HALF_GRID_SIZE -- convert to pixel position
 
 	local obj = new_game_sprite(item_data.name, sp, po, item_data.xoffset, item_data.yoffset, ANIMATION_DATA.objects[item_data.name], LEVEL_ITEMS_IMAGE_TABLE, item_data.is_fixed, item_data.size, item_data.score)
 
@@ -213,7 +213,8 @@ function new_game_sprite(
 	obj.pos = {}
 	obj.pos.x = the_pos.x
 	obj.pos.y = the_pos.y
-	
+	print("placed "..obj.name.." at: "..obj.pos.x.."/"..obj.pos.y)
+
 	obj.x_off = the_x_off
 	obj.y_off = the_y_off
 	
@@ -309,8 +310,7 @@ function new_game_sprite(
 		-- handle falling
 		local alt = get_altitude_at_pos(math.floor(obj.pos.x+0.5), math.floor(obj.pos.y+0.5))
 
-		if alt < obj.altitude - obj.fall_velocity then
-			-- falling
+		if alt < obj.altitude - obj.fall_velocity then -- we are falling
 			obj.fall_velocity = obj.fall_velocity + GRAVITY
 			obj.altitude = math.max(alt, obj.altitude - obj.fall_velocity)
 			if obj.fall_velocity > GRAVITY * 3 then -- are we falling or just sliding?
@@ -353,19 +353,15 @@ function new_game_sprite(
 	end
 
 	obj.place = function()
-		local isox, isoy = grid_to_iso(obj.pos.x, obj.pos.y, 0, 0)
-
-		-- set z index before adding background and level draw offsets
+		local isox, isoy = grid_to_iso(obj.pos.x, obj.pos.y, 0, 0)		
 		obj.set_z_index(isoy)
 
 		isox = isox - obj.x_off
-		isoy = isoy - obj.y_off -- select(1,ORB.sprite:getImage():getSize())/2
+		isoy = isoy - obj.y_off
 
-		-- floor value to sync with background movement
 		isox = math.floor( isox + LEVEL_OFFSET.x + 0.5 )
 		isoy = math.floor( isoy - obj.altitude + LEVEL_OFFSET.y + 0.5 )
 
-		-- move the actual sprite (and mask)
 		obj.sprite:moveTo(isox, isoy)
 		obj.sprite_fx:moveTo(isox, isoy)
 	end
@@ -1049,13 +1045,14 @@ function wall_collision_check(obj, nextx, nexty)
 	nextx = nextx + modx
 	nexty = nexty + mody
 	
-	-- modify collision point with velocity vector * size
-
 	local current_altitude = obj.altitude
 	local next_altitude = get_altitude_at_pos(nextx, nexty)
 
 	-- if altitude difference is same or low, no collision, roll on, return
-	if next_altitude <= current_altitude + EDGE_COLLISION_HEIGHT then return false end
+	-- TODO:
+	if next_altitude <= current_altitude + EDGE_COLLISION_HEIGHT then
+		return false 
+	end
 	
 
 	-- ### we have a collision! ### --
@@ -1294,19 +1291,6 @@ function item_switch_action(obj)
 	draw_level()
 end
 
-function item_box_action_old(obj)
-	AUDIO_FX.play_switch()
-	-- push the box
-	-- TODO: is this right? 
-	-- should it not pick up the velocity of the 
-	-- object colliding not the velocity of the ORB?
-	if math.abs(obj.pos.x - ORB.pos.x) > math.abs(obj.pos.y - ORB.pos.y) then
-		obj.x_velocity = ORB.x_velocity
-	else
-		obj.y_velocity = ORB.y_velocity
-	end
-end
-
 function item_box_action(obj)
 	local step_x,step_y = 0,0
 	
@@ -1332,7 +1316,7 @@ function item_box_action(obj)
 	local next_x, next_y = obj.pos.x + step_x, obj.pos.y + step_y
 	if get_tile_type(next_x, next_y) == "flat" then
 		if obj.altitude == get_altitude_at_pos(next_x,next_y) then
-			if ORB.altitude == obj.altitude then
+			if math.abs(ORB.altitude - obj.altitude) < 4 then
 				obj.pos.x = next_x
 				obj.pos.y = next_y
 				obj.start_animation("move")
@@ -1341,6 +1325,7 @@ function item_box_action(obj)
 			end
 		end
 	end
+	ORB.start_animation("collision")
 	AUDIO_FX.play_collide()
 end
 
