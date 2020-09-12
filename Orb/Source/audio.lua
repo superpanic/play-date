@@ -191,74 +191,117 @@ function load_midi_track(file_name, instrument)
 	return track_copy
 end
 
-function music_player()
+function song_player()
 	local obj = {}
-	obj.is_looping = true
+
+	obj.synth = playdate.sound.synth.new(playdate.sound.kWaveSawtooth)
+	obj.synth:setADSR( 0.0, 0.5, 0.1, 0.1)
+
+	obj.speed = 1000/8
+	obj.step = 1
 	obj.playing = false
-	obj.delay = 250
-	
-	obj.synth = playdate.sound.synth.new(playdate.sound.kWaveSine)
-	obj.synth:setADSR( 0.2, 0.5, 0.1, 0.1)
-	--local lfo = playdate.sound.lfo.new(playdate.sound.kLFOSine)
-	--lfo:setRate(5000)
-	--lfo:setDepth(0.2)
-	--obj.synth:setFrequencyMod(lfo)
+	obj.is_looping = true
 
 	obj.note_table = {
-		C_flat  = 261.63,
-		C_sharp = 277.18,
-		D_flat  = 293.66,
-		D_sharp = 311.13,
-		E_flat  = 329.63,
-		F_flat  = 349.23,
-		F_sharp = 369.99,
-		G_flat  = 392.00,
-		G_sharp = 415.30,
-		A_flat  = 440.00,
-		A_sharp = 466.16,
-		B_flat  = 493.88
+		C3 = 130.81,
+		C3s = 138.59,
+		D3 = 146.83,
+		D3s = 155.56,
+		E3 = 164.81,
+		F3 = 174.61,
+		F3s = 185.00,
+		G3 = 196.00,
+		G3s = 207.65,
+		A3 = 220.00,
+		A3s = 233.08,
+		B3 = 246.94,
+		C4 = 261.63,
+		C4s = 261.63,
+		D4 = 293.66,
+		D4s = 311.13,
+		E4 = 329.63,
+		F4 = 349.23,
+		F4s = 369.99,
+		G4 = 392.00,
+		G4s = 415.30,
+		A4 = 440.00,
+		A4s = 466.16,
+		B4 = 493.88
 	}
 
-	obj.arabic_scale = {
-		"C_flat",
-		"D_flat",
-		"E_flat",
-		"F_flat",
-		"F_sharp",
-		"G_sharp",
-		"A_flat",
-		"B_flat",
-		"pause"
-	}
+	obj.song = {
+		{pitch="C3", velocity=0.61},
+		{pitch="E3", velocity=0.57},
+		{pitch="G3", velocity=0.56},
+		{pitch="C4", velocity=0.60},
+		{pitch="E4", velocity=0.63},
+		{pitch="G3", velocity=0.50},
+		{pitch="C4", velocity=0.47},
+		{pitch="E4", velocity=0.47},
 
-	obj.pentatonic_scale = {
-		"C_flat",
-		"D_flat",
-		"G_flat",
-		"A_flat",
-		"pause"
-	}
+		{pitch="C3", velocity=0.62},
+		{pitch="E3", velocity=0.57},
+		{pitch="G3", velocity=0.56},
+		{pitch="C4", velocity=0.60},
+		{pitch="E4", velocity=0.62},
+		{pitch="G3", velocity=0.50},
+		{pitch="C4", velocity=0.48},
+		{pitch="E4", velocity=0.48},
 
+		{pitch="C3", velocity=0.65},
+		{pitch="D3", velocity=0.60},
+		{pitch="A3", velocity=0.56},
+		{pitch="D4", velocity=0.60},
+		{pitch="F4", velocity=0.65},
+		{pitch="A3", velocity=0.51},
+		{pitch="D4", velocity=0.50},
+		{pitch="F4", velocity=0.50},
+
+		{pitch="C3", velocity=0.65},
+		{pitch="D3", velocity=0.60},
+		{pitch="A3", velocity=0.58},
+		{pitch="D4", velocity=0.60},
+		{pitch="F4", velocity=0.65},
+		{pitch="A3", velocity=0.52},
+		{pitch="D4", velocity=0.50},
+		{pitch="F4", velocity=0.50}
+	}
+	
 	obj.play = function()
 		obj.playing = true
 		obj.play_next_note()
 	end
 
 	obj.play_next_note = function()
-		if not obj.playing then return end
-		local note = obj.pentatonic_scale[math.random(4)]
-		if note == "pause" then
+		if not obj.playing then 
+			return 
+		end
+
+		local pitch = obj.song[obj.step].pitch
+		local velocity = obj.song[obj.step].velocity
+
+		if obj.step >= #obj.song then
+			obj.step = 1
+			if not obj.is_looping then 
+				obj.stop() 
+			end
+		else
+			obj.step = obj.step + 1
+		end
+
+		if pitch == "pause" then
 			-- silence
 		else
-			obj.synth:playNote(obj.note_table[note]/2, 1.0, 1.0)
+			obj.synth:playNote(obj.note_table[pitch], velocity, 1.0)
 		end
-		local d = math.random(2)
-		lib_tim.performAfterDelay(obj.delay*d, obj.play_next_note)
+		
+		lib_tim.performAfterDelay(obj.speed, obj.play_next_note)
 	end
 
 	obj.stop = function()
-		obj.playing = false;
+		obj.playing = false
 	end
 
 	return obj
+	
 end

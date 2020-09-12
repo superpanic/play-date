@@ -16,7 +16,7 @@ local BACKGROUND_COLOR = lib_gfx.kColorBlack
 lib_gfx.setBackgroundColor(BACKGROUND_COLOR)
 lib_gfx.clear()
 
-local DEBUG_FLAG = true
+local DEBUG_FLAG = false
 local DEBUG_STRING = "debug mode"
 local DEBUG_VAL = 0.0
 
@@ -91,7 +91,8 @@ local GAME_TIMER = 0
 local GAME_TIME_STAMP = 0
 
 local AUDIO_FX = new_audio_fx_player()
-local MUSIC_PLAYER = music_player()
+--local MUSIC_PLAYER = music_player()
+local MUSIC_PLAYER = song_player()
 MUSIC_PLAYER.play()
 
 local INTERFACE_IMAGE = lib_gfx.image.new("Artwork/interface.png")
