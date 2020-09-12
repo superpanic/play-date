@@ -16,7 +16,7 @@ local BACKGROUND_COLOR = lib_gfx.kColorBlack
 lib_gfx.setBackgroundColor(BACKGROUND_COLOR)
 lib_gfx.clear()
 
-local DEBUG_FLAG = false
+local DEBUG_FLAG = true
 local DEBUG_STRING = "debug mode"
 local DEBUG_VAL = 0.0
 
@@ -302,14 +302,14 @@ function new_game_sprite(
 		collision_detected = collision_detected or item_collision_check(obj, next_pos.x, next_pos.y)
 		
 		-- if we did not collide with anything move obj
-		if collision_detected == false then
+		if not collision_detected then
 			obj.pos.x = next_pos.x
 			obj.pos.y = next_pos.y
 		end
 
 		-- handle falling
 		local alt = get_altitude_at_pos(math.floor(obj.pos.x+0.5), math.floor(obj.pos.y+0.5))
-
+		
 		if alt < obj.altitude - obj.fall_velocity then -- we are falling
 			obj.fall_velocity = obj.fall_velocity + GRAVITY
 			obj.altitude = math.max(alt, obj.altitude - obj.fall_velocity)
@@ -999,10 +999,10 @@ function item_collision_check(obj, nextx, nexty)
 	if obj.x_velocity + obj.y_velocity == 0 then return false end
 
 	-- modify nextx and nexty by adding obj size
-	local modx, mody
-	modx, mody = normalize_vector(obj.x_velocity, obj.y_velocity, obj.size)
-	nextx = nextx + modx
-	nexty = nexty + mody
+	local sizex, sizey
+	sizex, sizey = normalize_vector(obj.x_velocity, obj.y_velocity, obj.size)
+	nextx = nextx + sizex
+	nexty = nexty + sizey
 
 	for _, item in ipairs(LEVEL_ITEMS) do
 		repeat
@@ -1028,46 +1028,56 @@ function item_collision_check(obj, nextx, nexty)
 end
 
 function wall_collision_check(obj, nextx, nexty)
-	-- collision if altitude is higher than EDGE_COLLISION_HEIGHT pixels
 
-	local objx = math.floor(obj.pos.x + 0.5)
-	local objy = math.floor(obj.pos.y + 0.5)
+	local current_x = math.floor(obj.pos.x + 0.5)
+	local current_y = math.floor(obj.pos.y + 0.5)
+
 	local nextx = math.floor(nextx + 0.5)
 	local nexty = math.floor(nexty + 0.5)
 
-	-- if pos is the same, no collision, return
-	if objx == nextx and objy == nexty then return false end
-	
-	-- modify nextx and nexty by adding obj size
-	local modx, mody
-	modx, mody = normalize_vector(obj.x_velocity, obj.y_velocity, obj.size)
-
-	nextx = nextx + modx
-	nexty = nexty + mody
-	
-	local current_altitude = obj.altitude
-	local next_altitude = get_altitude_at_pos(nextx, nexty)
-
-	-- if altitude difference is same or low, no collision, roll on, return
-	-- TODO:
-	if next_altitude <= current_altitude + EDGE_COLLISION_HEIGHT then
+	if  current_x == nextx  and  current_y == nexty  then 
 		return false 
 	end
 	
+	
+	local passed_collision_test = 0
 
-	-- ### we have a collision! ### --
+	-- check #1 of 2
+	local current_altitude = obj.altitude
+	local next_altitude = get_altitude_at_pos(nextx, nexty)
+
+	-- check the point we are standing on
+	if next_altitude <= current_altitude + EDGE_COLLISION_HEIGHT then
+		passed_collision_test = passed_collision_test + 1
+	end
+	
+	-- check #2 of 2	
+	local sizex, sizey
+	sizex, sizey = normalize_vector(obj.x_velocity, obj.y_velocity, obj.size)
+	next_altitude = get_altitude_at_pos(nextx + sizex, nexty + sizey)
+
+	-- check the edge of objects size
+	if next_altitude <= current_altitude + EDGE_COLLISION_HEIGHT then
+		passed_collision_test = passed_collision_test + 1
+	end
+
+	if passed_collision_test >= 2 then
+		return false -- no collision
+	end
+	
+	-- ### we have a wall collision! ### --
 
 	-- create reversed velocity coordinates
 	local rx = math.floor(obj.pos.x + (-obj.x_velocity) + 0.5)
 	local ry = math.floor(obj.pos.y + (-obj.y_velocity) + 0.5)
 	
 	-- get reversed velocity x and y altitudes
-	local rx_alt = get_altitude_at_pos(rx, nexty)
-	local ry_alt = get_altitude_at_pos(nextx, ry)
+	local rx_alt = get_altitude_at_pos(rx, nexty + sizey)
+	local ry_alt = get_altitude_at_pos(nextx + sizex, ry)
 	
 	-- try
 	if rx_alt <= current_altitude + EDGE_COLLISION_HEIGHT then
-		-- no collision here, we can move  in this direction
+		-- no collision here, we can move in this direction
 		obj.x_velocity = -obj.x_velocity
 	elseif ry_alt <= current_altitude + EDGE_COLLISION_HEIGHT then
 		-- no collision here, we can move in this direction
@@ -1413,13 +1423,13 @@ end
 
 -- algorithms / math
 
-function normalize_vector( x, y, len ) -- len is optional
+function normalize_vector( x, y, optional_len )
 	local d = math.abs(x) + math.abs(y)
 	local vx = x / d
 	local vy = y / d
-	if len then
-		vx = len * vx
-		vy = len * vy
+	if optional_len then
+		vx = optional_len * vx
+		vy = optional_len * vy
 	end
 	return vx, vy
 end

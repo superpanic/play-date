@@ -20,7 +20,7 @@
 			"frames": [3],
 			"xoffset": -1,
 			"yoffset": 4,
-			"size": 8,
+			"size": 9,
 			"collidable": true,
 			"is_fixed": false,
 			"update_func": "item_box_update",
