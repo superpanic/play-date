@@ -10,11 +10,10 @@
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
-/* We only use unsigned types */
-typedef unsigned char t_1byte;
+typedef unsigned char  t_1byte;
 typedef unsigned short t_2byte;
-typedef unsigned int t_4byte;
-typedef unsigned long t_8byte;
+typedef unsigned int   t_4byte;
+typedef unsigned long  t_8byte;
 
 void die(const char *message);
 void print_type_lengths();
@@ -24,6 +23,28 @@ unsigned int ticks_per_second(unsigned int ticks_per_beat, unsigned int beats_pe
 unsigned char get_low_bits(unsigned char c);
 unsigned char get_high_bits(unsigned char c);
 
+const int META_EVENT      = 0xFF;
+const int SYSEX_EVENT     = 0xF0;
+const int SYSEX_EVENT_END = 0xF7;
+
+const int MIDI_EVENT_COMMAND_ARR[7] = {
+	0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE
+};
+
+const char MIDI_EVENT_NAME_ARR[7][19] = {
+	"Note OFF",
+	"Note ON",
+	"Note Aftertouch",
+	"Controller",
+	"Program Change",
+	"Channel Aftertouch",
+	"Pitch Bend"
+};
+
+const char MIDI_EVENT_LENGTH_ARR[7] = {
+	2, 2, 2, 2, 1, 1, 2
+};
+
 const int META_EVENT_TYPE_ARR[15] = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 
 	0x05, 0x06, 0x07, 0x20, 0x2F, 
@@ -31,11 +52,10 @@ const int META_EVENT_TYPE_ARR[15] = {
 };
 
 const int META_EVENT_LENGTH_ARR[15] = {
-	 2,-1,-1,-1,-1,
-	-1,-1,-1, 1, 0,
-	3, 5, 4, 2, -2
-};
-// -1 string, -2 variable length
+	 2, -1, -1, -1, -1,
+	-1, -1, -1,  1,  0,
+	 3,  5,  4,  2, -2
+}; // -1 == string, -2 == variable length
 
 const char META_EVENT_NAME_ARR[15][20] = {
 	"Sequence Number",
@@ -77,8 +97,7 @@ int main(int argc, char *argv[]) {
 	if(file_ptr == NULL) die("File not found.");
 	printf("File \"%s\" open for reading.\n", filename_in);
 	
-// read file header MThd
-
+	// read file header MThd
 	const char *FILE_HEADER = "MThd";
 	int read_len = 4;
 	t_1byte file_header[read_len];
@@ -94,8 +113,7 @@ int main(int argc, char *argv[]) {
 	if (!is_a_midi_file) die("Not a midi-file.");
 	printf("Midi file header signature ok.\n");
 
-// read the file header size (big endian)
-
+	// read the file header size (big endian)
 	printf("Header info:\n");
 
 	t_4byte file_header_size;
@@ -152,13 +170,13 @@ int main(int argc, char *argv[]) {
 // event loop:
 	const int delta_time_max_bytes = 4;
 	for(int event = 0; event < number_of_events; event++) {
-		
 		// reading delta time	
 		t_1byte delta_time_buffer[delta_time_max_bytes];
 		t_1byte delta_time_byte=0xFF;
 		int byte_counter = 0;
-		while(delta_time_byte>=0x08) {
-			fread(&delta_time_byte, sizeof(delta_time_byte), 1, file_ptr);
+		while(delta_time_byte>=0x80) {
+			if( fread(&delta_time_byte, sizeof(delta_time_byte), 1, file_ptr) == EOF ) die("Reached end of file.");
+			if( byte_counter >= delta_time_max_bytes ) die("Delta time byte count read exceeds limit.");
 			delta_time_buffer[byte_counter] = delta_time_byte;
 			byte_counter++;
 		}
@@ -172,54 +190,97 @@ int main(int argc, char *argv[]) {
 		}
 		printf("Event %u at delta time: %u\n", event, delta_time_value);
 		
-		// read command type
-		t_1byte command_byte;
-		fread(&command_byte, sizeof(command_byte), 1, file_ptr);
-		if(command_byte < 0x80) {
-			printf("\tUnknown command value: %u\n", (unsigned char) command_byte);
-			die("Expected midi command, got unknown value.");
+		// read until command type is found
+		t_1byte command_byte = 0;
+		int jump_byte_counter = 0;
+		while( command_byte < 0x80) {
+			if(fread(&command_byte, sizeof(command_byte), 1, file_ptr) == EOF) die("Reached end of file.");
+			jump_byte_counter++;
 		}
-
-		// read meta event
-		if(command_byte == 0xFF) {
+		if(jump_byte_counter > 1) printf("\tFast forward %u bytes.\n", jump_byte_counter-1);
+		
+		if(command_byte == META_EVENT) {
 			t_1byte meta_event_type;
 			fread(&meta_event_type, sizeof(meta_event_type), 1, file_ptr);
-			int err_val = 99;
-			int meta_event_length = err_val;
+			bool event_is_unknown_type = true;
+			int meta_event_length = 0;
 			for(int i = 0; i<15; i++) {
 				if(meta_event_type == META_EVENT_TYPE_ARR[i]) {
-					printf("\tFound meta event: %s\n", META_EVENT_NAME_ARR[i]);
+					printf("\tMETA EVENT: %s\n", META_EVENT_NAME_ARR[i]);
 					printf("\tMeta event length: %d\n", META_EVENT_LENGTH_ARR[i]);
 					meta_event_length = META_EVENT_LENGTH_ARR[i];
+					event_is_unknown_type = false;
 					break;
 				}
 			}
-			if(meta_event_length == err_val) die("Unknown Midi Meta event type.");
+			if(event_is_unknown_type) die("Unknown Midi Meta event type.");
 			if(meta_event_length == -1) {
-				// string
+				// undefined length string
+				t_1byte string_length;
+				fread(&string_length, sizeof(string_length), 1, file_ptr);
+				t_1byte string_buffer[string_length+1];
+				fread(string_buffer, sizeof(string_buffer[0]), string_length, file_ptr);
+				string_buffer[string_length] = '\0';
+				printf("\t%s\n", string_buffer);
 			} else if(meta_event_length == -2) {
 				// variable length
 			} else {
 				t_1byte meta_event_value[meta_event_length];
 				fread(meta_event_value, sizeof(meta_event_value[0]), meta_event_length, file_ptr);
 				printf("\tMeta event data:\n");
+				printf("\t");
 				for(int i=0;i<meta_event_length;i++) {
-					printf("\t %u ", (unsigned char) meta_event_value[i]);
+					printf("%u ", (unsigned char) meta_event_value[i]);
 				}
 				printf("\n");
 			}
+
+
+		} else if(command_byte == SYSEX_EVENT) {
+			printf("\tSYSEX EVENT\n\tjumping forward to end of event.\n");
+			t_1byte jump_byte;
+			if(fread(&jump_byte, sizeof(jump_byte), 1, file_ptr)==EOF) die("Searched for end of SysEx event, but reached end of file.");
+			if(jump_byte == SYSEX_EVENT_END) break;
+
+
 		} else {
-			printf("\tThis is a midi event.");
-			printf("\tThe command: %u\n", (unsigned char) get_high_bits(command_byte) );
-			printf("\tThe channel: %u\n", (unsigned char) get_low_bits(command_byte) );
+			printf("\tMIDI EVENT: ");
+			int midi_command = get_high_bits(command_byte);
+			int midi_channel = get_low_bits(command_byte);
+			int midi_data_len = 0;
+			if(midi_channel>=16) die("Read midi event with channel above limit 16.");
+			bool event_is_unknown_type = true;
+			for(int i=0; i<7; i++) {
+				if(midi_command == MIDI_EVENT_COMMAND_ARR[i]) {
+					printf("%s, channel: %d\n", MIDI_EVENT_NAME_ARR[i], midi_channel);
+					midi_data_len = MIDI_EVENT_LENGTH_ARR[i];
+					event_is_unknown_type = false;
+				}
+			}
+			if(event_is_unknown_type) die("Unknown midi event type.");
+			
+			int midi_data[midi_data_len];
+			printf("\t");
+			for(int i=0; i<midi_data_len;i++) {
+				fread(midi_data, sizeof(midi_data[0]), 1, file_ptr);
+				printf("%u ", (unsigned char) midi_data[i]);
+			}
+			printf("\n");
 		}
 
-		if(event >= 2) die("!");
+		// debug
+		int debug_limit_read_length = 20;
+		
+		if(DEBUG && event >= debug_limit_read_length) {
+			printf("Debug mode with limited read length to %d. ", debug_limit_read_length);
+			die("Exiting now.");
+		}
+
 
 	}
 
 	
-// close file
+
 	fclose(file_ptr);
 
 	return 0;
@@ -253,7 +314,7 @@ void die(const char *message) {
 	if (errno) {
 		perror(message);
 	} else {
-		printf("ERROR: %s\n", message);
+		printf("PROGRAM END: %s\n", message);
 	}
 	exit(errno);
 }
