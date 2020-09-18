@@ -105,6 +105,7 @@ local CURRENT_LEVEL = 1
 local BACKGROUND_SPRITE = {} 
 local LEVEL_IMAGE_WIDTH = 1024
 local LEVEL_IMAGE_HEIGHT = 512
+local EMPTY_TILE = 18
 local TILE_IMAGES = lib_gfx.imagetable.new('Artwork/level_tiles')
 local LEVEL_DATA = playdate.datastore.read("Json/levels")
 	print(LEVEL_DATA.loadmessage) -- test, to make sure the json is readable
@@ -420,6 +421,7 @@ function level_setup()
 	reset_orb_at_start_position()
 	clear_background()
 	draw_level()
+	draw_minimap()
 	add_items()
 	offset_background()
 end
@@ -683,6 +685,31 @@ function game_over_check()
 end
 
 -- interface
+function draw_minimap()
+	local w = LEVEL_DATA.levels[CURRENT_LEVEL].w
+	local h = LEVEL_DATA.levels[CURRENT_LEVEL].h
+	local img = INTERFACE_SPRITE:getImage()
+	local img_width, img_height = img:getSize()
+	
+	local x_offset = (img_width / 2) - (w/2)
+	local y_offset = h/2
+	
+	lib_gfx.lockFocus(img)
+		lib_gfx.setColor(lib_gfx.kColorBlack)
+		lib_gfx.fillRect(1,0,img_width,25)
+		lib_gfx.setColor(lib_gfx.kColorWhite)
+		for y=1, h do
+			for x = 1, w do
+				index = w * (y-1) + x
+				tile = LEVEL_DATA.levels[CURRENT_LEVEL].tiles[index]
+				if tile ~= EMPTY_TILE then
+					lib_gfx.drawPixel(x_offset + x, y_offset + y)
+				end
+			end
+		end
+	lib_gfx.unlockFocus()
+end
+
 function draw_interface()
 	INTERFACE_SPRITE:setVisible(true)
 	local s = ""

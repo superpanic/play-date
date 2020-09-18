@@ -101,14 +101,14 @@ function new_audio_fx_player()
 -- fall
 	obj.sfx_fall = playdate.sound.synth.new(playdate.sound.kWaveSine)
 	--                    A  D  S    R
-	obj.sfx_fall:setADSR( 0, 0, 0.2, 0.2)
+	obj.sfx_fall:setADSR( 0, 0, 0.5, 0.2)
 	--obj.sfx_fall:setFrequencyMod(lfo_sin2)
 
 	obj.play_fall = function(p)
 		p = math.floor( (p/8) + #obj.note_long_table / 2)
 		if p < 1 then p = 1 end
 		if p > #obj.note_long_table then p = #obj.note_long_table end
-		obj.sfx_fall:playNote(obj.note_long_table[p], 0.5, 0.05)
+		obj.sfx_fall:playNote(obj.note_long_table[p], 1.0, 0.05)
 	end
 	obj.end_fall = function() obj.sfx_fall:noteOff() end
 
