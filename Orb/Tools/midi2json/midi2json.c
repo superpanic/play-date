@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <math.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
@@ -17,6 +17,8 @@ typedef unsigned long  t_8byte;
 
 void die(const char *message);
 void print_type_lengths();
+void generate_frequencies(float *m, int len);
+
 unsigned int reverse_endian_int(unsigned int x);
 unsigned short reverse_endian_short(unsigned short x);
 unsigned int ticks_per_second(unsigned int ticks_per_beat, unsigned int beats_per_minute);
@@ -26,6 +28,9 @@ unsigned char get_high_bits(unsigned char c);
 const int META_EVENT      = 0xFF;
 const int SYSEX_EVENT     = 0xF0;
 const int SYSEX_EVENT_END = 0xF7;
+const int END_OF_TRACK    = 0x2F;
+
+float MIDI[127];
 
 const int MIDI_EVENT_COMMAND_ARR[7] = {
 	0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE
@@ -89,6 +94,10 @@ int main(int argc, char *argv[]) {
 	char filename_out[64];
 	strncpy(filename_out, argv[2], 64);
 	filename_out[64-1] = '\0';
+
+	// generate list of frequencies
+	
+	generate_frequencies(MIDI, 128);
 
 	FILE *file_ptr;
 	printf("Opening file %s\n", filename_in);
@@ -188,7 +197,7 @@ int main(int argc, char *argv[]) {
 			delta_time_value = delta_time_value << 7; // leave room for 7 bits
 			delta_time_value = delta_time_value + dt; // add new value
 		}
-		printf("Event %u at delta time: %u\n", event, delta_time_value);
+		if (DEBUG) printf("Event %u at delta time: %u\n", event, delta_time_value);
 		
 		// read until command type is found
 		t_1byte command_byte = 0;
@@ -214,6 +223,7 @@ int main(int argc, char *argv[]) {
 				}
 			}
 			if(event_is_unknown_type) die("Unknown Midi Meta event type.");
+			if(meta_event_type == END_OF_TRACK) die("End of track.");
 			if(meta_event_length == -1) {
 				// undefined length string
 				t_1byte string_length;
@@ -250,8 +260,8 @@ int main(int argc, char *argv[]) {
 
 
 		} else {
-			printf("\tMIDI EVENT: ");
-			printf("[0x%02x] ", (unsigned char) command_byte);
+			if (DEBUG) printf("\tMIDI EVENT: ");
+			if (DEBUG) printf("[0x%02x] ", (unsigned char) command_byte);
 			int midi_command = get_high_bits(command_byte);
 			int midi_channel = get_low_bits(command_byte);
 			if(midi_channel>=16) die("Read midi event with channel above limit 16.");
@@ -260,9 +270,9 @@ int main(int argc, char *argv[]) {
 			int midi_data_len = 0;
 			for(int i=0; i<7; i++) {
 				if(midi_command == MIDI_EVENT_COMMAND_ARR[i]) {
-					printf("%s, channel: %d\n", MIDI_EVENT_NAME_ARR[i], midi_channel);
+					if (DEBUG) printf("%s, channel: %d\n", MIDI_EVENT_NAME_ARR[i], midi_channel);
 					midi_data_len = MIDI_EVENT_LENGTH_ARR[i];
-					printf("\tmidi data length: %d\n", midi_data_len);
+					if (DEBUG) printf("\tmidi data length: %d\n", midi_data_len);
 					event_is_unknown_type = false;
 				}
 			}
@@ -271,16 +281,27 @@ int main(int argc, char *argv[]) {
 			t_1byte midi_data[midi_data_len];
 			fread(midi_data, sizeof(midi_data[0]), midi_data_len, file_ptr);
 
-			printf("\t");
+			if (DEBUG) printf("\t");
 			for(int i=0; i<midi_data_len; i++) {
-				printf("%u ", (unsigned char) midi_data[i]);
-				printf("[0x%02x] ", (unsigned char) midi_data[i]);
+				if (DEBUG) printf("%u ", (unsigned char) midi_data[i]);
+				if (DEBUG) printf("[0x%02x] ", (unsigned char) midi_data[i]);
 			}
-			printf("\n");
+			if (DEBUG) printf("\n");
+			printf("{\"note\":%u, \"freq\":%f, \"velo\":%u},\n", (unsigned char)midi_data[0], MIDI[(unsigned char)midi_data[0]], (unsigned char)midi_data[1]);
+
 		}
 
+/*
+	obj.song = {
+		{pitch="C3", velocity=0.61},
+		{pitch="E3", velocity=0.57},
+		{pitch="G3", velocity=0.56},
+		{pitch="C4", velocity=0.60},
+*/
+
+
 		// debug
-		int debug_limit_read_length = 10;
+		int debug_limit_read_length = 40;
 		
 		if(DEBUG && event >= debug_limit_read_length) {
 			printf("Debug mode with limited read length to %d. ", debug_limit_read_length);
@@ -340,8 +361,18 @@ void print_type_lengths() {
 	printf("================\n");
 }
 
+void generate_frequencies(float *mi, int len) {
+	float C1 = 8.1757989156;
+	mi[0] = C1;
+	for (int x = 1; x < len; x++) {
+		mi[x] = mi[x-1] * 1.05946309436; // twelfth root of 2
+	}
+}
+
 unsigned int ticks_per_second(unsigned int ticks_per_beat, unsigned int beats_per_minute) {
 	int ticks_per_minute = beats_per_minute * ticks_per_beat;
 	int ticks_per_second = ticks_per_minute / 60;
 	return ticks_per_second;
 }
+
+
