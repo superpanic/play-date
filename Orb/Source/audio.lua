@@ -130,156 +130,47 @@ function new_audio_fx_player()
 	return obj
 end
 
-function print_all_notes(note_list)
-	for i = 1, #note_list do
-		print(
-			" step "..note_list[i].step..
-			" note "..note_list[i].note..
-			" length "..note_list[i].length..
-			" velocity "..note_list[i].velocity
-		)
-	end
-end
-
-function add_instrument_to_all_tracks_in_sequence(seq, inst)
-	-- find used track in midi sequence
-	local tcnt = seq:getTrackCount()
-	local found_tracks = 0
-	local longest_track = 0
-	for i = 1, tcnt do
-		local t = seq:getTrackAtIndex(i)
-		local note_list = t:getNotes()
-		if #note_list > 0 then
-			print("in track: "..i.." notes: ".. #note_list)
-			-- we found the track that contains data!
-			t:setInstrument(inst)
-			found_tracks = found_tracks+1
-			local l = note_list[#note_list].step + note_list[#note_list].length
-			if l > longest_track then 
-				longest_track = l 
-			end
-		end
-	end
-	
-	if not found_tracks then 
-		print("cound not find any data in midi file") return 0
-	end
-
-	print("found total " .. found_tracks .. " music tracks")
-	print("length: "..longest_track)
-	print("length in milliseconds: "..(longest_track/seq:getTempo())*1000)
-
-	-- return length in milliseconds
-	return ( longest_track/seq:getTempo() ) * 1000
-end
-
-function load_midi_track(file_name, instrument)
-	local midi = playdate.sound.sequence.new(file_name)
-	local track_cnt = midi:getTrackCount()
-	local track_copy = {}
-	for i = 1, track_cnt do
-		local midi_track = midi:getTrackAtIndex(i)
-		local note_list = midi_track:getNotes()
-		if #note_list > 0 then
-			track_copy = playdate.sound.track.new()
-			for n = 1, #note_list do
-				track_copy:addNote(note_list[n])
-			end
-			track_copy:setInstrument(instrument)
-		end
-	end
-	return track_copy
-end
-
 function song_player()
 	local obj = {}
 
+	-- create a synth
 	obj.synth = playdate.sound.synth.new(playdate.sound.kWaveSawtooth)
 	obj.synth:setADSR( 0.0, 0.5, 0.1, 0.1)
 
-	obj.speed = 1000/8
-	obj.step = 1
+	-- read midi data
+	obj.midi_data = playdate.datastore.read("Json/midi")
+	print(obj.midi_data.loadmessage) -- test, to make sure the json is readable
+	obj.song = obj.midi_data.notes
+
+	-- song state variables
 	obj.playing = false
-	obj.is_looping = true
+	obj.is_looping = obj.midi_data.loop
+	obj.step = 1
+	obj.delay_multiplier = obj.midi_data.delay
 
-	obj.note_table = {
-		C3 = 130.81,
-		C3s = 138.59,
-		D3 = 146.83,
-		D3s = 155.56,
-		E3 = 164.81,
-		F3 = 174.61,
-		F3s = 185.00,
-		G3 = 196.00,
-		G3s = 207.65,
-		A3 = 220.00,
-		A3s = 233.08,
-		B3 = 246.94,
-		C4 = 261.63,
-		C4s = 261.63,
-		D4 = 293.66,
-		D4s = 311.13,
-		E4 = 329.63,
-		F4 = 349.23,
-		F4s = 369.99,
-		G4 = 392.00,
-		G4s = 415.30,
-		A4 = 440.00,
-		A4s = 466.16,
-		B4 = 493.88
-	}
-
-	obj.song = {
-		{pitch="C3", velocity=0.61},
-		{pitch="E3", velocity=0.57},
-		{pitch="G3", velocity=0.56},
-		{pitch="C4", velocity=0.60},
-		{pitch="E4", velocity=0.63},
-		{pitch="G3", velocity=0.50},
-		{pitch="C4", velocity=0.47},
-		{pitch="E4", velocity=0.47},
-
-		{pitch="C3", velocity=0.62},
-		{pitch="E3", velocity=0.57},
-		{pitch="G3", velocity=0.56},
-		{pitch="C4", velocity=0.60},
-		{pitch="E4", velocity=0.62},
-		{pitch="G3", velocity=0.50},
-		{pitch="C4", velocity=0.48},
-		{pitch="E4", velocity=0.48},
-
-		{pitch="C3", velocity=0.65},
-		{pitch="D3", velocity=0.60},
-		{pitch="A3", velocity=0.56},
-		{pitch="D4", velocity=0.60},
-		{pitch="F4", velocity=0.65},
-		{pitch="A3", velocity=0.51},
-		{pitch="D4", velocity=0.50},
-		{pitch="F4", velocity=0.50},
-
-		{pitch="C3", velocity=0.65},
-		{pitch="D3", velocity=0.60},
-		{pitch="A3", velocity=0.58},
-		{pitch="D4", velocity=0.60},
-		{pitch="F4", velocity=0.65},
-		{pitch="A3", velocity=0.52},
-		{pitch="D4", velocity=0.50},
-		{pitch="F4", velocity=0.50}
-	}
-	
 	obj.play = function()
 		obj.playing = true
 		obj.play_next_note()
 	end
 
-	obj.play_next_note = function()
+	obj.play_next_note = function(the_note)
 		if not obj.playing then 
 			return 
 		end
 
-		local pitch = obj.song[obj.step].pitch
-		local velocity = obj.song[obj.step].velocity
+		-- play incoming note (if any)
+		if the_note then
+			if the_note.c == "Note ON" then
+				obj.synth:playNote(the_note.f, the_note.v/128, 1.0)
+			end
+		end
 
+		-- prepare next note
+		local delay = obj.song[obj.step].d * obj.delay_multiplier
+		local next_note = obj.song[obj.step]
+		lib_tim.performAfterDelay(delay, obj.play_next_note, next_note)
+
+		-- step to next
 		if obj.step >= #obj.song then
 			obj.step = 1
 			if not obj.is_looping then 
@@ -289,13 +180,6 @@ function song_player()
 			obj.step = obj.step + 1
 		end
 
-		if pitch == "pause" then
-			-- silence
-		else
-			obj.synth:playNote(obj.note_table[pitch], velocity, 1.0)
-		end
-		
-		lib_tim.performAfterDelay(obj.speed, obj.play_next_note)
 	end
 
 	obj.stop = function()
@@ -303,5 +187,4 @@ function song_player()
 	end
 
 	return obj
-	
 end
