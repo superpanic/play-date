@@ -57,9 +57,8 @@ function new_audio_fx_player()
 
 	-- EFFECTS
 
--- wall collide
+	-- wall collide
 	obj.sfx_collide = playdate.sound.synth.new(playdate.sound.kWaveTriangle)
-	--                       A    D    S    R
 	obj.sfx_collide:setADSR( 0.0, 0.5, 0.2, 0.1 )
 	--obj.sfx_collide:setFrequencyMod(lfo_sin2)
 
@@ -71,9 +70,8 @@ function new_audio_fx_player()
 
 
 
--- switch
+	-- switch
 	obj.sfx_switch = playdate.sound.synth.new(playdate.sound.kWaveSine)
-	--
 	obj.sfx_switch:setADSR( 0.0, 0.3, 0.2, 0.2 )
 	obj.sfx_switch:setFrequencyMod(lfo_sin20)
 
@@ -84,9 +82,8 @@ function new_audio_fx_player()
 
 
 
--- roll
+	-- roll
 	obj.sfx_roll = playdate.sound.synth.new(playdate.sound.kWaveSine)
-	--                       A     D     S    R
 	obj.sfx_roll:setADSR(   0.25, 0.25, 0.5, 0.5)
 	obj.sfx_roll:setFrequencyMod(lfo_sin2)
 
@@ -98,10 +95,9 @@ function new_audio_fx_player()
 
 
 
--- fall
+	-- fall
 	obj.sfx_fall = playdate.sound.synth.new(playdate.sound.kWaveSine)
-	--                    A  D  S    R
-	obj.sfx_fall:setADSR( 0, 0, 0.5, 0.2)
+	obj.sfx_fall:setADSR( 0.0, 0.5, 0.1, 0.1)
 	--obj.sfx_fall:setFrequencyMod(lfo_sin2)
 
 	obj.play_fall = function(p)
@@ -116,7 +112,6 @@ function new_audio_fx_player()
 
 -- crash
 	obj.sfx_crash = playdate.sound.synth.new(playdate.sound.kWaveNoise)
-	--                    A  D  S    R
 	obj.sfx_crash:setADSR( 0, 0, 0.2, 0.2)
 	obj.sfx_crash:setFrequencyMod(lfo_sin12)
 

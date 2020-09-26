@@ -73,7 +73,7 @@ local ORB = {}
 local ORB_IMAGE_TABLE = lib_gfx.imagetable.new('Artwork/orb')
 local ORB_LIVES = 3
 
-local ANIMATION_DATA = playdate.datastore.read("Json/anim_data")
+local ANIMATION_DATA = playdate.datastore.read("Json/animation")
 	print(ANIMATION_DATA.loadmessage) -- test, to make sure the json is readable
 local ORB_FX_IMAGE_TABLE = lib_gfx.imagetable.new(ANIMATION_DATA.objects.orb.artwork)
 
