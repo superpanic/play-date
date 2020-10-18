@@ -1,13 +1,15 @@
-MIDI EVENTS
-Following the midi event delta-time comes the event type. The event type byte have a msb set to 1 (the value is >= 128). 
-
-If it is a Meta Event, the command is FF.
-
-
-The command byte is one byte, but is divided into 2 parts. The left 4 bits contain the actual command. The right 4 bits contain the midi channel number.
-
-1ccc nnnn 
-
-The data that follows a command byte have a msb of 0 (is less than 128).
-
-There are 3 types of events: MIDI, SysEx and Meta.
+Exports midi events from midi file to json in the following format:
+{ 
+	"loadmessage": "# loaded music.json",
+	"description": "# music.json - converted notes generated from midi file: Look to your Orb.mid",
+	"keys":"[c] command, [n] midi-note, [d] delta-time, [f] frequency, [v] velocity",
+	"title":"main track",
+	"loop":true,
+	"delay": 2.0, 
+	"notes":[
+		{"c":"Note OFF", "n":41, "d":120, "f":87.307076, "v":64},
+		{"c":"Note ON", "n":41, "d":0, "f":87.307076, "v":80},
+		{"c":"Note OFF", "n":41, "d":120, "f":87.307076, "v":64},
+		{"c":"Note ON", "n":43, "d":0, "f":97.998878, "v":93}
+	]
+}

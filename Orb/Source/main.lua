@@ -77,21 +77,20 @@ local ANIMATION_DATA = playdate.datastore.read("Json/animation")
 	print(ANIMATION_DATA.loadmessage) -- test, to make sure the json is readable
 local ORB_FX_IMAGE_TABLE = lib_gfx.imagetable.new(ANIMATION_DATA.objects.orb.artwork)
 
---[[ NUMBER_OF_SPRITE_LAYERS is the number 
-	of layers used for game sprite objects. 
-	each game sprite object uses: 
-	one IMAGE sprite 
-	one EFFECT sprite 
-	one MASK sprite
-	therefore the z-index has to be multiplied 
-	with NUMBER_OF_SPRITE_LAYERS ]]--
-local NUMBER_OF_SPRITE_LAYERS = 3
+--	NUMBER_OF_SPRITE_LAYERS is the number 
+--	of layers used for game sprite objects. 
+--	each game sprite object uses: 
+--		one IMAGE sprite 
+--		one EFFECT sprite 
+--		one MASK sprite
+--	therefore the sprites z-index has to be 
+-- 	multiplied with NUMBER_OF_SPRITE_LAYERS:
+local NUMBER_OF_SPRITE_LAYERS = 3 
 
 local GAME_TIMER = 0
 local GAME_TIME_STAMP = 0
 
 local AUDIO_FX = new_audio_fx_player()
---local MUSIC_PLAYER = music_player()
 local MUSIC_PLAYER = song_player()
 MUSIC_PLAYER.play()
 
